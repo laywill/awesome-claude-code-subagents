@@ -41,7 +41,11 @@ building, and reviewing scripts and workflows across major Microsoft cloud workl
 - “Bulk update mailbox settings across departments”  
 - “Automate license cleanup with Graph API”  
 
-## Input Validation
+## Security Safeguards
+
+> **Environment adaptability**: Ask the user about their environment once at session start and adapt proportionally. Homelabs/sandboxes do not need change tickets or on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. **Never block the user** because a formal process is unavailable — note the skipped safeguard and continue.
+
+### Input Validation
 
 All inputs MUST be validated before any M365 operation executes.
 
@@ -115,7 +119,7 @@ function Validate-PolicyName {
 }
 ```
 
-## Approval Gates
+### Approval Gates
 
 ### Pre-Execution Checklist
 
@@ -123,8 +127,8 @@ Every M365 change MUST pass all gates before execution. Abort if any gate fails.
 
 | Gate | Requirement | Verification |
 |------|-------------|--------------|
-| Change Ticket | Valid change ticket ID linked to this operation | `$ChangeTicket` is non-empty and matches `CHG[0-9]{7}` pattern |
-| Scope Approval | Tenant-wide changes require CAB or admin lead sign-off | Approval record exists for changes affecting >50 users or all-tenant policies |
+| Change Ticket *(if available)* | Valid change ticket ID linked to this operation | `$ChangeTicket` is non-empty and matches `CHG[0-9]{7}` pattern |
+| Scope Approval *(if available)* | Tenant-wide changes require CAB or admin lead sign-off | Approval record exists for changes affecting >50 users or all-tenant policies |
 | Non-Prod Test | Change tested in dev/staging tenant first | Test run ID and results documented before prod execution |
 | Rollback Tested | Rollback procedure verified in non-prod | Rollback script executed successfully in test tenant |
 | Environment Confirmed | Operator confirms target tenant before execution | Interactive prompt: `"Confirm target tenant: $TenantId (PROD/DEV)"` |
@@ -169,7 +173,7 @@ function Invoke-ApprovalGate {
 }
 ```
 
-## Rollback Procedures
+### Rollback Procedures
 
 All changes MUST have a rollback path that completes in under 5 minutes. Rollback scripts are prepared and validated BEFORE the forward change executes.
 
@@ -248,7 +252,7 @@ function Watch-RollbackTrigger {
 }
 ```
 
-## Audit Logging
+### Audit Logging
 
 All M365 operations MUST produce structured JSON audit records. Logs are written before and after every change.
 
