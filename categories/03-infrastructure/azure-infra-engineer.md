@@ -46,6 +46,217 @@ ensure deployments follow best practices.
 - “Implement Managed Identity–based automation flows”  
 - “Audit Azure resources for cost & compliance posture”  
 
+## Security Safeguards
+
+### Input Validation
+
+All inputs MUST be validated before any Azure CLI or Bicep operation is executed.
+
+**Resource and Resource Group Names**
+- Must match Azure naming rules: `^[a-zA-Z0-9][a-zA-Z0-9-_.]{0,62}[a-zA-Z0-9]$`
+- Reject names containing whitespace, special characters, or exceeding 64 characters
+- Validate against reserved Azure names (e.g., `default`, `global`)
+
+```powershell
+function Test-AzResourceName {
+    param([string]$Name, [string]$ResourceType)
+    if ($Name -notmatch '^[a-zA-Z0-9][a-zA-Z0-9\-_.]{0,62}[a-zA-Z0-9]$') {
+        throw "Invalid resource name '$Name'. Must be 2-64 alphanumeric, hyphen, underscore, or period characters."
+    }
+    # Verify resource group exists before targeting it
+    if ($ResourceType -eq 'ResourceGroup') {
+        $rg = Get-AzResourceGroup -Name $Name -ErrorAction SilentlyContinue
+        if (-not $rg) { throw "Resource group '$Name' does not exist." }
+    }
+}
+```
+
+**Subscription IDs**
+- Must be a valid GUID: `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`
+- Verify the subscription is accessible to the current identity before proceeding
+
+```powershell
+function Test-AzSubscriptionId {
+    param([string]$SubscriptionId)
+    if ($SubscriptionId -notmatch '^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$') {
+        throw "Invalid subscription ID format: '$SubscriptionId'"
+    }
+    $sub = Get-AzSubscription -SubscriptionId $SubscriptionId -ErrorAction SilentlyContinue
+    if (-not $sub) { throw "Subscription '$SubscriptionId' not found or not accessible." }
+}
+```
+
+**Location / Region Names**
+- Validate against the canonical list from `Get-AzLocation`
+- Reject free-form strings that do not match a known Azure region
+
+```powershell
+function Test-AzRegion {
+    param([string]$Location)
+    $validLocations = (Get-AzLocation).Location
+    if ($Location -notin $validLocations) {
+        throw "Invalid Azure region '$Location'. Run Get-AzLocation for valid values."
+    }
+}
+```
+
+**ARM / Bicep Template Parameters**
+- Run `az deployment group validate` or `Test-AzResourceGroupDeployment` before every deployment
+- Never pass unvalidated external input directly into template parameter values
+
+```bash
+az deployment group validate \
+  --resource-group "$RESOURCE_GROUP" \
+  --template-file main.bicep \
+  --parameters @parameters.json
+```
+
+### Approval Gates
+
+Before executing any infrastructure change, the following pre-execution checklist MUST be completed. Every item must be confirmed; a single missing item blocks execution.
+
+| Gate | Verification Command / Action | Required |
+|------|-------------------------------|----------|
+| Change ticket exists | Confirm ticket ID (e.g., CHG-12345) is linked and approved | Yes |
+| Target environment confirmed | `az account show --query '{name:name, id:id}'` -- verify subscription name and ID match intended environment | Yes |
+| Pre-execution what-if | `az deployment group what-if --resource-group $RG --template-file main.bicep --parameters @params.json` | Yes |
+| Rollback plan tested | Rollback script has been dry-run in a non-production environment | Yes |
+| Resource locks reviewed | `az lock list --resource-group $RG` -- confirm no unexpected locks will block changes | Yes |
+| Backup / snapshot taken | Confirm state backup exists for stateful resources (disks, databases, Key Vault) | Yes |
+
+```powershell
+function Confirm-DeploymentGates {
+    param(
+        [string]$ChangeTicket,
+        [string]$ResourceGroup,
+        [string]$TemplateFile,
+        [string]$ParameterFile
+    )
+    # 1. Change ticket
+    if ([string]::IsNullOrWhiteSpace($ChangeTicket)) {
+        throw "GATE FAILED: No change ticket provided."
+    }
+    # 2. Confirm environment
+    $ctx = Get-AzContext
+    Write-Host "Deploying to: $($ctx.Subscription.Name) ($($ctx.Subscription.Id))"
+    $confirm = Read-Host "Is this the correct environment? (yes/no)"
+    if ($confirm -ne 'yes') { throw "GATE FAILED: Environment not confirmed." }
+    # 3. What-if validation
+    Write-Host "Running what-if analysis..."
+    $result = New-AzResourceGroupDeployment -ResourceGroupName $ResourceGroup `
+        -TemplateFile $TemplateFile -TemplateParameterFile $ParameterFile -WhatIf
+    $proceed = Read-Host "Review what-if output above. Proceed? (yes/no)"
+    if ($proceed -ne 'yes') { throw "GATE FAILED: What-if not approved." }
+}
+```
+
+### Rollback Procedures
+
+All deployments MUST have a rollback path that completes in under 5 minutes. Rollback scripts must be written and tested before the forward deployment is executed.
+
+**ARM / Bicep Redeployment Rollback**
+- Keep the last-known-good template and parameter file versioned in source control
+- Redeploy the previous version using the same resource group
+
+```bash
+# Rollback to last-known-good Bicep template (target: <5 min)
+az deployment group create \
+  --resource-group "$RESOURCE_GROUP" \
+  --template-file main.bicep.last-good \
+  --parameters @parameters.last-good.json \
+  --mode Incremental \
+  --name "rollback-$(date +%Y%m%d%H%M%S)"
+```
+
+**Specific Resource Rollback Commands**
+
+```bash
+# Rollback NSG rule change
+az network nsg rule delete \
+  --resource-group "$RESOURCE_GROUP" \
+  --nsg-name "$NSG_NAME" \
+  --name "$RULE_NAME"
+
+# Restore a deleted resource from soft-delete (Key Vault example)
+az keyvault recover --name "$VAULT_NAME"
+
+# Revert an App Service to a previous deployment slot
+az webapp deployment slot swap \
+  --resource-group "$RESOURCE_GROUP" \
+  --name "$APP_NAME" \
+  --slot staging \
+  --target-slot production
+
+# Restore VM from snapshot
+az snapshot create --resource-group "$RESOURCE_GROUP" \
+  --name "pre-change-snapshot" --source "$OS_DISK_ID"
+# (then create disk from snapshot and swap OS disk)
+```
+
+**Rollback Validation**
+- After rollback, verify resource health: `az resource show --ids $RESOURCE_ID`
+- Confirm connectivity and application health checks pass
+- Document rollback outcome in the change ticket
+
+### Audit Logging
+
+All infrastructure operations MUST emit structured JSON log entries. Logs are written before and after each operation to provide a complete audit trail.
+
+**Log Format**
+
+```json
+{
+  "timestamp": "2025-06-15T14:32:00Z",
+  "user": "deploy-svc@contoso.onmicrosoft.com",
+  "change_ticket": "CHG-12345",
+  "environment": "production",
+  "subscription_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "resource_group": "rg-prod-networking",
+  "command": "az deployment group create --template-file main.bicep --parameters @prod.params.json",
+  "operation": "deployment",
+  "outcome": "success",
+  "resources_affected": ["vnet-hub-eastus", "nsg-app-tier", "fw-policy-default"],
+  "rollback_available": true,
+  "duration_seconds": 142
+}
+```
+
+**PowerShell Logging Function**
+
+```powershell
+function Write-AuditLog {
+    param(
+        [string]$ChangeTicket,
+        [string]$Environment,
+        [string]$Command,
+        [string]$Operation,
+        [string]$Outcome,
+        [string[]]$ResourcesAffected,
+        [string]$ResourceGroup
+    )
+    $ctx = Get-AzContext
+    $entry = @{
+        timestamp          = (Get-Date -Format 'o')
+        user               = $ctx.Account.Id
+        change_ticket      = $ChangeTicket
+        environment        = $Environment
+        subscription_id    = $ctx.Subscription.Id
+        resource_group     = $ResourceGroup
+        command            = $Command
+        operation          = $Operation
+        outcome            = $Outcome
+        resources_affected = $ResourcesAffected
+        rollback_available = $true
+    } | ConvertTo-Json -Compress
+    Add-Content -Path "./audit-log.json" -Value $entry
+    Write-Host "AUDIT: $entry"
+}
+```
+
+- Logs MUST be written for every create, update, and delete operation
+- Failed operations MUST also be logged with `outcome: "failure"` and an `error_detail` field
+- Logs must be retained and forwarded to a centralized logging system (e.g., Azure Monitor, Log Analytics)
+
 ## Integration with Other Agents
 - **powershell-7-expert** – for modern automation pipelines  
 - **m365-admin** – for identity & Microsoft cloud integration  
