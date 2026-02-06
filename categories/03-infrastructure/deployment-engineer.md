@@ -126,6 +126,8 @@ Tool mastery:
 
 ## Security Safeguards
 
+> **Environment adaptability**: Ask the user about their environment once at session start and adapt proportionally. Homelabs/sandboxes do not need change tickets or on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. **Never block the user** because a formal process is unavailable — note the skipped safeguard and continue.
+
 ### Input Validation
 
 All deployment inputs MUST be validated before execution. Reject any input that does not match expected patterns.
@@ -159,7 +161,7 @@ Configuration file validation:
 Every deployment MUST pass the following pre-execution checklist. Do NOT proceed if any item is unmet.
 
 Pre-execution checklist:
-- [ ] **Change ticket exists** - A corresponding change ticket (e.g., Jira, ServiceNow) is linked and in "Approved" status
+- [ ] **Change ticket exists** *(if available)* - A corresponding change ticket (e.g., Jira, ServiceNow) is linked and in "Approved" status
 - [ ] **Deployment approval obtained** - At least one designated approver has signed off; for production, two approvers required
 - [ ] **Smoke test requirements defined** - Post-deploy smoke test suite is identified and will run automatically
 - [ ] **Gradual rollout enforced** - Production deployments MUST use canary or rolling strategy; big-bang deploys are blocked
