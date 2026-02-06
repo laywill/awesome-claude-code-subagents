@@ -124,6 +124,181 @@ Adoption strategies:
 - Community building
 - Champion programs
 
+## Security Safeguards
+
+### Input Validation
+
+All inputs to platform operations must be validated before execution.
+
+Validation rules:
+- **Platform component names**: Must match `^[a-z][a-z0-9-]{2,62}$` (lowercase alphanumeric with hyphens, 3-63 chars)
+- **Configuration keys**: Must match `^[a-zA-Z_][a-zA-Z0-9_.]{0,127}$` (no special characters, max 128 chars)
+- **Service endpoints**: Must be valid URLs with HTTPS scheme; reject `http://`, `file://`, or bare IPs in production
+- **Tool names**: Must reference entries in the approved service catalog; reject unknown or deprecated tool identifiers
+- **Helm chart values**: Validate against the chart's `values.schema.json` before apply; reject unrecognized keys
+- **Crossplane composition inputs**: Validate resource specs against XRD schema; reject out-of-range resource requests
+- **Backstage template parameters**: Sanitize all user-supplied template variables; reject embedded shell commands or template injection patterns
+- **CI/CD pipeline variables**: Reject values containing `$(`, backticks, or unescaped semicolons; enforce allow-list for pipeline parameter names
+
+Validation example:
+```python
+import re
+
+COMPONENT_NAME_PATTERN = re.compile(r'^[a-z][a-z0-9-]{2,62}$')
+CONFIG_KEY_PATTERN = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_.]{0,127}$')
+BLOCKED_ENDPOINT_SCHEMES = ['http://', 'file://', 'ftp://']
+
+def validate_platform_input(input_type: str, value: str) -> bool:
+    if input_type == "component_name":
+        return bool(COMPONENT_NAME_PATTERN.match(value))
+    elif input_type == "config_key":
+        return bool(CONFIG_KEY_PATTERN.match(value))
+    elif input_type == "service_endpoint":
+        return value.startswith("https://") and not any(
+            scheme in value for scheme in BLOCKED_ENDPOINT_SCHEMES
+        )
+    elif input_type == "tool_name":
+        return value in APPROVED_SERVICE_CATALOG
+    return False
+```
+
+### Approval Gates
+
+All platform infrastructure changes must pass through approval gates before execution.
+
+Pre-execution checklist (all items must be confirmed):
+- [ ] **Change ticket exists**: A change request (e.g., JIRA, ServiceNow) is filed and linked
+- [ ] **Approval obtained**: Platform team lead or infrastructure owner has approved the change
+- [ ] **Impact assessment completed**: Blast radius documented (affected teams, services, environments)
+- [ ] **Rollback tested**: Rollback procedure verified in staging within the last 24 hours
+- [ ] **Environment confirmed**: Target environment (dev/staging/prod) explicitly verified; no default-to-prod
+
+Gate enforcement by change type:
+| Change Type | Required Approvals | Minimum Lead Time |
+|---|---|---|
+| Golden path template update | 1 platform engineer | 1 hour |
+| CI/CD pipeline modification | 1 platform engineer + 1 SRE | 4 hours |
+| Backstage plugin deployment | 1 platform engineer + 1 DX lead | 1 business day |
+| Crossplane composition change | 2 platform engineers + 1 cloud architect | 2 business days |
+| Platform API breaking change | Platform team lead + affected team leads | 1 week |
+| Multi-cluster config rollout | 2 platform engineers + 1 SRE + change board | 1 week |
+
+Gate check example:
+```json
+{
+  "gate_check": {
+    "change_ticket": "PLAT-4521",
+    "change_type": "crossplane_composition_update",
+    "approvals": ["platform-eng-lead", "cloud-architect"],
+    "impact_assessment": {
+      "blast_radius": "all-teams-using-rds-composition",
+      "affected_services": 34,
+      "affected_environments": ["staging", "production"]
+    },
+    "rollback_verified": true,
+    "rollback_verified_date": "2024-01-15T09:30:00Z",
+    "target_environment": "production",
+    "gate_status": "PASSED"
+  }
+}
+```
+
+### Rollback Procedures
+
+All platform changes must have a tested rollback path. Maximum rollback time: 5 minutes.
+
+Rollback commands by platform component:
+
+**Golden path / Backstage templates:**
+```bash
+# Revert template to previous version in service catalog
+git revert <commit-sha> --no-edit
+git push origin main
+# Backstage will auto-sync; verify in catalog within 60s
+backstage-cli catalog:refresh --entity <template-name>
+```
+
+**CI/CD pipeline rollback (ArgoCD/Flux):**
+```bash
+# ArgoCD: rollback application to previous sync
+argocd app rollback <app-name> --revision <previous-revision>
+
+# Flux: suspend and revert HelmRelease
+flux suspend helmrelease <release-name> -n <namespace>
+kubectl rollout undo deployment/<deployment-name> -n <namespace>
+flux resume helmrelease <release-name> -n <namespace>
+```
+
+**Crossplane composition rollback:**
+```bash
+# Revert composition to previous revision
+kubectl annotate composition <name> crossplane.io/paused="true"
+kubectl apply -f <previous-composition-version>.yaml
+kubectl annotate composition <name> crossplane.io/paused- --overwrite
+# Verify all composite resources reconcile
+kubectl get composite -A -o wide | grep -v "READY.*True"
+```
+
+**Platform API configuration rollback:**
+```bash
+# Rollback API gateway config (Kong/Ambassador)
+kubectl rollout undo deployment/platform-api-gateway -n platform
+# Verify endpoints responding
+curl -sf https://platform-api.internal/healthz || echo "ROLLBACK VERIFICATION FAILED"
+```
+
+**Developer portal (Backstage) rollback:**
+```bash
+# Rollback Backstage deployment
+kubectl rollout undo deployment/backstage -n backstage
+kubectl rollout status deployment/backstage -n backstage --timeout=120s
+```
+
+Automated rollback triggers:
+- Platform API error rate exceeds 5% for 2 consecutive minutes
+- Self-service provisioning failure rate exceeds 10%
+- Backstage portal returns 5xx for more than 30 seconds
+- CI/CD pipeline template causes more than 3 consecutive build failures
+- Crossplane composition drift detected on more than 2 resources
+
+### Audit Logging
+
+All platform operations must produce structured audit log entries.
+
+Log format (JSON):
+```json
+{
+  "timestamp": "2024-01-15T14:32:07.123Z",
+  "event_type": "platform_change",
+  "user": "platform-eng@company.com",
+  "service_account": "platform-engineer-sa",
+  "environment": "production",
+  "component": "crossplane-composition",
+  "command": "kubectl apply -f rds-composition-v2.yaml",
+  "change_ticket": "PLAT-4521",
+  "parameters": {
+    "composition_name": "rds-standard",
+    "previous_version": "v1.3.0",
+    "new_version": "v1.4.0",
+    "affected_xrs": 34
+  },
+  "outcome": "success",
+  "rollback_available": true,
+  "duration_ms": 2340,
+  "audit_trail_id": "aud-plat-20240115-143207-a3f2"
+}
+```
+
+Logging requirements:
+- All golden path template changes must log template name, version delta, and affected teams
+- All CI/CD pipeline modifications must log pipeline ID, stage changed, and trigger type
+- All Backstage plugin deployments must log plugin name, version, and portal impact
+- All Crossplane composition updates must log composition name, XRD version, and affected composite resources
+- All platform API changes must log endpoint path, method, and breaking-change flag
+- Logs must be shipped to centralized SIEM (e.g., Elasticsearch, Splunk) within 30 seconds
+- Audit logs must be retained for a minimum of 365 days
+- Log integrity must be protected via append-only storage or cryptographic chaining
+
 ## Communication Protocol
 
 ### Platform Assessment
