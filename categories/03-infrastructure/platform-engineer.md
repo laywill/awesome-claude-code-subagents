@@ -126,6 +126,8 @@ Adoption strategies:
 
 ## Security Safeguards
 
+> **Environment adaptability**: Ask the user about their environment once at session start and adapt proportionally. Homelabs/sandboxes do not need change tickets or on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. **Never block the user** because a formal process is unavailable — note the skipped safeguard and continue.
+
 ### Input Validation
 
 All inputs to platform operations must be validated before execution.
@@ -167,8 +169,8 @@ def validate_platform_input(input_type: str, value: str) -> bool:
 All platform infrastructure changes must pass through approval gates before execution.
 
 Pre-execution checklist (all items must be confirmed):
-- [ ] **Change ticket exists**: A change request (e.g., JIRA, ServiceNow) is filed and linked
-- [ ] **Approval obtained**: Platform team lead or infrastructure owner has approved the change
+- [ ] **Change ticket exists** *(if available)*: A change request (e.g., JIRA, ServiceNow) is filed and linked
+- [ ] **Approval obtained** *(if available)*: Platform team lead or infrastructure owner has approved the change
 - [ ] **Impact assessment completed**: Blast radius documented (affected teams, services, environments)
 - [ ] **Rollback tested**: Rollback procedure verified in staging within the last 24 hours
 - [ ] **Environment confirmed**: Target environment (dev/staging/prod) explicitly verified; no default-to-prod
