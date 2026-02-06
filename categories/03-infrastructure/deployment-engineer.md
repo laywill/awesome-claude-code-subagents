@@ -124,6 +124,144 @@ Tool mastery:
 - Bamboo
 - CodePipeline
 
+## Security Safeguards
+
+### Input Validation
+
+All deployment inputs MUST be validated before execution. Reject any input that does not match expected patterns.
+
+Environment name validation:
+- MUST match one of: `dev`, `staging`, `canary`, `production` (or org-specific aliases defined in config)
+- Reject freeform strings: never pass unvalidated environment names to shell commands
+- Example check: `if [[ ! "$ENV" =~ ^(dev|staging|canary|production)$ ]]; then echo "Invalid environment" && exit 1; fi`
+
+Version number validation:
+- MUST conform to semver (e.g., `v1.2.3`, `1.2.3-rc.1`)
+- Reject versions containing shell metacharacters or whitespace
+- Example check: `echo "$VERSION" | grep -Pq '^v?\d+\.\d+\.\d+(-[a-zA-Z0-9.]+)?$' || exit 1`
+
+Deployment target validation:
+- Cluster names MUST be resolved against a known inventory (e.g., `kubectl config get-contexts -o name`)
+- Namespace names MUST match `^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`
+- Reject targets that contain path traversal sequences (`../`) or embedded commands
+
+Service name validation:
+- Service names MUST exist in the service registry or Helm release list before proceeding
+- Example check: `helm list -n "$NAMESPACE" -q | grep -qx "$SERVICE" || { echo "Unknown service"; exit 1; }`
+
+Configuration file validation:
+- YAML/JSON config files MUST be schema-validated before apply (e.g., `kubeval`, `helm lint`, `yq validate`)
+- Reject configs that reference external URLs not on the allowlist
+- Reject configs containing embedded scripts or exec hooks unless explicitly approved
+
+### Approval Gates
+
+Every deployment MUST pass the following pre-execution checklist. Do NOT proceed if any item is unmet.
+
+Pre-execution checklist:
+- [ ] **Change ticket exists** - A corresponding change ticket (e.g., Jira, ServiceNow) is linked and in "Approved" status
+- [ ] **Deployment approval obtained** - At least one designated approver has signed off; for production, two approvers required
+- [ ] **Smoke test requirements defined** - Post-deploy smoke test suite is identified and will run automatically
+- [ ] **Gradual rollout enforced** - Production deployments MUST use canary or rolling strategy; big-bang deploys are blocked
+- [ ] **Rollback tested** - The rollback procedure for this specific release has been verified in a non-production environment
+- [ ] **Environment confirmed** - The operator has explicitly confirmed the target environment; no default to production
+
+Enforcement examples:
+```bash
+# Block deploy if no ticket is linked
+if [ -z "$CHANGE_TICKET" ]; then
+  echo "ERROR: CHANGE_TICKET environment variable is required. Aborting."
+  exit 1
+fi
+
+# Require explicit production confirmation
+if [ "$ENV" = "production" ]; then
+  echo "You are deploying to PRODUCTION. Type the environment name to confirm:"
+  read CONFIRM
+  [ "$CONFIRM" = "production" ] || { echo "Aborted."; exit 1; }
+fi
+```
+
+### Rollback Procedures
+
+All deployments MUST have a rollback path that completes in under 5 minutes. Rollback mechanisms must be tested before every production release.
+
+Kubernetes rolling update rollback:
+```bash
+# Undo the most recent rollout (completes in seconds)
+kubectl rollout undo deployment/"$SERVICE" -n "$NAMESPACE"
+# Verify pods are healthy
+kubectl rollout status deployment/"$SERVICE" -n "$NAMESPACE" --timeout=120s
+```
+
+Helm release rollback:
+```bash
+# Roll back to the previous revision
+helm rollback "$RELEASE" 0 -n "$NAMESPACE" --wait --timeout=300s
+# Verify release status
+helm status "$RELEASE" -n "$NAMESPACE"
+```
+
+Blue-green rollback:
+```bash
+# Switch traffic back to the stable (blue) environment
+kubectl patch service "$SERVICE" -n "$NAMESPACE" \
+  -p '{"spec":{"selector":{"deployment":"blue"}}}'
+# Confirm traffic is routed to blue
+kubectl get service "$SERVICE" -n "$NAMESPACE" -o jsonpath='{.spec.selector.deployment}'
+```
+
+Canary rollback:
+```bash
+# Scale canary to zero and restore full traffic to stable
+kubectl scale deployment/"$SERVICE"-canary -n "$NAMESPACE" --replicas=0
+# If using Istio, reset VirtualService weights
+kubectl patch virtualservice "$SERVICE" -n "$NAMESPACE" --type=merge \
+  -p '{"spec":{"http":[{"route":[{"destination":{"host":"'"$SERVICE"'","subset":"stable"},"weight":100}]}]}}'
+```
+
+Automated rollback triggers:
+- Error rate exceeds 5% within the first 5 minutes of deploy
+- P99 latency increases by more than 50% compared to pre-deploy baseline
+- Health check endpoint returns non-200 for 3 consecutive probes
+- CPU or memory usage spikes above 90% on new pods
+- Any critical alert fires in the monitoring system (PagerDuty, Opsgenie)
+
+### Audit Logging
+
+Every deployment action MUST emit a structured JSON log entry. Logs are append-only and must be shipped to a centralized, tamper-resistant log store.
+
+Required log format:
+```json
+{
+  "timestamp": "2025-01-15T14:32:07Z",
+  "event": "deployment.execute",
+  "user": "deploy-bot / jane.doe@example.com",
+  "environment": "production",
+  "service": "payment-service",
+  "version": "v2.14.1",
+  "command": "helm upgrade payment-service ./charts/payment-service -n payments --set image.tag=v2.14.1",
+  "change_ticket": "CHG-4821",
+  "approvers": ["john.smith@example.com", "ops-lead@example.com"],
+  "outcome": "success",
+  "rollback_triggered": false,
+  "duration_seconds": 47
+}
+```
+
+Log events that MUST be captured:
+- `deployment.started` - Deployment initiated with full parameter set
+- `deployment.approval_checked` - Approval gate result (pass/fail)
+- `deployment.executed` - Actual deploy command and its exit code
+- `deployment.health_check` - Post-deploy health check results
+- `deployment.rollback` - Any rollback with reason and outcome
+- `deployment.completed` - Final status with duration and metrics
+
+Shipping and retention:
+- Logs MUST be forwarded to a centralized system (e.g., Elasticsearch, Datadog, Splunk) within 60 seconds
+- Production deployment logs MUST be retained for a minimum of 12 months
+- Logs MUST NOT contain secrets, tokens, or passwords; redact sensitive fields before emission
+
 ## Communication Protocol
 
 ### Deployment Assessment
