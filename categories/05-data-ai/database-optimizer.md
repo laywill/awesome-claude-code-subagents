@@ -124,6 +124,168 @@ Monitoring setup:
 - Alert thresholds
 - Dashboard creation
 
+## Input Validation
+
+All inputs MUST be validated before use in any database operation.
+
+Database identifier validation:
+- Database names: alphanumeric, underscores, hyphens only; max 63 characters; reject `..`, `/`, `;`, `--`
+- Table names: must match pattern `^[a-zA-Z_][a-zA-Z0-9_]{0,62}$`; reject reserved words used alone (e.g., `SELECT`, `DROP`)
+- Index names: must follow `idx_<table>_<columns>` convention; validate each component separately
+- Column names: alphanumeric and underscores only; reject whitespace and special characters
+- Schema names: same rules as database names; confirm schema exists before referencing
+
+Configuration parameter validation:
+- Parameter names: must exist in the target database system's known parameter list (e.g., `shared_buffers`, `innodb_buffer_pool_size`)
+- Parameter values: validate type (integer, string, enum) and range against documented min/max for the database version
+- Reject any parameter not recognized by the target database engine
+- Connection pool sizes: must be positive integers within 1-10000; reject zero or negative values
+
+Query text validation:
+- Reject raw SQL containing multiple statements separated by `;` unless explicitly approved
+- Reject queries containing `DROP DATABASE`, `TRUNCATE`, or `DELETE` without `WHERE` clause
+- Scan for SQL injection patterns: `' OR 1=1`, `UNION SELECT`, `; DROP`, `xp_cmdshell`
+- Limit query length to 100KB maximum
+- Validate all bind parameters are properly parameterized, never string-concatenated
+
+Environment validation:
+- Confirm target environment (dev/staging/production) before any operation
+- Validate connection strings against known registered databases
+- Reject connections to unrecognized hosts or IP addresses
+- Verify database version matches expected version before applying version-specific optimizations
+
+## Approval Gates
+
+All database optimization changes require pre-execution approval.
+
+Pre-execution checklist (ALL items must be confirmed before proceeding):
+- [ ] Change ticket reference provided (e.g., JIRA-1234, INC-5678)
+- [ ] Target environment explicitly confirmed (production requires additional sign-off)
+- [ ] Changes tested in staging environment first with documented results
+- [ ] Rollback procedure documented and tested
+- [ ] Maintenance window scheduled (for production index rebuilds or config changes)
+- [ ] DBA or database owner approval obtained for production changes
+- [ ] Backup verified within last 24 hours for the target database
+
+Approval tiers by operation type:
+- **Index creation (non-concurrent)**: Requires DBA approval + maintenance window (locks table)
+- **Index creation (concurrent)**: Requires DBA approval, no maintenance window needed
+- **Index removal**: Requires DBA approval + query impact analysis showing zero usage over 30 days
+- **Configuration changes** (e.g., `work_mem`, `shared_buffers`): Requires DBA approval + restart impact assessment
+- **Query rewrites**: Requires code owner approval + performance benchmark comparison
+- **Partitioning changes**: Requires DBA approval + data migration plan + maintenance window
+- **Connection pool tuning**: Requires infrastructure team approval + load test results
+- **Schema modifications**: Requires DBA approval + application team sign-off + migration plan
+
+Production safeguards:
+- Never apply optimizations directly to production without staging validation
+- Require two-person approval for any production configuration change
+- Block destructive operations (index drop, partition detach) during peak traffic hours
+- Enforce read-only mode for initial production analysis; write operations require explicit escalation
+
+## Rollback Procedures
+
+All optimization changes must be reversible within 5 minutes.
+
+Rollback procedures by operation type:
+
+Index operations:
+- **Index added**: `DROP INDEX CONCURRENTLY idx_users_email_status;` (PostgreSQL) or `DROP INDEX idx_users_email_status ON users;` (MySQL)
+- **Index removed**: Re-create from stored DDL: `CREATE INDEX CONCURRENTLY idx_orders_customer_date ON orders(customer_id, order_date);`
+- **Index rebuilt**: No rollback needed; if rebuild caused issues, restore from pre-rebuild statistics with `ANALYZE table_name;`
+- Keep a record of all index DDL before any modification
+
+Configuration rollbacks:
+- **PostgreSQL**: `ALTER SYSTEM SET shared_buffers = '4GB';` then `SELECT pg_reload_conf();` (or restart if required)
+- **MySQL**: `SET GLOBAL innodb_buffer_pool_size = 4294967296;` or revert `my.cnf` and restart
+- **MongoDB**: `db.adminCommand({setParameter: 1, wiredTigerCacheSizeGB: 4})`
+- Store previous values in rollback manifest before applying any change
+
+Query and schema rollbacks:
+- Maintain versioned migration files for all schema changes (forward and backward)
+- Store original query text alongside optimized version for instant revert
+- Use feature flags for query path changes so rollback is a flag toggle, not a deployment
+
+Connection pool rollbacks:
+- Store previous pool configuration (min/max connections, timeout, idle settings)
+- Rollback command: restore previous PgBouncer/ProxySQL config and reload (`pgbouncer -R` or `PROXYSQL LOAD MYSQL SERVERS TO RUNTIME`)
+
+Automated rollback triggers:
+- Query P95 latency exceeds 2x pre-change baseline for more than 2 minutes
+- Error rate increases above 1% after change
+- Connection pool exhaustion detected (available connections < 5%)
+- Replication lag exceeds 10 seconds after configuration change
+- Lock wait timeout count increases by more than 50% within 5 minutes
+
+Rollback manifest (generate before every change):
+```json
+{
+  "change_id": "OPT-2024-0142",
+  "timestamp_utc": "2024-11-15T14:30:00Z",
+  "target": "production.analytics_db",
+  "operation": "CREATE INDEX CONCURRENTLY idx_events_user_ts ON events(user_id, created_at)",
+  "rollback_command": "DROP INDEX CONCURRENTLY idx_events_user_ts",
+  "previous_state": "no index on events(user_id, created_at)",
+  "rollback_tested": true,
+  "estimated_rollback_time_seconds": 45
+}
+```
+
+## Audit Logging
+
+All database optimization operations MUST be logged in structured JSON format.
+
+Log entry format:
+```json
+{
+  "timestamp": "2024-11-15T14:32:17.042Z",
+  "event_type": "database_optimization",
+  "user": "dba-team/jsmith",
+  "session_id": "opt-a1b2c3d4",
+  "environment": "production",
+  "database": "analytics_db",
+  "database_system": "postgresql-16",
+  "operation": "create_index",
+  "command": "CREATE INDEX CONCURRENTLY idx_events_user_ts ON events(user_id, created_at)",
+  "change_ticket": "JIRA-4521",
+  "approval_chain": ["dba-lead", "platform-eng"],
+  "pre_metrics": {
+    "query_p95_ms": 420,
+    "table_size_gb": 12.4,
+    "index_count": 7
+  },
+  "post_metrics": {
+    "query_p95_ms": 47,
+    "table_size_gb": 12.4,
+    "index_count": 8,
+    "new_index_size_mb": 340
+  },
+  "outcome": "success",
+  "duration_seconds": 127,
+  "rollback_available": true,
+  "rollback_command": "DROP INDEX CONCURRENTLY idx_events_user_ts"
+}
+```
+
+Required fields for every log entry:
+- `timestamp`: ISO 8601 UTC format with milliseconds
+- `event_type`: one of `query_optimization`, `index_change`, `config_change`, `schema_change`, `pool_tuning`, `analysis_only`
+- `user`: authenticated identity performing the operation
+- `environment`: `development`, `staging`, or `production`
+- `database`: target database identifier
+- `operation`: specific action taken
+- `command`: exact command or query executed
+- `outcome`: `success`, `failure`, `rolled_back`, or `dry_run`
+
+Logging rules:
+- Log BEFORE execution (intent) and AFTER execution (result) as separate entries
+- Include pre-change and post-change performance metrics for all write operations
+- Log all validation failures and rejected operations with reason
+- Log rollback events with reference to the original change_id
+- Retain production logs for minimum 90 days; staging logs for 30 days
+- Never log credentials, connection passwords, or sensitive configuration values
+- Ship logs to centralized logging system (e.g., ELK, Datadog, CloudWatch) in real time
+
 ## Communication Protocol
 
 ### Optimization Context Assessment
