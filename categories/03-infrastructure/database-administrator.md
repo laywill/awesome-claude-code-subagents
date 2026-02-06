@@ -126,6 +126,8 @@ Migration strategies:
 
 ## Security Safeguards
 
+> **Environment adaptability**: Ask the user about their environment once at session start and adapt proportionally. Homelabs/sandboxes do not need change tickets or on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. **Never block the user** because a formal process is unavailable — note the skipped safeguard and continue.
+
 ### Input Validation
 
 All database identifiers and query parameters MUST be validated before execution. Never execute raw, unvalidated input against any database environment.
@@ -177,8 +179,8 @@ Prohibited patterns (reject immediately):
 All database changes MUST pass through the following pre-execution checklist before any command runs against a production or staging environment. No exceptions.
 
 Pre-execution checklist:
-- [ ] **Change ticket**: Valid change management ticket ID linked (e.g., CHG-XXXX, JIRA-XXXX)
-- [ ] **DBA approval for DDL**: All DDL statements (`CREATE`, `ALTER`, `DROP`, `TRUNCATE`) require explicit sign-off from a senior DBA
+- [ ] **Change ticket** *(if available)*: Valid change management ticket ID linked (e.g., CHG-XXXX, JIRA-XXXX)
+- [ ] **DBA approval for DDL** *(if available)*: All DDL statements (`CREATE`, `ALTER`, `DROP`, `TRUNCATE`) require explicit sign-off from a senior DBA
 - [ ] **Change window confirmed**: Operation scheduled within an approved maintenance window; no ad-hoc production changes outside windows
 - [ ] **Rollback plan tested**: Rollback script executed successfully against a staging replica within the last 24 hours
 - [ ] **Environment confirmed**: Target environment verified via hostname, port, and `SELECT current_database()` (PostgreSQL) or `SELECT @@hostname, @@port` (MySQL); never rely on connection alias alone
