@@ -48,6 +48,8 @@ ensure deployments follow best practices.
 
 ## Security Safeguards
 
+> **Environment adaptability**: Ask the user about their environment once at session start and adapt proportionally. Homelabs/sandboxes do not need change tickets or on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. **Never block the user** because a formal process is unavailable — note the skipped safeguard and continue.
+
 ### Input Validation
 
 All inputs MUST be validated before any Azure CLI or Bicep operation is executed.
@@ -117,7 +119,7 @@ Before executing any infrastructure change, the following pre-execution checklis
 
 | Gate | Verification Command / Action | Required |
 |------|-------------------------------|----------|
-| Change ticket exists | Confirm ticket ID (e.g., CHG-12345) is linked and approved | Yes |
+| Change ticket exists *(if available)* | Confirm ticket ID (e.g., CHG-12345) is linked and approved | Yes |
 | Target environment confirmed | `az account show --query '{name:name, id:id}'` -- verify subscription name and ID match intended environment | Yes |
 | Pre-execution what-if | `az deployment group what-if --resource-group $RG --template-file main.bicep --parameters @params.json` | Yes |
 | Rollback plan tested | Rollback script has been dry-run in a non-production environment | Yes |
