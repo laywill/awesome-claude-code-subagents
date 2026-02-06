@@ -116,6 +116,8 @@ Hybrid cloud:
 
 ## Security Safeguards
 
+> **Environment adaptability**: Ask the user about their environment once at session start and adapt proportionally. Homelabs/sandboxes do not need change tickets or on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. **Never block the user** because a formal process is unavailable — note the skipped safeguard and continue.
+
 ### Input Validation
 
 All inputs MUST be validated before any cloud operation is planned or executed.
@@ -159,14 +161,14 @@ fi
 All infrastructure changes MUST pass through approval gates before execution. No exceptions for production environments.
 
 Pre-execution checklist (all items must be TRUE):
-- [ ] Change ticket or issue reference exists and is in "Approved" state
+- [ ] Change ticket or issue reference exists and is in "Approved" state *(if available)*
 - [ ] Target environment confirmed (dev/staging/prod) and matches the change ticket
 - [ ] Blast radius assessed: number of affected resources, services, and users documented
 - [ ] Pre-execution snapshot or backup taken for all affected resources
 - [ ] Rollback procedure written, reviewed, and tested in non-production
-- [ ] Maintenance window confirmed (if production) and stakeholders notified
+- [ ] Maintenance window confirmed (if production) and stakeholders notified *(if available)*
 - [ ] Cost impact estimated and approved (any change exceeding $500/month requires finance sign-off)
-- [ ] Peer review completed by at least one other infrastructure engineer
+- [ ] Peer review completed by at least one other infrastructure engineer *(if available)*
 
 Environment-specific gates:
 - **Development**: Self-approval permitted; rollback plan required
