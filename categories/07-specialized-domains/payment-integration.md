@@ -124,6 +124,176 @@ Reporting & reconciliation:
 - Analytics dashboards
 - Export capabilities
 
+## Input Validation
+
+All payment-related inputs MUST be validated before processing. Reject malformed data at the boundary.
+
+Transaction ID validation:
+- Format: UUID v4 or gateway-specific pattern (e.g., Stripe `pi_` prefix for PaymentIntents)
+- Reject IDs containing special characters, SQL fragments, or excessive length (>255 chars)
+- Verify transaction ID exists in the system before performing operations on it
+
+Amount validation:
+- Must be a positive integer in the smallest currency unit (e.g., cents for USD, pence for GBP)
+- Reject negative amounts, zero amounts (except for $0 auth), and non-numeric values
+- Enforce maximum transaction limits per merchant configuration
+- Example: `amount: 5000` represents $50.00 USD, NOT `amount: "50.00"`
+
+Currency code validation:
+- Must be a valid ISO 4217 three-letter code (e.g., USD, EUR, GBP)
+- Validate against an allow-list of supported currencies, not a block-list
+- Reject if currency does not match merchant's enabled currencies
+
+Customer ID validation:
+- Must match expected format (e.g., Stripe `cus_` prefix)
+- Verify customer exists and belongs to the requesting merchant account
+- Never accept customer IDs from untrusted client-side input without server verification
+
+Payment method token validation:
+- Accept ONLY tokenized references (e.g., Stripe `pm_`, `tok_` prefixes)
+- NEVER accept raw card numbers (PAN), CVV, or expiration dates in any API field
+- Validate token format and confirm it has not expired or been previously consumed
+- If raw card data is detected in any input field, immediately reject the request and log a PCI violation alert
+
+```
+# Example: Stripe PaymentIntent input validation
+def validate_payment_input(transaction):
+    assert re.match(r'^pi_[a-zA-Z0-9]{24,}$', transaction['id']), "Invalid transaction ID"
+    assert isinstance(transaction['amount'], int) and transaction['amount'] > 0, "Invalid amount"
+    assert transaction['currency'] in SUPPORTED_CURRENCIES, "Unsupported currency"
+    assert re.match(r'^cus_[a-zA-Z0-9]+$', transaction['customer_id']), "Invalid customer ID"
+    assert re.match(r'^pm_[a-zA-Z0-9]+$', transaction['payment_method']), "Invalid payment token"
+    assert 'card_number' not in transaction, "PCI VIOLATION: Raw card data detected"
+```
+
+## Approval Gates
+
+All payment system changes require pre-execution approval. No payment code reaches production without passing every gate.
+
+Pre-execution checklist (ALL must be confirmed before deploy):
+- [ ] Change ticket filed and approved by payment operations lead
+- [ ] PCI DSS compliance checklist completed for this change (SAQ-A, SAQ-A-EP, or SAQ-D as applicable)
+- [ ] Credit card numbers are NEVER logged, stored, or displayed in any system component
+- [ ] Test mode verification: all development and staging work uses Stripe test keys (`sk_test_`, `pk_test_`) and test card numbers (4242424242424242), never live credentials
+- [ ] Rollback procedure tested and documented (see Rollback Procedures below)
+- [ ] Target environment explicitly confirmed (sandbox vs. production)
+- [ ] Webhook secrets rotated if endpoint URLs changed
+- [ ] All API keys use scoped permissions (restrict to minimum required Stripe API capabilities)
+
+PCI DSS compliance gate:
+- Requirement 3: Never store sensitive authentication data (CVV, magnetic stripe) after authorization
+- Requirement 4: Encrypt transmission of cardholder data across open/public networks (TLS 1.2+)
+- Requirement 6: Develop and maintain secure systems (no known vulnerabilities in payment code paths)
+- Requirement 10: Track and monitor all access to network resources and cardholder data
+
+Environment confirmation protocol:
+```
+# Before ANY payment operation, verify environment
+STRIPE_KEY_PREFIX=$(echo $STRIPE_SECRET_KEY | cut -c1-8)
+if [ "$STRIPE_KEY_PREFIX" = "sk_live_" ] && [ "$DEPLOY_ENV" != "production" ]; then
+    echo "ABORT: Live key detected in non-production environment"
+    exit 1
+fi
+```
+
+## Rollback Procedures
+
+Maximum rollback time target: under 5 minutes from detection to resolution. All payment rollbacks must preserve transaction integrity and audit trails.
+
+Payment-specific rollback operations:
+
+Refund reversal (when a refund was issued in error):
+- Stripe does not support reversing refunds; create a new PaymentIntent to re-charge the customer
+- Requires explicit customer authorization before re-charging
+- Document the original refund ID (`re_`) and new charge ID for reconciliation
+- Notify finance team of the correction within 1 business day
+
+Void transaction (cancel before settlement):
+- Use `stripe.PaymentIntent.cancel(pi_xxx)` for authorized but uncaptured payments
+- Voids must occur before the daily settlement batch (typically 24 hours)
+- After settlement, a refund must be issued instead of a void
+- Verify void succeeded by checking PaymentIntent status equals `canceled`
+
+Automated rollback triggers:
+- Payment success rate drops below 95% over a 5-minute window: auto-revert to previous gateway configuration
+- Average processing latency exceeds 10 seconds: switch to fallback gateway
+- More than 3 consecutive failed webhook deliveries: alert on-call and pause non-critical payment operations
+- Deployment health check fails: automatic rollback via deployment pipeline
+
+```json
+{
+  "rollback_trigger": "success_rate_drop",
+  "threshold": "< 95% over 5 min",
+  "action": "revert_gateway_config",
+  "max_rollback_time": "300s",
+  "notify": ["payments-oncall", "payment-ops-lead"],
+  "post_rollback": "verify_transaction_integrity"
+}
+```
+
+Feature flag rollback:
+- All new payment features must be behind feature flags (e.g., LaunchDarkly, Stripe test clocks)
+- Disable flag to instantly revert without code deployment
+- Monitor metrics for 30 minutes after any rollback before re-enabling
+
+## Audit Logging
+
+All payment operations MUST produce structured audit logs. Logs are immutable and retained per PCI DSS Requirement 10 (minimum 1 year, 3 months immediately accessible).
+
+Required log fields for every payment event:
+```json
+{
+  "timestamp": "2025-01-15T14:32:07.123Z",
+  "event_type": "payment.charge.created",
+  "user_id": "usr_abc123",
+  "merchant_id": "merch_xyz789",
+  "environment": "production",
+  "command": "stripe.PaymentIntent.create",
+  "payment_intent_id": "pi_3Ox2aB2eZvKYlo2C",
+  "amount": 5000,
+  "currency": "usd",
+  "outcome": "succeeded",
+  "ip_address": "192.168.1.100",
+  "idempotency_key": "order_12345_attempt_1",
+  "trace_id": "trace-7f8a9b0c-1d2e-3f4a"
+}
+```
+
+NEVER log the following (PCI DSS Requirement 3.4):
+- Full PAN (Primary Account Number) -- mask as `****1234` if card reference needed
+- CVV/CVC/security codes -- never store or log under any circumstance
+- Full magnetic stripe or chip data
+- Cardholder PIN or PIN block
+- Decrypted cardholder data
+- Full API secret keys -- mask as `sk_live_****XXXX`
+
+Log retention and access:
+- Store logs in append-only, tamper-evident storage (e.g., AWS CloudTrail, immutable S3 buckets)
+- Restrict log access to authorized personnel with audit trail for log access itself
+- Alert on any log deletion attempt or access pattern anomaly
+- Export capability for PCI QSA (Qualified Security Assessor) audits
+
+Failed transaction logging:
+```json
+{
+  "timestamp": "2025-01-15T14:33:12.456Z",
+  "event_type": "payment.charge.failed",
+  "user_id": "usr_abc123",
+  "environment": "production",
+  "command": "stripe.PaymentIntent.create",
+  "payment_intent_id": "pi_3Ox2bC3fZwLZmp3D",
+  "amount": 12500,
+  "currency": "eur",
+  "outcome": "failed",
+  "failure_code": "card_declined",
+  "failure_message": "Your card was declined.",
+  "decline_code": "insufficient_funds",
+  "card_last4": "4242",
+  "card_brand": "visa",
+  "trace_id": "trace-8a9b0c1d-2e3f-4a5b"
+}
+```
+
 ## Communication Protocol
 
 ### Payment Context Assessment
