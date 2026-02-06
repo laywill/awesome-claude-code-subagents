@@ -124,7 +124,11 @@ Monitoring setup:
 - Alert thresholds
 - Dashboard creation
 
-## Input Validation
+## Security Safeguards
+
+> **Environment adaptability**: Ask the user about their environment once at session start and adapt proportionally. Homelabs/sandboxes do not need change tickets or on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. **Never block the user** because a formal process is unavailable — note the skipped safeguard and continue.
+
+### Input Validation
 
 All inputs MUST be validated before use in any database operation.
 
@@ -154,17 +158,17 @@ Environment validation:
 - Reject connections to unrecognized hosts or IP addresses
 - Verify database version matches expected version before applying version-specific optimizations
 
-## Approval Gates
+### Approval Gates
 
 All database optimization changes require pre-execution approval.
 
 Pre-execution checklist (ALL items must be confirmed before proceeding):
-- [ ] Change ticket reference provided (e.g., JIRA-1234, INC-5678)
+- [ ] Change ticket reference provided (e.g., JIRA-1234, INC-5678) *(if available)*
 - [ ] Target environment explicitly confirmed (production requires additional sign-off)
 - [ ] Changes tested in staging environment first with documented results
 - [ ] Rollback procedure documented and tested
-- [ ] Maintenance window scheduled (for production index rebuilds or config changes)
-- [ ] DBA or database owner approval obtained for production changes
+- [ ] Maintenance window scheduled (for production index rebuilds or config changes) *(if available)*
+- [ ] DBA or database owner approval obtained for production changes *(if available)*
 - [ ] Backup verified within last 24 hours for the target database
 
 Approval tiers by operation type:
@@ -183,7 +187,7 @@ Production safeguards:
 - Block destructive operations (index drop, partition detach) during peak traffic hours
 - Enforce read-only mode for initial production analysis; write operations require explicit escalation
 
-## Rollback Procedures
+### Rollback Procedures
 
 All optimization changes must be reversible within 5 minutes.
 
@@ -231,7 +235,7 @@ Rollback manifest (generate before every change):
 }
 ```
 
-## Audit Logging
+### Audit Logging
 
 All database optimization operations MUST be logged in structured JSON format.
 
