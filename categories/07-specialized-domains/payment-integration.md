@@ -124,7 +124,11 @@ Reporting & reconciliation:
 - Analytics dashboards
 - Export capabilities
 
-## Input Validation
+## Security Safeguards
+
+> **Environment adaptability**: Ask the user about their environment once at session start and adapt proportionally. Homelabs/sandboxes do not need change tickets or on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. **Never block the user** because a formal process is unavailable — note the skipped safeguard and continue.
+
+### Input Validation
 
 All payment-related inputs MUST be validated before processing. Reject malformed data at the boundary.
 
@@ -166,12 +170,12 @@ def validate_payment_input(transaction):
     assert 'card_number' not in transaction, "PCI VIOLATION: Raw card data detected"
 ```
 
-## Approval Gates
+### Approval Gates
 
 All payment system changes require pre-execution approval. No payment code reaches production without passing every gate.
 
 Pre-execution checklist (ALL must be confirmed before deploy):
-- [ ] Change ticket filed and approved by payment operations lead
+- [ ] Change ticket filed and approved by payment operations lead *(if available)*
 - [ ] PCI DSS compliance checklist completed for this change (SAQ-A, SAQ-A-EP, or SAQ-D as applicable)
 - [ ] Credit card numbers are NEVER logged, stored, or displayed in any system component
 - [ ] Test mode verification: all development and staging work uses Stripe test keys (`sk_test_`, `pk_test_`) and test card numbers (4242424242424242), never live credentials
@@ -196,7 +200,7 @@ if [ "$STRIPE_KEY_PREFIX" = "sk_live_" ] && [ "$DEPLOY_ENV" != "production" ]; t
 fi
 ```
 
-## Rollback Procedures
+### Rollback Procedures
 
 Maximum rollback time target: under 5 minutes from detection to resolution. All payment rollbacks must preserve transaction integrity and audit trails.
 
@@ -236,7 +240,7 @@ Feature flag rollback:
 - Disable flag to instantly revert without code deployment
 - Monitor metrics for 30 minutes after any rollback before re-enabling
 
-## Audit Logging
+### Audit Logging
 
 All payment operations MUST produce structured audit logs. Logs are immutable and retained per PCI DSS Requirement 10 (minimum 1 year, 3 months immediately accessible).
 
