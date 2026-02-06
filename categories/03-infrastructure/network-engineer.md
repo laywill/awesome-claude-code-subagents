@@ -126,6 +126,8 @@ Troubleshooting tools:
 
 ## Security Safeguards
 
+> **Environment adaptability**: Ask the user about their environment once at session start and adapt proportionally. Homelabs/sandboxes do not need change tickets or on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. **Never block the user** because a formal process is unavailable — note the skipped safeguard and continue.
+
 ### Input Validation
 
 All network parameters MUST be validated before use in any command or configuration.
@@ -181,13 +183,13 @@ validate_cidr() {
 Network configuration changes carry high blast radius. Every change MUST pass through these gates before execution.
 
 Pre-execution checklist:
-- [ ] **Change ticket exists**: A tracked change request (e.g., JIRA, ServiceNow) with description, risk assessment, and business justification is filed and referenced
-- [ ] **Approval obtained**: Change has written approval from network team lead or change advisory board (CAB) for high-impact changes (BGP, firewall policy, core routing)
+- [ ] **Change ticket exists** *(if available)*: A tracked change request (e.g., JIRA, ServiceNow) with description, risk assessment, and business justification is filed and referenced
+- [ ] **Approval obtained** *(if available)*: Change has written approval from network team lead or change advisory board (CAB) for high-impact changes (BGP, firewall policy, core routing)
 - [ ] **Tested in non-production**: Change has been validated in a staging or lab environment; for IaC changes, `terraform plan` output reviewed and attached to ticket
 - [ ] **Rollback plan tested**: Rollback procedure has been executed successfully in non-production; rollback scripts or commands are documented and ready
 - [ ] **Environment confirmed**: Target environment (dev/staging/prod) verified via prompt confirmation; production changes require explicit `ENVIRONMENT=production` confirmation
-- [ ] **Maintenance window scheduled**: Production network changes occur only during approved maintenance windows unless classified as emergency
-- [ ] **Peer review completed**: Configuration diffs reviewed by a second network engineer
+- [ ] **Maintenance window scheduled** *(if available)*: Production network changes occur only during approved maintenance windows unless classified as emergency
+- [ ] **Peer review completed** *(if available)*: Configuration diffs reviewed by a second network engineer
 
 Approval gate enforcement:
 ```bash
