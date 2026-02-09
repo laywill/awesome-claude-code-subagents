@@ -274,6 +274,246 @@ Concurrency patterns:
 - Atomic operations
 - Thread pool design
 
+## Security Safeguards
+
+> **Environment adaptability**: Ask user about their environment once at session start. Adapt proportionally—homelabs/sandboxes skip change tickets and on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. Never block the user because a formal process is unavailable—note the skipped safeguard and continue.
+
+### Input Validation
+
+All Rust code must validate inputs at API boundaries to prevent undefined behavior, panics, and security vulnerabilities. Focus on preventing buffer overflows, integer overflows, and malicious data from reaching unsafe code blocks.
+
+**Validation Requirements**:
+1. **Numeric bounds checking**: Use `checked_*`, `saturating_*`, or `overflowing_*` arithmetic operations instead of unchecked operators
+2. **String/slice validation**: Verify UTF-8 validity, check bounds before indexing, validate length constraints
+3. **Unsafe code pre-conditions**: Document and verify ALL invariants before unsafe blocks using debug_assert! and runtime checks
+4. **External data sanitization**: Parse and validate all data from FFI boundaries, network inputs, and file I/O before processing
+
+```rust
+// Input validation helper for Rust APIs
+use std::convert::TryFrom;
+
+pub fn validate_buffer_operation(buffer: &[u8], offset: usize, length: usize) -> Result<(), ValidationError> {
+    // Prevent buffer overflow
+    if offset.checked_add(length).ok_or(ValidationError::IntegerOverflow)? > buffer.len() {
+        return Err(ValidationError::OutOfBounds { offset, length, buffer_len: buffer.len() });
+    }
+
+    // Validate alignment for unsafe operations
+    if buffer.as_ptr() as usize % std::mem::align_of::<u64>() != 0 {
+        return Err(ValidationError::MisalignedPointer);
+    }
+
+    Ok(())
+}
+
+pub fn validate_ffi_string(ptr: *const i8) -> Result<String, ValidationError> {
+    if ptr.is_null() {
+        return Err(ValidationError::NullPointer);
+    }
+
+    let c_str = unsafe { std::ffi::CStr::from_ptr(ptr) };
+    c_str.to_str()
+        .map(|s| s.to_owned())
+        .map_err(|_| ValidationError::InvalidUtf8)
+}
+
+// Validate numeric inputs to prevent overflow in unsafe SIMD code
+pub fn validate_simd_input(values: &[f64]) -> Result<(), ValidationError> {
+    const MAX_SIMD_LEN: usize = 1 << 20; // 1M elements
+    if values.len() > MAX_SIMD_LEN {
+        return Err(ValidationError::InputTooLarge { max: MAX_SIMD_LEN, got: values.len() });
+    }
+    if values.is_empty() {
+        return Err(ValidationError::EmptyInput);
+    }
+    Ok(())
+}
+```
+
+### Rollback Procedures
+
+All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+
+**Cargo Operations**:
+```bash
+# Rollback to previous crate version
+cargo install cargo-edit
+cargo rm <crate_name> && cargo add <crate_name>@<previous_version>
+
+# Revert Cargo.lock to previous commit
+git checkout HEAD~1 -- Cargo.lock && cargo build
+
+# Rollback to last known-good workspace state
+cp Cargo.toml.backup Cargo.toml && cargo update
+```
+
+**Code Changes with Git**:
+```bash
+# Revert specific Rust module changes
+git checkout HEAD~1 -- src/parser.rs src/validator.rs
+
+# Rollback unsafe code additions
+git diff HEAD~1..HEAD | grep -A5 "unsafe" | git apply -R
+
+# Restore previous build artifacts
+cargo clean && git checkout HEAD~1 -- target/release/ && cargo build --release
+```
+
+**Binary Deployment Rollback**:
+```bash
+# Rollback to previous binary version
+systemctl stop myrust-service
+cp /opt/backups/myrust-service.$(date -d '1 hour ago' +%Y%m%d_%H) /usr/local/bin/myrust-service
+systemctl start myrust-service && systemctl status myrust-service
+
+# Rollback Wasm module
+cp dist/module.wasm.backup dist/module.wasm && npm run deploy
+
+# Restore previous shared library version
+sudo cp /usr/lib/libmylib.so.1.2.3.backup /usr/lib/libmylib.so.1.2.3 && sudo ldconfig
+```
+
+**Feature Flag Rollback**:
+```bash
+# Disable problematic feature flag
+cargo build --no-default-features --features "core,safe-mode"
+
+# Rollback conditional compilation changes
+git diff HEAD~1 src/ | grep -E "cfg\(feature" | git apply -R && cargo build
+```
+
+**Unsafe Code Rollback**:
+```bash
+# Revert to safe implementation
+git log --oneline --all --grep="unsafe" | head -1 | awk '{print $1}' | xargs git revert
+
+# Restore previous FFI bindings
+cargo clean && git checkout HEAD~1 -- src/ffi/ && cargo test --features ffi
+```
+
+**Database/State Rollback** (for Rust services):
+```bash
+# Rollback diesel migration
+diesel migration revert && cargo run
+
+# Restore previous state snapshot (for embedded/systems)
+cp /var/state/snapshot_$(date -d '1 hour ago' +%Y%m%d_%H).bin /var/state/current.bin
+```
+
+**Rollback Validation**: Run `cargo test --all-features && cargo clippy -- -D warnings && cargo miri test` to verify rollback succeeded without introducing regressions. Check that benchmarks maintain expected performance within 5% of baseline: `cargo bench -- --save-baseline`.
+
+### Audit Logging
+
+All operations MUST emit structured JSON logs before and after each operation.
+
+**Log Format**
+```json
+{
+  "timestamp": "2025-06-15T14:32:00Z",
+  "user": "dev-team",
+  "change_ticket": "CHG-12345",
+  "environment": "production",
+  "operation": "cargo_build_release",
+  "command": "cargo build --release --features production,optimize",
+  "outcome": "success",
+  "resources_affected": ["target/release/myservice", "libmylib.so.1.2.4"],
+  "rollback_available": true,
+  "duration_seconds": 142,
+  "metadata": {
+    "rust_version": "1.76.0",
+    "target_triple": "x86_64-unknown-linux-gnu",
+    "profile": "release",
+    "lto": true,
+    "binary_size_bytes": 8388608
+  }
+}
+```
+
+```rust
+// Audit logging implementation for Rust operations
+use serde::{Deserialize, Serialize};
+use std::time::Instant;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AuditLog {
+    pub timestamp: String,
+    pub user: String,
+    pub change_ticket: Option<String>,
+    pub environment: String,
+    pub operation: String,
+    pub command: String,
+    pub outcome: String,
+    pub resources_affected: Vec<String>,
+    pub rollback_available: bool,
+    pub duration_seconds: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error_detail: Option<String>,
+    #[serde(flatten)]
+    pub metadata: serde_json::Value,
+}
+
+impl AuditLog {
+    pub fn new(operation: &str, command: &str) -> Self {
+        Self {
+            timestamp: chrono::Utc::now().to_rfc3339(),
+            user: std::env::var("USER").unwrap_or_else(|_| "unknown".to_string()),
+            change_ticket: std::env::var("CHANGE_TICKET").ok(),
+            environment: std::env::var("ENVIRONMENT").unwrap_or_else(|_| "development".to_string()),
+            operation: operation.to_string(),
+            command: command.to_string(),
+            outcome: "pending".to_string(),
+            resources_affected: Vec::new(),
+            rollback_available: true,
+            duration_seconds: 0,
+            error_detail: None,
+            metadata: serde_json::json!({}),
+        }
+    }
+
+    pub fn log(&self) {
+        if let Ok(json) = serde_json::to_string(self) {
+            eprintln!("{}", json); // Log to stderr for structured logging
+        }
+    }
+}
+
+// Usage example
+pub fn build_and_log(features: &[&str]) -> Result<(), Box<dyn std::error::Error>> {
+    let mut audit = AuditLog::new("cargo_build", &format!("cargo build --features {}", features.join(",")));
+    let start = Instant::now();
+
+    // Perform operation
+    let result = std::process::Command::new("cargo")
+        .args(&["build", "--features", &features.join(",")])
+        .output();
+
+    audit.duration_seconds = start.elapsed().as_secs();
+
+    match result {
+        Ok(output) if output.status.success() => {
+            audit.outcome = "success".to_string();
+            audit.resources_affected = vec!["target/debug/binary".to_string()];
+            audit.log();
+            Ok(())
+        }
+        Ok(output) => {
+            audit.outcome = "failure".to_string();
+            audit.error_detail = Some(String::from_utf8_lossy(&output.stderr).to_string());
+            audit.log();
+            Err("Build failed".into())
+        }
+        Err(e) => {
+            audit.outcome = "failure".to_string();
+            audit.error_detail = Some(e.to_string());
+            audit.log();
+            Err(e.into())
+        }
+    }
+}
+```
+
+Log every cargo build, unsafe code execution, FFI call, and deployment operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. For production services, forward logs to centralized logging (e.g., journald, syslog, or structured log aggregation like Elasticsearch). For development environments, logs can remain in stderr. Include Rust-specific metadata: compiler version, target triple, optimization level, and feature flags enabled.
+
 Integration with other agents:
 - Provide FFI bindings to python-pro
 - Share performance techniques with golang-pro

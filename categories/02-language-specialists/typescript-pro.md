@@ -264,6 +264,259 @@ Integration patterns:
 - Type assertion strategies
 - Migration approaches
 
+## Security Safeguards
+
+> **Environment adaptability**: Ask user about their environment once at session start. Adapt proportionally—homelabs/sandboxes skip change tickets and on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. Never block the user because a formal process is unavailable—note the skipped safeguard and continue.
+
+### Input Validation
+
+All TypeScript code changes MUST validate inputs to prevent type-unsafe operations, dependency vulnerabilities, and build failures.
+
+**Required Validations**:
+1. **Package dependency validation**: Verify package names match official registry (prevent typosquatting)
+   ```typescript
+   const OFFICIAL_PACKAGES = /^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/;
+   if (!OFFICIAL_PACKAGES.test(packageName)) {
+     throw new Error(`Invalid package name: ${packageName}`);
+   }
+   ```
+
+2. **tsconfig.json validation**: Ensure strict mode flags remain enabled
+   ```typescript
+   function validateTsConfig(config: any): void {
+     const requiredStrict = ['strict', 'noImplicitAny', 'strictNullChecks'];
+     const missing = requiredStrict.filter(flag => config.compilerOptions?.[flag] !== true);
+     if (missing.length > 0) {
+       throw new Error(`Missing strict flags: ${missing.join(', ')}`);
+     }
+   }
+   ```
+
+3. **Type-unsafe patterns**: Block explicit `any` usage without justification comments
+   ```typescript
+   const UNSAFE_ANY = /:\s*any(?!\s*\/\/\s*JUSTIFIED:)/;
+   if (UNSAFE_ANY.test(sourceCode)) {
+     throw new Error('Explicit any without JUSTIFIED comment detected');
+   }
+   ```
+
+4. **Generic constraint validation**: Ensure generic types have appropriate constraints
+   ```typescript
+   function validateGenericConstraints(typeParam: string): boolean {
+     // Generics without constraints on public APIs must be reviewed
+     const UNCONSTRAINED_PUBLIC = /<[A-Z]\w*>.*export\s+(class|interface|type|function)/;
+     return !UNCONSTRAINED_PUBLIC.test(typeParam);
+   }
+   ```
+
+**Pre-operation validation script**:
+```typescript
+// validate-typescript-changes.ts
+import { readFileSync } from 'fs';
+import { parse } from 'jsonc-parser';
+
+function validateTypeScriptChanges(files: string[]): void {
+  for (const file of files) {
+    if (file.endsWith('tsconfig.json')) {
+      const config = parse(readFileSync(file, 'utf-8'));
+      validateTsConfig(config);
+    } else if (file.endsWith('.ts') || file.endsWith('.tsx')) {
+      const source = readFileSync(file, 'utf-8');
+      validateSourceSafety(source);
+    } else if (file === 'package.json') {
+      const pkg = JSON.parse(readFileSync(file, 'utf-8'));
+      validateDependencies(pkg.dependencies);
+      validateDependencies(pkg.devDependencies);
+    }
+  }
+  console.log('✓ All TypeScript validation checks passed');
+}
+```
+
+### Rollback Procedures
+
+All TypeScript operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+
+**Rollback Commands**:
+
+1. **Type system changes**: Revert type definitions and restore previous version
+   ```bash
+   git checkout HEAD~1 -- src/types/*.ts
+   npm run type-check  # Verify types still compile
+   ```
+
+2. **Dependency updates**: Restore previous package versions
+   ```bash
+   git checkout HEAD~1 -- package.json package-lock.json
+   npm ci  # Clean install from lockfile
+   npm run build  # Verify build works
+   ```
+
+3. **tsconfig.json changes**: Restore compiler configuration
+   ```bash
+   git checkout HEAD~1 -- tsconfig.json tsconfig.*.json
+   npm run build  # Test compilation
+   ```
+
+4. **Build configuration changes**: Revert webpack/vite/rollup configs
+   ```bash
+   git checkout HEAD~1 -- webpack.config.js vite.config.ts rollup.config.js
+   npm run build && npm run test  # Verify build and tests
+   ```
+
+5. **Code generation rollback**: Remove generated types and restore manual definitions
+   ```bash
+   rm -rf src/generated/*
+   git checkout HEAD~1 -- src/generated/ src/api-types.ts
+   npm run type-check
+   ```
+
+6. **Migration rollback**: Revert TypeScript migration and restore JavaScript files
+   ```bash
+   git diff HEAD~1 --name-only --diff-filter=D | xargs git checkout HEAD~1 --  # Restore deleted JS files
+   git checkout HEAD~1 -- tsconfig.json
+   npm install  # Restore dependencies
+   ```
+
+**Rollback Validation**:
+```bash
+# Verify rollback success
+npm run type-check  # TypeScript compilation succeeds
+npm run lint        # Linting passes
+npm run test        # All tests pass
+npm run build       # Production build succeeds
+```
+
+Test rollback on non-production branch before applying to main codebase.
+
+### Audit Logging
+
+All TypeScript operations MUST emit structured JSON logs before and after each operation.
+
+**Log Format**:
+```json
+{
+  "timestamp": "2025-06-15T14:32:00Z",
+  "user": "developer@example.com",
+  "change_ticket": "CHG-12345",
+  "environment": "production",
+  "operation": "dependency_update",
+  "command": "npm install typescript@5.4.0",
+  "outcome": "success",
+  "resources_affected": ["package.json", "package-lock.json", "node_modules/"],
+  "type_errors": 0,
+  "build_time_ms": 3200,
+  "bundle_size_kb": 142,
+  "rollback_available": true,
+  "duration_seconds": 42,
+  "error_detail": null
+}
+```
+
+**TypeScript-specific logging function**:
+```typescript
+// audit-logger.ts
+interface TypeScriptAuditLog {
+  timestamp: string;
+  user: string;
+  change_ticket?: string;
+  environment: string;
+  operation: 'type_change' | 'dependency_update' | 'config_change' | 'migration' | 'build_optimization';
+  command: string;
+  outcome: 'success' | 'failure';
+  resources_affected: string[];
+  type_errors: number;
+  build_time_ms?: number;
+  bundle_size_kb?: number;
+  rollback_available: boolean;
+  duration_seconds: number;
+  error_detail?: string;
+}
+
+export function logTypeScriptOperation(log: TypeScriptAuditLog): void {
+  const logEntry = JSON.stringify({
+    ...log,
+    timestamp: log.timestamp || new Date().toISOString(),
+    user: log.user || process.env.USER || 'unknown',
+  });
+
+  console.log(logEntry);
+
+  // Write to audit log file (if available)
+  if (process.env.AUDIT_LOG_PATH) {
+    appendFileSync(process.env.AUDIT_LOG_PATH, logEntry + '\n');
+  }
+
+  // Forward to centralized logging (if available)
+  if (process.env.LOG_AGGREGATOR_URL) {
+    fetch(process.env.LOG_AGGREGATOR_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: logEntry,
+    }).catch(err => console.error('Failed to forward audit log:', err));
+  }
+}
+
+// Usage example
+async function updateDependency(packageName: string, version: string): Promise<void> {
+  const startTime = Date.now();
+  const operation = `npm install ${packageName}@${version}`;
+
+  logTypeScriptOperation({
+    timestamp: new Date().toISOString(),
+    user: process.env.USER || 'unknown',
+    environment: process.env.NODE_ENV || 'development',
+    operation: 'dependency_update',
+    command: operation,
+    outcome: 'success',  // Will be updated on failure
+    resources_affected: ['package.json', 'package-lock.json'],
+    type_errors: 0,
+    rollback_available: true,
+    duration_seconds: 0,  // Will be calculated
+  });
+
+  try {
+    execSync(operation, { stdio: 'inherit' });
+
+    // Run type check to count errors
+    const typeCheckResult = execSync('npm run type-check', { encoding: 'utf-8' });
+    const typeErrors = (typeCheckResult.match(/error TS\d+:/g) || []).length;
+
+    logTypeScriptOperation({
+      timestamp: new Date().toISOString(),
+      user: process.env.USER || 'unknown',
+      environment: process.env.NODE_ENV || 'development',
+      operation: 'dependency_update',
+      command: operation,
+      outcome: 'success',
+      resources_affected: ['package.json', 'package-lock.json', 'node_modules/'],
+      type_errors: typeErrors,
+      rollback_available: true,
+      duration_seconds: Math.floor((Date.now() - startTime) / 1000),
+    });
+  } catch (error) {
+    logTypeScriptOperation({
+      timestamp: new Date().toISOString(),
+      user: process.env.USER || 'unknown',
+      environment: process.env.NODE_ENV || 'development',
+      operation: 'dependency_update',
+      command: operation,
+      outcome: 'failure',
+      resources_affected: ['package.json'],
+      type_errors: 999,
+      rollback_available: true,
+      duration_seconds: Math.floor((Date.now() - startTime) / 1000),
+      error_detail: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
+  }
+}
+```
+
+Log every type system change, dependency update, config modification, and build operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Store logs in project's `logs/typescript-audit.jsonl` file and forward to centralized logging system *(if available)*.
+
+## Integration with Other Agents
+
 Integration with other agents:
 - Share types with frontend-developer
 - Provide Node.js types to backend-developer

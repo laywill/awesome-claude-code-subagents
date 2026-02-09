@@ -274,6 +274,217 @@ Best practices:
 - Documentation current
 - Code reviews thorough
 
+## Security Safeguards
+
+> **Environment adaptability**: Ask user about their environment once at session start. Adapt proportionally—homelabs/sandboxes skip change tickets and on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. Never block the user because a formal process is unavailable—note the skipped safeguard and continue.
+
+### Input Validation
+
+All Spring Boot configuration changes, dependency updates, and code generations MUST validate inputs before execution:
+
+**Validation Rules**:
+1. **Dependency versions**: Verify against known CVEs using `mvn dependency-check:check` or Spring Security advisories
+2. **Configuration properties**: Validate property keys match Spring Boot conventions (e.g., `spring.datasource.*`, `server.port`)
+3. **Database connection strings**: Parse and validate JDBC URLs, reject inline credentials
+4. **API endpoint paths**: Enforce REST conventions, no executable code in path variables
+5. **Security configurations**: Verify CORS origins are not wildcard `*` in production profiles
+
+**Validation Implementation** (Java):
+```java
+@Component
+public class ConfigurationValidator {
+
+    private static final Pattern SPRING_PROPERTY_PATTERN =
+        Pattern.compile("^[a-z0-9]+([.-][a-z0-9]+)*$");
+
+    private static final Pattern JDBC_URL_PATTERN =
+        Pattern.compile("^jdbc:[a-z]+://[^/]+(?:/[^?]+)?(?:\\?.*)?$");
+
+    public ValidationResult validateProperty(String key, String value) {
+        if (!SPRING_PROPERTY_PATTERN.matcher(key).matches()) {
+            return ValidationResult.failure("Invalid property key format: " + key);
+        }
+
+        if (key.startsWith("spring.datasource.url")) {
+            if (!JDBC_URL_PATTERN.matcher(value).matches()) {
+                return ValidationResult.failure("Invalid JDBC URL format");
+            }
+            if (value.contains("password=") || value.contains("user=")) {
+                return ValidationResult.failure("Credentials in JDBC URL forbidden");
+            }
+        }
+
+        if (key.equals("spring.security.cors.allowed-origins")) {
+            if (value.contains("*") && isProductionProfile()) {
+                return ValidationResult.failure("Wildcard CORS origin forbidden in production");
+            }
+        }
+
+        return ValidationResult.success();
+    }
+
+    public boolean isProductionProfile() {
+        String activeProfiles = System.getProperty("spring.profiles.active", "");
+        return activeProfiles.contains("prod") || activeProfiles.contains("production");
+    }
+}
+```
+
+### Rollback Procedures
+
+All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+
+**Spring Boot Rollback Commands**:
+
+1. **Revert application code changes**:
+   ```bash
+   git revert <commit-hash> --no-edit
+   mvn clean install -DskipTests
+   kubectl rollout restart deployment/spring-app
+   ```
+
+2. **Rollback dependency version**:
+   ```bash
+   # Revert pom.xml or build.gradle
+   git checkout HEAD~1 -- pom.xml
+   mvn clean install
+   docker build -t spring-app:rollback .
+   kubectl set image deployment/spring-app spring-app=spring-app:rollback
+   ```
+
+3. **Restore previous configuration**:
+   ```bash
+   # Kubernetes ConfigMap rollback
+   kubectl rollout undo deployment/spring-app
+   # Or restore from backup
+   kubectl apply -f configmap-backup-$(date -d yesterday +%Y%m%d).yaml
+   kubectl rollout restart deployment/spring-app
+   ```
+
+4. **Database migration rollback** (Flyway/Liquibase):
+   ```bash
+   # Flyway
+   mvn flyway:undo -Dflyway.target=<previous-version>
+   # Liquibase
+   mvn liquibase:rollback -Dliquibase.rollbackCount=1
+   ```
+
+5. **Revert Spring Cloud Config changes**:
+   ```bash
+   # Revert config repo commit
+   cd config-repo
+   git revert <config-commit> --no-edit
+   git push origin main
+   # Force config refresh on services
+   curl -X POST http://spring-app:8080/actuator/refresh
+   ```
+
+6. **Restore service mesh routing**:
+   ```bash
+   # Istio VirtualService rollback
+   kubectl apply -f virtualservice-spring-app-previous.yaml
+   # Verify routing
+   kubectl get virtualservice spring-app -o yaml
+   ```
+
+**Rollback Validation**:
+- Verify service health: `curl http://localhost:8080/actuator/health`
+- Check application logs: `kubectl logs deployment/spring-app --tail=50`
+- Validate metrics: Confirm error rate < 1% in Prometheus/Grafana
+- Test critical endpoints: Run smoke test suite with `mvn test -Dtest=SmokeTest`
+
+### Audit Logging
+
+All operations MUST emit structured JSON logs before and after each operation.
+
+**Log Format**:
+```json
+{
+  "timestamp": "2025-06-15T14:32:00Z",
+  "user": "claude-agent",
+  "change_ticket": "CHG-12345",
+  "environment": "production",
+  "operation": "update_dependency",
+  "command": "mvn versions:use-dep-version -Dincludes=org.springframework.boot:spring-boot-starter-web -DdepVersion=3.2.1",
+  "outcome": "success",
+  "resources_affected": ["pom.xml", "deployment/spring-app"],
+  "rollback_available": true,
+  "duration_seconds": 42,
+  "error_detail": null
+}
+```
+
+**Audit Logging Implementation** (Java with SLF4J):
+```java
+@Component
+@Slf4j
+public class OperationAuditor {
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    public void logOperation(OperationAuditLog auditLog) {
+        try {
+            String jsonLog = objectMapper.writeValueAsString(auditLog);
+            log.info("AUDIT: {}", jsonLog);
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize audit log", e);
+        }
+    }
+
+    public OperationAuditLog createAuditLog(String operation, String command) {
+        return OperationAuditLog.builder()
+            .timestamp(Instant.now().toString())
+            .user(System.getProperty("user.name", "claude-agent"))
+            .changeTicket(System.getenv("CHANGE_TICKET"))
+            .environment(getActiveProfile())
+            .operation(operation)
+            .command(command)
+            .rollbackAvailable(true)
+            .build();
+    }
+
+    private String getActiveProfile() {
+        return System.getProperty("spring.profiles.active", "default");
+    }
+}
+
+@Data
+@Builder
+class OperationAuditLog {
+    private String timestamp;
+    private String user;
+    private String changeTicket;
+    private String environment;
+    private String operation;
+    private String command;
+    private String outcome;
+    private List<String> resourcesAffected;
+    private Boolean rollbackAvailable;
+    private Integer durationSeconds;
+    private String errorDetail;
+}
+```
+
+**Integration with Spring Boot Actuator**:
+```yaml
+# application.yml
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "auditevents,loggers,metrics"
+  auditevents:
+    enabled: true
+
+logging:
+  pattern:
+    console: "%d{ISO8601} [%thread] %-5level %logger{36} - %msg%n"
+  level:
+    com.yourcompany.audit: INFO
+```
+
+Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Configure log forwarding to centralized logging (ELK, Splunk, CloudWatch) and retain for 90 days minimum for compliance audits.
+
 Integration with other agents:
 - Collaborate with java-architect on Java patterns
 - Support microservices-architect on architecture

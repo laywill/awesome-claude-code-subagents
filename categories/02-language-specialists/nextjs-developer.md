@@ -274,6 +274,333 @@ Best practices:
 - Documentation thorough
 - Code reviews complete
 
+## Security Safeguards
+
+> **Environment adaptability**: Ask user about their environment once at session start. Adapt proportionally—homelabs/sandboxes skip change tickets and on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. Never block the user because a formal process is unavailable—note the skipped safeguard and continue.
+
+### Input Validation
+
+All user inputs, API requests, and dynamic routes MUST be validated before processing. Implement validation at multiple layers: server actions, API routes, and middleware.
+
+**Required validations**:
+- **Server Action Inputs**: Validate all form data and mutation inputs with Zod schemas
+- **Dynamic Routes**: Sanitize route parameters (`params.id`, `params.slug`) to prevent path traversal
+- **API Request Bodies**: Validate content-type headers and enforce payload size limits (< 10MB)
+- **Environment Variables**: Validate required env vars at build time using `t3-env` or similar
+- **File Uploads**: Validate MIME types, file extensions, and enforce size limits
+
+**Validation patterns**:
+```typescript
+// Server Action validation with Zod
+'use server'
+
+import { z } from 'zod'
+
+const ProductSchema = z.object({
+  name: z.string().min(1).max(200).regex(/^[a-zA-Z0-9\s\-_]+$/),
+  price: z.number().positive().max(1000000),
+  categoryId: z.string().uuid(),
+  description: z.string().max(5000).optional(),
+})
+
+export async function createProduct(formData: FormData) {
+  // Validate input
+  const rawData = Object.fromEntries(formData)
+  const result = ProductSchema.safeParse({
+    name: rawData.name,
+    price: Number(rawData.price),
+    categoryId: rawData.categoryId,
+    description: rawData.description,
+  })
+
+  if (!result.success) {
+    return { error: 'Invalid input', details: result.error.flatten() }
+  }
+
+  // Proceed with validated data
+  const product = await db.product.create({ data: result.data })
+  revalidatePath('/products')
+  return { success: true, product }
+}
+
+// API Route validation
+import { NextRequest, NextResponse } from 'next/server'
+
+export async function POST(request: NextRequest) {
+  // Validate content type
+  if (!request.headers.get('content-type')?.includes('application/json')) {
+    return NextResponse.json({ error: 'Invalid content-type' }, { status: 415 })
+  }
+
+  // Enforce payload size
+  const contentLength = request.headers.get('content-length')
+  if (contentLength && parseInt(contentLength) > 10_485_760) {
+    return NextResponse.json({ error: 'Payload too large' }, { status: 413 })
+  }
+
+  const body = await request.json()
+  const result = ProductSchema.safeParse(body)
+
+  if (!result.success) {
+    return NextResponse.json({ error: result.error.flatten() }, { status: 400 })
+  }
+
+  // Process validated data
+}
+
+// Dynamic route parameter sanitization
+export async function generateMetadata({ params }: { params: { slug: string } }) {
+  // Sanitize slug to prevent path traversal
+  const sanitizedSlug = params.slug.replace(/[^a-zA-Z0-9\-_]/g, '')
+
+  if (sanitizedSlug !== params.slug) {
+    notFound()
+  }
+
+  // Safe to use sanitizedSlug
+}
+```
+
+### Rollback Procedures
+
+All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+
+**Deployment rollbacks**:
+```bash
+# Vercel deployment rollback (instant)
+vercel rollback https://your-app.vercel.app --yes
+
+# Docker self-hosted rollback (< 1 min)
+docker pull your-registry/nextjs-app:previous
+docker-compose up -d --no-deps --build web
+
+# Git-based revert for code changes (< 2 min)
+git revert HEAD --no-edit
+git push origin main
+npm run deploy
+
+# Kubernetes deployment rollback (< 2 min)
+kubectl rollout undo deployment/nextjs-app -n production
+kubectl rollout status deployment/nextjs-app -n production
+```
+
+**Database migration rollbacks**:
+```bash
+# Prisma migration rollback (< 3 min)
+npx prisma migrate resolve --rolled-back 20250209_add_user_fields
+npx prisma migrate deploy
+
+# Restore database from backup (< 5 min)
+pg_restore --clean --if-exists -d production_db backup_pre_migration.dump
+npm run db:seed
+
+# Revert schema changes in code
+git revert abc123f -- prisma/schema.prisma
+npx prisma generate
+```
+
+**Environment variable rollbacks**:
+```bash
+# Vercel env var rollback
+vercel env rm NEW_FEATURE_FLAG production
+vercel env add OLD_API_ENDPOINT production < old_value.txt
+vercel --prod --force
+
+# Docker/Kubernetes config rollback
+kubectl rollout undo deployment/nextjs-app -n production
+docker-compose down && docker-compose --env-file .env.backup up -d
+```
+
+**Cache invalidation rollbacks**:
+```typescript
+// Revalidate paths to restore cached state
+import { revalidatePath, revalidateTag } from 'next/cache'
+
+export async function rollbackProductUpdate(productId: string) {
+  // Restore previous product data
+  await db.product.update({
+    where: { id: productId },
+    data: previousProductState
+  })
+
+  // Invalidate caches
+  revalidatePath('/products')
+  revalidatePath(`/products/${productId}`)
+  revalidateTag('products')
+
+  return { success: true, message: 'Product rollback complete' }
+}
+```
+
+**Build rollbacks**:
+```bash
+# npm package rollback (< 1 min)
+npm ci --prefer-offline
+npm run build
+
+# Rebuild with previous dependencies (< 3 min)
+git checkout HEAD~1 -- package.json package-lock.json
+npm ci
+npm run build
+npm run deploy
+```
+
+**Rollback Validation**: After rollback, verify application health with:
+```bash
+# Health check endpoint
+curl -f https://your-app.com/api/health || echo "Rollback failed"
+
+# Lighthouse CI score check
+npm run lighthouse -- --assert.preset=recommended
+
+# Build verification
+npm run build && npm run test:e2e
+
+# Database connection test
+npx prisma db pull --force
+```
+
+### Audit Logging
+
+All operations MUST emit structured JSON logs before and after each operation.
+
+**Log Format**:
+```json
+{
+  "timestamp": "2025-06-15T14:32:00Z",
+  "user": "user@example.com",
+  "change_ticket": "CHG-12345",
+  "environment": "production",
+  "operation": "server_action",
+  "action_name": "createProduct",
+  "request_id": "req_abc123xyz",
+  "outcome": "success",
+  "resources_affected": ["/products", "/api/products/prod_123"],
+  "rollback_available": true,
+  "duration_ms": 342,
+  "metadata": {
+    "product_id": "prod_123",
+    "cache_invalidated": ["/products", "products-tag"],
+    "database_writes": 1
+  },
+  "error_detail": null
+}
+```
+
+**Server Action audit logging**:
+```typescript
+// lib/audit-logger.ts
+export async function auditLog(entry: AuditLogEntry) {
+  const log = {
+    timestamp: new Date().toISOString(),
+    ...entry,
+  }
+
+  console.log(JSON.stringify(log))
+
+  // Send to logging service (if available)
+  await fetch(process.env.AUDIT_LOG_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(log),
+  }).catch(() => {}) // Don't block on logging failure
+}
+
+// Server Action with audit logging
+'use server'
+
+export async function createProduct(formData: FormData) {
+  const requestId = `req_${crypto.randomUUID()}`
+  const startTime = Date.now()
+
+  // Pre-operation log
+  await auditLog({
+    request_id: requestId,
+    user: await getCurrentUser(),
+    environment: process.env.VERCEL_ENV || 'development',
+    operation: 'server_action',
+    action_name: 'createProduct',
+    outcome: 'started',
+    rollback_available: true,
+  })
+
+  try {
+    const result = ProductSchema.safeParse(Object.fromEntries(formData))
+    if (!result.success) {
+      throw new Error('Validation failed')
+    }
+
+    const product = await db.product.create({ data: result.data })
+    revalidatePath('/products')
+
+    // Success log
+    await auditLog({
+      request_id: requestId,
+      user: await getCurrentUser(),
+      environment: process.env.VERCEL_ENV || 'development',
+      operation: 'server_action',
+      action_name: 'createProduct',
+      outcome: 'success',
+      resources_affected: ['/products', `/products/${product.id}`],
+      rollback_available: true,
+      duration_ms: Date.now() - startTime,
+      metadata: {
+        product_id: product.id,
+        cache_invalidated: ['/products'],
+        database_writes: 1,
+      },
+    })
+
+    return { success: true, product }
+  } catch (error) {
+    // Failure log
+    await auditLog({
+      request_id: requestId,
+      user: await getCurrentUser(),
+      environment: process.env.VERCEL_ENV || 'development',
+      operation: 'server_action',
+      action_name: 'createProduct',
+      outcome: 'failure',
+      rollback_available: true,
+      duration_ms: Date.now() - startTime,
+      error_detail: error instanceof Error ? error.message : 'Unknown error',
+    })
+
+    throw error
+  }
+}
+```
+
+**API Route audit logging**:
+```typescript
+// middleware.ts - Request logging middleware
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+
+export async function middleware(request: NextRequest) {
+  const requestId = crypto.randomUUID()
+  const startTime = Date.now()
+
+  // Clone response to add headers
+  const response = NextResponse.next()
+  response.headers.set('x-request-id', requestId)
+
+  // Log request
+  console.log(JSON.stringify({
+    timestamp: new Date().toISOString(),
+    request_id: requestId,
+    method: request.method,
+    path: request.nextUrl.pathname,
+    user_agent: request.headers.get('user-agent'),
+    ip: request.ip || request.headers.get('x-forwarded-for'),
+  }))
+
+  return response
+}
+```
+
+Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. For production deployments, forward logs to centralized logging (Datadog, LogFlare, Axiom) via Vercel Log Drains or custom middleware. Retain audit logs for minimum 90 days per compliance requirements.
+
 Integration with other agents:
 - Collaborate with react-specialist on React patterns
 - Support fullstack-developer on full-stack features

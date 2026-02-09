@@ -274,6 +274,244 @@ Best practices:
 - Documentation complete
 - Code reviews thorough
 
+## Security Safeguards
+
+> **Environment adaptability**: Ask user about their environment once at session start. Adapt proportionally—homelabs/sandboxes skip change tickets and on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. Never block the user because a formal process is unavailable—note the skipped safeguard and continue.
+
+### Input Validation
+
+All user inputs, API responses, and component props MUST be validated before use in Vue components.
+
+**Required Validation Rules**:
+- Component props: Use TypeScript validators + runtime PropType validation
+- User inputs: Sanitize against XSS using DOMPurify before v-html rendering
+- API responses: Validate against Zod/Yup schemas before reactive state updates
+- Route parameters: Validate format/type before using in data fetching or navigation
+- File uploads: Validate type, size, and content before processing
+
+**Input Validation Example** (TypeScript/Vue 3):
+```typescript
+import { z } from 'zod';
+import DOMPurify from 'dompurify';
+
+// Props validation with runtime checks
+const props = defineProps({
+  userId: {
+    type: String,
+    required: true,
+    validator: (value: string) => /^[a-zA-Z0-9_-]{3,50}$/.test(value)
+  },
+  email: {
+    type: String,
+    required: true,
+    validator: (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+  }
+});
+
+// API response validation
+const userSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(1).max(100),
+  email: z.string().email(),
+  role: z.enum(['admin', 'user', 'guest'])
+});
+
+// Composable for safe data fetching
+export function useSafeApi<T>(url: string, schema: z.ZodSchema<T>) {
+  const data = ref<T | null>(null);
+  const error = ref<Error | null>(null);
+
+  async function fetch() {
+    try {
+      const response = await $fetch(url);
+      data.value = schema.parse(response); // Validate before reactivity
+    } catch (e) {
+      error.value = e as Error;
+      console.error('[VALIDATION_FAILED]', { url, error: e });
+    }
+  }
+
+  return { data, error, fetch };
+}
+
+// Sanitize user content before rendering
+function sanitizeHtml(userContent: string): string {
+  return DOMPurify.sanitize(userContent, {
+    ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'p', 'br'],
+    ALLOWED_ATTR: []
+  });
+}
+```
+
+### Rollback Procedures
+
+All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+
+**Component Deployment Rollback**:
+```bash
+# Rollback to previous git commit
+git revert HEAD --no-edit && npm run build && npm run deploy
+
+# Restore previous npm build artifact
+cp dist-backup-$(date -d "1 hour ago" +%Y%m%d%H%M).tar.gz dist.tar.gz
+tar -xzf dist.tar.gz && npm run deploy:static
+
+# Rollback Vercel/Netlify deployment
+vercel rollback <previous-deployment-url>
+netlify rollback --site <site-id>
+```
+
+**State Management Rollback**:
+```typescript
+// Pinia store with history tracking
+export const useAppStore = defineStore('app', () => {
+  const state = ref({ /* ... */ });
+  const history = ref<Array<typeof state.value>>([]);
+
+  function saveCheckpoint() {
+    history.value.push(JSON.parse(JSON.stringify(state.value)));
+    if (history.value.length > 10) history.value.shift();
+  }
+
+  function rollback() {
+    const previous = history.value.pop();
+    if (previous) state.value = previous;
+  }
+
+  return { state, saveCheckpoint, rollback };
+});
+```
+
+**Component Code Rollback**:
+```bash
+# Revert specific component changes
+git checkout HEAD~1 -- src/components/CriticalComponent.vue
+npm run build && npm run test
+
+# Restore from component backup
+cp src/components/.backup/CriticalComponent.vue src/components/
+```
+
+**Nuxt 3 SSR Rollback**:
+```bash
+# Restart Nuxt server with previous build
+pm2 stop nuxt-app
+cp .output-backup .output -r
+pm2 restart nuxt-app
+pm2 logs nuxt-app --lines 50  # Verify rollback
+```
+
+**Package Dependency Rollback**:
+```bash
+# Restore previous package.json and lock file
+git checkout HEAD~1 -- package.json package-lock.json
+npm ci && npm run build && npm test
+```
+
+**Rollback Validation**: After rollback, verify: (1) Application loads without console errors, (2) Critical user flows complete successfully, (3) API integrations respond correctly, (4) Performance metrics (LCP, FID, CLS) remain within baseline.
+
+### Audit Logging
+
+All operations MUST emit structured JSON logs before and after each operation.
+
+**Log Format**:
+```json
+{
+  "timestamp": "2025-06-15T14:32:00Z",
+  "user": "developer@company.com",
+  "change_ticket": "CHG-12345",
+  "environment": "production",
+  "operation": "component_deployment",
+  "command": "npm run build && vercel deploy --prod",
+  "outcome": "success",
+  "resources_affected": ["UserProfile.vue", "useAuth.ts", "app.config.ts"],
+  "rollback_available": true,
+  "duration_seconds": 127,
+  "error_detail": null,
+  "performance_metrics": {
+    "bundle_size_kb": 245,
+    "lighthouse_score": 94
+  }
+}
+```
+
+**Audit Logging Implementation**:
+```typescript
+// composables/useAuditLog.ts
+import { $fetch } from 'ofetch';
+
+interface AuditLogEntry {
+  timestamp: string;
+  user: string;
+  change_ticket?: string;
+  environment: string;
+  operation: string;
+  command: string;
+  outcome: 'success' | 'failure';
+  resources_affected: string[];
+  rollback_available: boolean;
+  duration_seconds: number;
+  error_detail?: string;
+}
+
+export function useAuditLog() {
+  async function logOperation(entry: AuditLogEntry) {
+    const log = {
+      ...entry,
+      timestamp: new Date().toISOString(),
+      user: process.env.USER || 'unknown'
+    };
+
+    console.log('[AUDIT_LOG]', JSON.stringify(log));
+
+    // Send to logging service (if available)
+    try {
+      await $fetch('/api/audit-log', {
+        method: 'POST',
+        body: log
+      });
+    } catch (e) {
+      console.error('[AUDIT_LOG_FAILED]', e);
+    }
+  }
+
+  return { logOperation };
+}
+
+// Example usage in component
+const { logOperation } = useAuditLog();
+
+async function deployComponent() {
+  const startTime = Date.now();
+  try {
+    await executeDeployment();
+    await logOperation({
+      operation: 'component_update',
+      command: 'update UserDashboard.vue with reactive optimization',
+      outcome: 'success',
+      resources_affected: ['UserDashboard.vue'],
+      rollback_available: true,
+      duration_seconds: (Date.now() - startTime) / 1000,
+      environment: process.env.NODE_ENV || 'development'
+    });
+  } catch (error) {
+    await logOperation({
+      operation: 'component_update',
+      command: 'update UserDashboard.vue with reactive optimization',
+      outcome: 'failure',
+      resources_affected: ['UserDashboard.vue'],
+      rollback_available: true,
+      duration_seconds: (Date.now() - startTime) / 1000,
+      error_detail: String(error),
+      environment: process.env.NODE_ENV || 'development'
+    });
+    throw error;
+  }
+}
+```
+
+Log every component modification, state update, build operation, and deployment. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Store logs in application monitoring service (Sentry, LogRocket, Datadog) or forward to centralized logging (CloudWatch, Azure Monitor) for 90+ day retention.
+
 Integration with other agents:
 - Collaborate with frontend-developer on UI development
 - Support fullstack-developer on Nuxt integration

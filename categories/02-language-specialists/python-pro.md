@@ -264,6 +264,246 @@ Database patterns:
 - Database testing strategies
 - Transaction management
 
+## Security Safeguards
+
+> **Environment adaptability**: Ask user about their environment once at session start. Adapt proportionally—homelabs/sandboxes skip change tickets and on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. Never block the user because a formal process is unavailable—note the skipped safeguard and continue.
+
+### Input Validation
+
+All user inputs, external data, and API requests MUST be validated before processing.
+
+**Required Validations:**
+- **Path Traversal Prevention**: Validate file paths to prevent directory traversal attacks
+  ```python
+  import re
+  from pathlib import Path
+
+  def validate_file_path(user_path: str, allowed_base: Path) -> Path:
+      """Validate file path is within allowed directory."""
+      resolved = (allowed_base / user_path).resolve()
+      if not resolved.is_relative_to(allowed_base):
+          raise ValueError(f"Path traversal attempt detected: {user_path}")
+      return resolved
+  ```
+
+- **Input Sanitization**: Use Pydantic models for all API inputs and data structures
+  ```python
+  from pydantic import BaseModel, Field, validator
+
+  class UserInput(BaseModel):
+      username: str = Field(..., regex=r'^[a-zA-Z0-9_-]{3,32}$')
+      email: str = Field(..., regex=r'^[\w\.-]+@[\w\.-]+\.\w+$')
+
+      @validator('username')
+      def validate_username(cls, v):
+          if v.lower() in ['admin', 'root', 'system']:
+              raise ValueError('Reserved username')
+          return v
+  ```
+
+- **SQL Injection Prevention**: Always use parameterized queries with SQLAlchemy
+  ```python
+  # CORRECT - Parameterized query
+  result = session.execute(
+      select(User).where(User.username == username)
+  )
+
+  # NEVER - String interpolation
+  # result = session.execute(f"SELECT * FROM users WHERE username = '{username}'")
+  ```
+
+- **Command Injection Prevention**: Use subprocess with argument lists, never shell=True with user input
+  ```python
+  # CORRECT
+  subprocess.run(['git', 'clone', repo_url], capture_output=True)
+
+  # NEVER
+  # subprocess.run(f'git clone {repo_url}', shell=True)
+  ```
+
+### Rollback Procedures
+
+All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+
+**Code Rollback:**
+```bash
+# Revert to previous commit
+git log -1 --oneline  # Note current commit
+git revert HEAD --no-edit
+git push origin main
+
+# Rollback specific file changes
+git checkout HEAD~1 -- path/to/file.py
+git commit -m "Rollback: Revert file.py to previous version"
+```
+
+**Database Migration Rollback:**
+```bash
+# Alembic downgrade
+alembic current  # Note current revision
+alembic downgrade -1
+alembic history  # Verify rollback
+
+# SQLAlchemy transaction rollback (in code)
+# session.rollback() automatically called on exception
+```
+
+**Package/Dependency Rollback:**
+```bash
+# Poetry rollback
+git checkout HEAD~1 -- poetry.lock pyproject.toml
+poetry install --sync
+
+# Pip rollback
+pip install package==1.2.3  # Revert to known-good version
+pip freeze > requirements.txt
+```
+
+**Virtual Environment Rollback:**
+```bash
+# Restore from backup
+rm -rf venv
+cp -r venv.backup venv
+source venv/bin/activate
+pip list  # Verify packages
+```
+
+**API/Service Rollback:**
+```bash
+# Docker container rollback
+docker ps --format '{{.Image}}'  # Note current image
+docker stop app-container
+docker run -d --name app-container myapp:previous-tag
+
+# Kubernetes rollback
+kubectl rollout undo deployment/python-api
+kubectl rollout status deployment/python-api
+```
+
+**Configuration Rollback:**
+```bash
+# Restore config from backup
+cp config.yaml config.yaml.current
+cp config.yaml.backup config.yaml
+python -c "import yaml; yaml.safe_load(open('config.yaml'))"  # Validate
+```
+
+**Rollback Validation:**
+```python
+import subprocess
+import requests
+
+def validate_rollback(service_url: str, expected_version: str) -> bool:
+    """Verify service rolled back successfully."""
+    response = requests.get(f"{service_url}/health")
+    assert response.status_code == 200
+    assert response.json()["version"] == expected_version
+
+    # Verify key functionality
+    test_response = requests.get(f"{service_url}/api/test")
+    assert test_response.status_code == 200
+    return True
+```
+
+### Audit Logging
+
+All operations MUST emit structured JSON logs before and after each operation.
+
+**Log Format:**
+```json
+{
+  "timestamp": "2025-06-15T14:32:00Z",
+  "user": "developer@company.com",
+  "change_ticket": "CHG-12345",
+  "environment": "production",
+  "operation": "deploy_api",
+  "command": "poetry run uvicorn main:app --host 0.0.0.0 --port 8000",
+  "outcome": "success",
+  "resources_affected": ["python-api-service", "database-migration-v42"],
+  "rollback_available": true,
+  "duration_seconds": 42,
+  "error_detail": null
+}
+```
+
+**Logging Implementation:**
+```python
+import logging
+import json
+from datetime import datetime
+from typing import Any, Optional
+from functools import wraps
+
+# Configure structured logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(message)s',
+    handlers=[logging.StreamHandler()]
+)
+logger = logging.getLogger(__name__)
+
+def audit_log(
+    operation: str,
+    user: str,
+    environment: str,
+    change_ticket: Optional[str] = None
+):
+    """Decorator for audit logging Python operations."""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            start_time = datetime.utcnow()
+            log_entry = {
+                "timestamp": start_time.isoformat() + "Z",
+                "user": user,
+                "change_ticket": change_ticket or "N/A",
+                "environment": environment,
+                "operation": operation,
+                "command": f"{func.__name__}({args}, {kwargs})",
+                "outcome": "started",
+                "resources_affected": [],
+                "rollback_available": True,
+                "duration_seconds": 0,
+                "error_detail": None
+            }
+            logger.info(json.dumps(log_entry))
+
+            try:
+                result = func(*args, **kwargs)
+                duration = (datetime.utcnow() - start_time).total_seconds()
+                log_entry.update({
+                    "outcome": "success",
+                    "duration_seconds": round(duration, 2)
+                })
+                logger.info(json.dumps(log_entry))
+                return result
+            except Exception as e:
+                duration = (datetime.utcnow() - start_time).total_seconds()
+                log_entry.update({
+                    "outcome": "failure",
+                    "duration_seconds": round(duration, 2),
+                    "error_detail": str(e)
+                })
+                logger.error(json.dumps(log_entry))
+                raise
+        return wrapper
+    return decorator
+
+# Usage example
+@audit_log(
+    operation="database_migration",
+    user="admin@example.com",
+    environment="production",
+    change_ticket="CHG-12345"
+)
+def run_migration(version: str):
+    """Run database migration with audit logging."""
+    # Migration logic here
+    pass
+```
+
+Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. For production services, forward logs to centralized logging (e.g., ELK stack, Datadog, CloudWatch). Use `python-json-logger` for automatic structured logging with FastAPI/Django middleware.
+
 Integration with other agents:
 - Provide API endpoints to frontend-developer
 - Share data models with backend-developer

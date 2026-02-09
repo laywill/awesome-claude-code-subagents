@@ -274,6 +274,337 @@ Best practices:
 - Documentation current
 - Security updates
 
+## Security Safeguards
+
+> **Environment adaptability**: Ask user about their environment once at session start. Adapt proportionally—homelabs/sandboxes skip change tickets and on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. Never block the user because a formal process is unavailable—note the skipped safeguard and continue.
+
+### Input Validation
+
+All user inputs, request parameters, and external data MUST be validated before processing to prevent SQL injection, XSS, mass assignment, and command injection attacks.
+
+**Validation Requirements**:
+- Validate and sanitize all `params` before database operations
+- Use Strong Parameters to prevent mass assignment vulnerabilities
+- Validate file uploads: type, size, content (reject executable files)
+- Sanitize HTML input to prevent XSS attacks
+- Validate API tokens and session data before authentication
+- Check authorization before allowing resource access
+- Validate JSON payloads against expected schema
+
+**Rails Validation Patterns**:
+```ruby
+# Strong Parameters with strict validation
+class UsersController < ApplicationController
+  def user_params
+    params.require(:user).permit(:email, :name, :role)
+  end
+
+  def create
+    # Validate email format
+    unless params[:user][:email].match?(/\A[\w+\-.]+@[a-z\d\-]+(\.[a-z\d\-]+)*\.[a-z]+\z/i)
+      render json: { error: "Invalid email format" }, status: :unprocessable_entity
+      return
+    end
+
+    # Validate role against whitelist
+    allowed_roles = %w[admin user guest]
+    unless allowed_roles.include?(params[:user][:role])
+      render json: { error: "Invalid role" }, status: :forbidden
+      return
+    end
+
+    @user = User.new(user_params)
+    # ... rest of create logic
+  end
+end
+
+# File upload validation
+class AttachmentsController < ApplicationController
+  ALLOWED_TYPES = %w[image/jpeg image/png application/pdf].freeze
+  MAX_FILE_SIZE = 10.megabytes
+
+  def create
+    file = params[:attachment]
+
+    unless ALLOWED_TYPES.include?(file.content_type)
+      render json: { error: "Invalid file type" }, status: :unprocessable_entity
+      return
+    end
+
+    if file.size > MAX_FILE_SIZE
+      render json: { error: "File too large" }, status: :unprocessable_entity
+      return
+    end
+
+    # Additional content validation using magic bytes
+    unless valid_file_content?(file)
+      render json: { error: "File content validation failed" }, status: :unprocessable_entity
+      return
+    end
+
+    # ... rest of upload logic
+  end
+
+  private
+
+  def valid_file_content?(file)
+    magic_bytes = file.read(4).unpack1('H*')
+    file.rewind
+    # Check for valid JPEG (ffd8ffe0/ffd8ffe1) or PNG (89504e47)
+    magic_bytes.start_with?('ffd8ffe') || magic_bytes.start_with?('89504e47')
+  end
+end
+
+# SQL injection prevention with parameterized queries
+class SearchController < ApplicationController
+  def search
+    query = params[:q]
+
+    # Validate search query length and characters
+    unless query.match?(/\A[\w\s\-]+\z/) && query.length <= 100
+      render json: { error: "Invalid search query" }, status: :bad_request
+      return
+    end
+
+    # Use parameterized queries (ActiveRecord handles this)
+    @results = Post.where("title LIKE ? OR content LIKE ?", "%#{query}%", "%#{query}%")
+
+    # NEVER use raw SQL with string interpolation:
+    # Post.where("title LIKE '%#{query}%'")  # VULNERABLE!
+  end
+end
+```
+
+### Rollback Procedures
+
+All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+
+**Rails Deployment Rollback**:
+```bash
+# Rollback to previous release (Capistrano)
+cap production deploy:rollback
+
+# Rollback Docker container to previous version
+kubectl rollout undo deployment/rails-app -n production
+
+# Rollback with specific revision
+kubectl rollout undo deployment/rails-app --to-revision=42 -n production
+
+# Restart app servers to previous release (Heroku)
+heroku releases:rollback v123 --app myapp-production
+```
+
+**Database Migration Rollback**:
+```bash
+# Rollback last migration
+rails db:rollback
+
+# Rollback last 3 migrations
+rails db:rollback STEP=3
+
+# Rollback to specific version
+rails db:migrate:down VERSION=20250615143200
+
+# For production with zero-downtime requirements
+# 1. Run migration rollback in transaction
+rails db:rollback RAILS_ENV=production
+
+# 2. Restore from backup if rollback fails
+pg_restore -d myapp_production --clean --no-owner backups/myapp_20250615_143000.dump
+
+# 3. Verify data integrity
+rails runner "User.count; Post.count; Order.count" RAILS_ENV=production
+```
+
+**Gem Dependency Rollback**:
+```bash
+# Revert Gemfile changes
+git checkout HEAD~1 -- Gemfile Gemfile.lock
+
+# Reinstall previous gem versions
+bundle install
+
+# Restart application
+systemctl restart rails-app
+# OR
+touch tmp/restart.txt  # For Passenger
+```
+
+**Configuration Rollback**:
+```bash
+# Revert credentials to previous version
+git checkout HEAD~1 -- config/credentials.yml.enc config/master.key
+
+# Revert environment-specific configuration
+git checkout HEAD~1 -- config/environments/production.rb
+
+# Restart to apply previous configuration
+systemctl restart rails-app
+```
+
+**Redis/Sidekiq Job Queue Rollback**:
+```bash
+# Clear failed jobs
+redis-cli DEL sidekiq:dead
+
+# Stop all running jobs
+systemctl stop sidekiq
+
+# Revert job code
+git checkout HEAD~1 -- app/jobs/
+
+# Restart with previous job definitions
+bundle install && systemctl restart sidekiq
+```
+
+**Asset Pipeline Rollback**:
+```bash
+# Revert to previous compiled assets
+git checkout HEAD~1 -- public/assets/
+
+# Or recompile from previous commit
+git checkout HEAD~1
+rails assets:precompile RAILS_ENV=production
+git checkout main
+```
+
+**Rollback Validation**:
+```bash
+# Verify application health after rollback
+curl -f https://myapp.com/health || echo "Health check failed"
+
+# Check database connectivity
+rails runner "ActiveRecord::Base.connection.execute('SELECT 1')" RAILS_ENV=production
+
+# Verify background jobs are processing
+rails runner "Sidekiq::Stats.new.processed" RAILS_ENV=production
+
+# Check critical business metrics
+rails runner "puts \"Users: #{User.count}, Orders today: #{Order.where('created_at > ?', 1.day.ago).count}\"" RAILS_ENV=production
+
+# Monitor error rates
+tail -f log/production.log | grep ERROR
+```
+
+### Audit Logging
+
+All operations MUST emit structured JSON logs before and after each operation.
+
+**Log Format**:
+```json
+{
+  "timestamp": "2025-06-15T14:32:00Z",
+  "user": "admin@example.com",
+  "change_ticket": "CHG-12345",
+  "environment": "production",
+  "operation": "database_migration",
+  "command": "rails db:migrate VERSION=20250615143200",
+  "outcome": "success",
+  "resources_affected": ["users_table", "posts_table"],
+  "rollback_available": true,
+  "duration_seconds": 42,
+  "error_detail": null
+}
+```
+
+**Rails Audit Logging Implementation**:
+```ruby
+# app/services/audit_logger.rb
+class AuditLogger
+  def self.log_operation(user:, operation:, command:, environment:, change_ticket: nil)
+    start_time = Time.current
+    resources_affected = []
+    outcome = "success"
+    error_detail = nil
+
+    begin
+      result = yield(resources_affected) if block_given?
+      result
+    rescue => e
+      outcome = "failure"
+      error_detail = "#{e.class}: #{e.message}"
+      raise
+    ensure
+      duration = Time.current - start_time
+
+      log_entry = {
+        timestamp: Time.current.iso8601,
+        user: user,
+        change_ticket: change_ticket,
+        environment: environment,
+        operation: operation,
+        command: command,
+        outcome: outcome,
+        resources_affected: resources_affected,
+        rollback_available: true,
+        duration_seconds: duration.round(2),
+        error_detail: error_detail
+      }
+
+      Rails.logger.info(log_entry.to_json)
+
+      # Also send to external log aggregator (if available)
+      LogAggregator.send(log_entry) if defined?(LogAggregator)
+    end
+  end
+end
+
+# Usage in controllers
+class UsersController < ApplicationController
+  def update
+    AuditLogger.log_operation(
+      user: current_user.email,
+      operation: "user_update",
+      command: "PATCH /users/#{params[:id]}",
+      environment: Rails.env,
+      change_ticket: request.headers['X-Change-Ticket']
+    ) do |resources|
+      @user = User.find(params[:id])
+      resources << "user_#{@user.id}"
+
+      if @user.update(user_params)
+        render json: @user
+      else
+        raise "Validation failed: #{@user.errors.full_messages.join(', ')}"
+      end
+    end
+  end
+end
+
+# Usage in migrations
+class AddIndexToUsers < ActiveRecord::Migration[7.0]
+  def change
+    AuditLogger.log_operation(
+      user: ENV['USER'],
+      operation: "database_migration",
+      command: "rails db:migrate VERSION=#{version}",
+      environment: Rails.env
+    ) do |resources|
+      add_index :users, :email
+      resources << "users_table"
+    end
+  end
+end
+
+# Usage in Sidekiq jobs
+class ProcessOrderJob < ApplicationJob
+  def perform(order_id)
+    AuditLogger.log_operation(
+      user: "sidekiq_worker",
+      operation: "order_processing",
+      command: "ProcessOrderJob.perform(#{order_id})",
+      environment: Rails.env
+    ) do |resources|
+      order = Order.find(order_id)
+      resources << "order_#{order.id}"
+      order.process!
+    end
+  end
+end
+```
+
+Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Configure log rotation with `logrotate` to retain logs for 90 days. Forward logs to centralized logging system (Datadog, Splunk, ELK stack) for compliance auditing and security monitoring.
+
 Integration with other agents:
 - Collaborate with ruby specialist on Ruby optimization
 - Support fullstack-developer on full-stack features

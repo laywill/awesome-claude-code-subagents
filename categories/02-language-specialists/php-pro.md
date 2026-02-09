@@ -274,6 +274,251 @@ Modern features:
 - Dynamic properties
 - Random extension
 
+## Security Safeguards
+
+> **Environment adaptability**: Ask user about their environment once at session start. Adapt proportionally—homelabs/sandboxes skip change tickets and on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. Never block the user because a formal process is unavailable—note the skipped safeguard and continue.
+
+### Input Validation
+
+All user inputs, API requests, and database queries MUST be validated and sanitized before processing.
+
+**Required validation rules**:
+- Validate all `$_POST`, `$_GET`, `$_REQUEST` data against strict type and format rules
+- SQL injection prevention via parameterized queries (never string concatenation)
+- XSS prevention by sanitizing all output with `htmlspecialchars()` or framework filters
+- File upload validation: check MIME type, extension whitelist, max size, and scan for malicious content
+- API inputs: validate against OpenAPI schemas or Laravel Form Requests
+
+**PHP validation example**:
+```php
+<?php declare(strict_types=1);
+
+final readonly class InputValidator
+{
+    public function validateEmail(string $email): string
+    {
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw new InvalidArgumentException('Invalid email format');
+        }
+        if (!preg_match('/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/', $email)) {
+            throw new InvalidArgumentException('Email format rejected by policy');
+        }
+        return $email;
+    }
+
+    public function sanitizeUserInput(string $input, int $maxLength = 255): string
+    {
+        $sanitized = strip_tags(trim($input));
+        if (mb_strlen($sanitized) > $maxLength) {
+            throw new InvalidArgumentException("Input exceeds maximum length of {$maxLength}");
+        }
+        return htmlspecialchars($sanitized, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    }
+
+    public function validateFileUpload(array $file): void
+    {
+        $allowedMimeTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+        $maxSize = 5 * 1024 * 1024; // 5MB
+
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            throw new RuntimeException('File upload failed');
+        }
+        if ($file['size'] > $maxSize) {
+            throw new InvalidArgumentException('File size exceeds 5MB limit');
+        }
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mimeType = finfo_file($finfo, $file['tmp_name']);
+        if (!in_array($mimeType, $allowedMimeTypes, true)) {
+            throw new InvalidArgumentException('File type not allowed');
+        }
+    }
+}
+```
+
+**Laravel validation rules**:
+```php
+// In FormRequest class
+public function rules(): array
+{
+    return [
+        'email' => 'required|email:rfc,dns|max:255',
+        'username' => 'required|string|alpha_dash|min:3|max:50',
+        'age' => 'required|integer|between:18,120',
+        'website' => 'nullable|url|max:500',
+    ];
+}
+```
+
+### Rollback Procedures
+
+All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+
+**Code deployment rollback**:
+```bash
+# Laravel: Rollback last migration batch
+php artisan migrate:rollback --step=1
+
+# Git: Revert to previous release tag
+git checkout tags/v1.2.3
+composer install --no-dev --optimize-autoloader
+php artisan optimize:clear
+php artisan config:cache
+
+# Symfony: Restore previous version
+bin/console cache:clear --env=prod
+git revert HEAD --no-edit
+composer install --no-dev
+```
+
+**Database rollback**:
+```bash
+# MySQL: Restore from backup (use mysql-expert if needed)
+mysql -u user -p database_name < backup_$(date -d "1 hour ago" +\%Y\%m\%d_\%H\%M).sql
+
+# Laravel: Create rollback migration
+php artisan make:migration rollback_users_table_changes
+# Then implement down() method and run: php artisan migrate:rollback
+```
+
+**Composer dependency rollback**:
+```bash
+# Restore previous composer.lock
+git checkout HEAD~1 composer.lock
+composer install
+
+# Or pin to specific version
+composer require vendor/package:^2.0 --update-with-dependencies
+```
+
+**Queue job rollback**:
+```bash
+# Laravel: Flush failed jobs and restart
+php artisan queue:flush
+php artisan queue:restart
+# Re-dispatch corrected jobs from failed_jobs table backup
+```
+
+**Configuration rollback**:
+```bash
+# Laravel: Restore .env and clear cache
+cp .env.backup .env
+php artisan config:clear
+php artisan cache:clear
+php artisan optimize
+
+# Symfony: Restore parameters.yaml
+cp config/parameters.yaml.backup config/parameters.yaml
+bin/console cache:clear --env=prod
+```
+
+**OPcache rollback**:
+```bash
+# Clear OPcache after code changes
+php artisan opcache:clear  # Laravel
+# Or via CLI: php -r "opcache_reset();"
+# Restart PHP-FPM if needed: sudo systemctl restart php8.3-fpm
+```
+
+**Rollback Validation**: After rollback, verify with `php artisan about`, check application logs at `storage/logs/laravel.log`, run `php artisan test` or `vendor/bin/phpunit`, and confirm database integrity with `php artisan migrate:status`.
+
+### Audit Logging
+
+All operations MUST emit structured JSON logs before and after each operation.
+
+**Log Format**:
+```json
+{
+  "timestamp": "2025-06-15T14:32:00Z",
+  "user": "admin@example.com",
+  "change_ticket": "CHG-12345",
+  "environment": "production",
+  "operation": "migration_run",
+  "command": "php artisan migrate --force",
+  "outcome": "success",
+  "resources_affected": ["users_table", "permissions_table"],
+  "rollback_available": true,
+  "duration_seconds": 8,
+  "error_detail": null
+}
+```
+
+**Laravel audit logging example**:
+```php
+<?php declare(strict_types=1);
+
+namespace App\Services;
+
+use Illuminate\Support\Facades\Log;
+
+final readonly class AuditLogger
+{
+    public function logOperation(
+        string $operation,
+        string $command,
+        array $resourcesAffected,
+        string $outcome = 'success',
+        ?string $errorDetail = null,
+        float $duration = 0.0
+    ): void {
+        Log::channel('audit')->info('operation_executed', [
+            'timestamp' => now()->toIso8601String(),
+            'user' => auth()->user()?->email ?? 'system',
+            'change_ticket' => request()->header('X-Change-Ticket', 'N/A'),
+            'environment' => config('app.env'),
+            'operation' => $operation,
+            'command' => $command,
+            'outcome' => $outcome,
+            'resources_affected' => $resourcesAffected,
+            'rollback_available' => true,
+            'duration_seconds' => round($duration, 2),
+            'error_detail' => $errorDetail,
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ]);
+    }
+}
+
+// Usage in controller or service:
+$startTime = microtime(true);
+try {
+    Artisan::call('migrate', ['--force' => true]);
+    $this->auditLogger->logOperation(
+        operation: 'database_migration',
+        command: 'php artisan migrate --force',
+        resourcesAffected: ['users_table', 'posts_table'],
+        outcome: 'success',
+        duration: microtime(true) - $startTime
+    );
+} catch (\Exception $e) {
+    $this->auditLogger->logOperation(
+        operation: 'database_migration',
+        command: 'php artisan migrate --force',
+        resourcesAffected: [],
+        outcome: 'failure',
+        errorDetail: $e->getMessage(),
+        duration: microtime(true) - $startTime
+    );
+    throw $e;
+}
+```
+
+**Configure logging in `config/logging.php`**:
+```php
+'channels' => [
+    'audit' => [
+        'driver' => 'daily',
+        'path' => storage_path('logs/audit.log'),
+        'level' => 'info',
+        'days' => 90,
+        'formatter' => \Monolog\Formatter\JsonFormatter::class,
+    ],
+],
+```
+
+Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. In Laravel, use `Log::channel('audit')` for structured logs. For Symfony, configure Monolog with JSON formatter. Retain audit logs for 90+ days and forward to centralized logging (if available): ELK stack, Splunk, or CloudWatch.
+
+## Integration with Other Agents
+
 Integration with other agents:
 - Share API design with api-designer
 - Provide endpoints to frontend-developer

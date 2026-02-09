@@ -274,6 +274,200 @@ App optimization:
 - App clips
 - Widget development
 
+## Security Safeguards
+
+> **Environment adaptability**: Ask user about their environment once at session start. Adapt proportionally—homelabs/sandboxes skip change tickets and on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. Never block the user because a formal process is unavailable—note the skipped safeguard and continue.
+
+### Input Validation
+
+All user-provided Swift code, package dependencies, and configuration files must be validated before execution or integration.
+
+**Validation Rules**:
+- **Package Dependencies**: Verify Package.swift dependencies against known-vulnerable packages list. Check Swift Package Index for package authenticity and maintainer reputation.
+- **Code Input Sanitization**: Validate all user-provided Swift code for unsafe patterns (force unwraps in production, unsafe pointer operations without bounds checking, dynamic member lookup without validation).
+- **Configuration Files**: Validate Info.plist, project settings, and build configurations for suspicious entitlements, URL schemes, or privacy-sensitive permissions without justification.
+
+**Swift Validation Functions**:
+```swift
+/// Validates Swift package dependencies for security concerns
+func validatePackageDependency(_ package: Package.Dependency) throws {
+    guard let url = package.url else {
+        throw ValidationError.missingPackageURL
+    }
+
+    // Check against known vulnerable packages
+    if vulnerablePackages.contains(where: { $0.matches(url) }) {
+        throw ValidationError.vulnerablePackage(url: url)
+    }
+
+    // Require HTTPS for remote dependencies
+    guard url.hasPrefix("https://") else {
+        throw ValidationError.insecurePackageURL(url: url)
+    }
+
+    // Validate version constraints exist
+    guard package.requirement != nil else {
+        throw ValidationError.missingVersionConstraint(url: url)
+    }
+}
+
+/// Validates Swift code for unsafe patterns before execution
+func validateSwiftCode(_ code: String) -> ValidationResult {
+    var warnings: [String] = []
+
+    // Check for force unwraps in production code
+    let forceUnwrapPattern = #/!\s*(?!\/\/)/#
+    if code.contains(forceUnwrapPattern) {
+        warnings.append("Force unwraps detected - consider optional binding")
+    }
+
+    // Check for unsafe pointer operations without bounds
+    if code.contains("UnsafeMutablePointer") || code.contains("UnsafeRawPointer") {
+        if !code.contains("assumingMemoryBound") && !code.contains("bindMemory") {
+            warnings.append("Unsafe pointer usage without proper bounds checking")
+        }
+    }
+
+    // Verify dynamic member lookup has validation
+    if code.contains("@dynamicMemberLookup") {
+        if !code.contains("guard") && !code.contains("if let") {
+            warnings.append("Dynamic member lookup without validation guard")
+        }
+    }
+
+    return ValidationResult(isValid: warnings.isEmpty, warnings: warnings)
+}
+```
+
+### Rollback Procedures
+
+All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+
+**Swift Project Rollback Commands**:
+```bash
+# Revert Swift package changes
+git checkout HEAD -- Package.swift Package.resolved
+swift package reset
+swift package resolve
+
+# Rollback Xcode project configuration
+git checkout HEAD -- *.xcodeproj/project.pbxproj
+xcodebuild clean -project MyApp.xcodeproj -scheme MyApp
+
+# Revert SwiftUI view changes
+git checkout HEAD -- Sources/Views/
+xcodebuild clean build -project MyApp.xcodeproj -scheme MyApp
+
+# Rollback server-side Swift deployment (Vapor)
+docker rollback vapor-app-service
+docker restart vapor-app-container
+
+# Revert Core Data model changes
+git checkout HEAD -- MyApp.xcdatamodeld/
+# Restore from backup before lightweight migration
+cp MyApp.sqlite.backup MyApp.sqlite
+
+# Rollback SPM dependency updates
+git checkout HEAD -- Package.resolved
+rm -rf .build/
+swift package resolve --force
+```
+
+**Rollback Validation**: After rollback, verify with `swift build && swift test` for SPM projects, or `xcodebuild test` for Xcode projects. Check that app launches successfully on device/simulator and critical features work. For server-side Swift, verify health check endpoint returns 200 and logs show no actor isolation violations.
+
+### Audit Logging
+
+All operations MUST emit structured JSON logs before and after each operation.
+
+**Log Format**
+```json
+{
+  "timestamp": "2025-06-15T14:32:00Z",
+  "user": "developer@example.com",
+  "change_ticket": "CHG-12345",
+  "environment": "production",
+  "operation": "package_dependency_update",
+  "command": "swift package update",
+  "outcome": "success",
+  "resources_affected": ["Package.swift", "Package.resolved", ".build/"],
+  "rollback_available": true,
+  "duration_seconds": 42,
+  "error_detail": null,
+  "swift_context": {
+    "swift_version": "5.9",
+    "platform": "iOS 17.0",
+    "dependencies_changed": ["Alamofire 5.8.0 -> 5.9.1"],
+    "build_passed": true,
+    "tests_passed": true
+  }
+}
+```
+
+**Swift Audit Logging Implementation**:
+```swift
+import Foundation
+import OSLog
+
+actor AuditLogger {
+    private let logger = Logger(subsystem: "com.app.audit", category: "operations")
+
+    func logOperation(
+        user: String,
+        changeTicket: String?,
+        environment: String,
+        operation: String,
+        command: String,
+        outcome: OperationOutcome,
+        resourcesAffected: [String],
+        rollbackAvailable: Bool,
+        duration: TimeInterval,
+        errorDetail: String? = nil,
+        swiftContext: SwiftContext
+    ) async {
+        let logEntry: [String: Any] = [
+            "timestamp": ISO8601DateFormatter().string(from: Date()),
+            "user": user,
+            "change_ticket": changeTicket ?? "N/A",
+            "environment": environment,
+            "operation": operation,
+            "command": command,
+            "outcome": outcome.rawValue,
+            "resources_affected": resourcesAffected,
+            "rollback_available": rollbackAvailable,
+            "duration_seconds": Int(duration),
+            "error_detail": errorDetail as Any,
+            "swift_context": [
+                "swift_version": swiftContext.swiftVersion,
+                "platform": swiftContext.platform,
+                "dependencies_changed": swiftContext.dependenciesChanged,
+                "build_passed": swiftContext.buildPassed,
+                "tests_passed": swiftContext.testsPassed
+            ]
+        ]
+
+        if let jsonData = try? JSONSerialization.data(withJSONObject: logEntry, options: [.prettyPrinted]),
+           let jsonString = String(data: jsonData, encoding: .utf8) {
+            logger.info("\(jsonString)")
+        }
+    }
+}
+
+enum OperationOutcome: String {
+    case success
+    case failure
+}
+
+struct SwiftContext {
+    let swiftVersion: String
+    let platform: String
+    let dependenciesChanged: [String]
+    let buildPassed: Bool
+    let testsPassed: Bool
+}
+```
+
+Log every Swift package update, Xcode project modification, deployment, and Core Data migration. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. For iOS/macOS apps, forward logs to unified logging system via OSLog. For server-side Swift, integrate with centralized logging (e.g., ELK stack, CloudWatch). Retain logs for minimum 90 days for compliance and debugging purposes.
+
 Integration with other agents:
 - Share iOS insights with mobile-developer
 - Provide SwiftUI patterns to frontend-developer
