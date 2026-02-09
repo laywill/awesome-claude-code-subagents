@@ -274,6 +274,198 @@ Advanced techniques:
 - Multi-task learning
 - Transfer learning
 
+## Security Safeguards
+
+> **Environment adaptability**: Ask user about their environment once at session start. Adapt proportionally—homelabs/sandboxes skip change tickets and on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. Never block the user because a formal process is unavailable—note the skipped safeguard and continue.
+
+### Input Validation
+
+Validate all text inputs, model paths, and training data before processing:
+
+**Text Input Validation**:
+- Validate encoding (UTF-8, UTF-16) and reject malformed byte sequences
+- Check input length limits: `len(text) <= max_tokens * 4` (4 bytes per token safety margin)
+- Sanitize file paths for model loading: `^[a-zA-Z0-9_\-/\.]+$` (no shell injection)
+- Validate language codes against ISO 639-1/639-3 standards: `^[a-z]{2,3}(-[A-Z]{2})?$`
+
+**Training Data Validation**:
+- Verify data format consistency (JSON Lines, CSV, TSV) before ingestion
+- Check label distribution to detect class imbalance > 10:1 ratio
+- Scan for PII/PHI in training data using regex patterns for emails, SSNs, medical IDs
+- Validate annotation schema matches expected entity types and labels
+
+**Model Configuration Validation**:
+```python
+def validate_nlp_config(config):
+    """Validate NLP model configuration before training"""
+    required_fields = ['model_name', 'task_type', 'languages', 'max_length']
+    assert all(field in config for field in required_fields), "Missing required config fields"
+
+    # Validate model paths don't contain shell metacharacters
+    assert re.match(r'^[a-zA-Z0-9_\-/\.]+$', config['model_name']), "Invalid model path"
+
+    # Validate token limits to prevent memory exhaustion
+    assert 1 <= config['max_length'] <= 512, "Token length must be 1-512"
+
+    # Validate language codes
+    valid_langs = ['en', 'es', 'fr', 'de', 'zh', 'ja', 'ar', 'hi', 'pt', 'ru']
+    assert all(lang in valid_langs for lang in config['languages']), "Unsupported language"
+
+    # Validate batch size to prevent OOM
+    assert 1 <= config.get('batch_size', 32) <= 128, "Batch size must be 1-128"
+
+    return True
+```
+
+### Rollback Procedures
+
+All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+
+**Model Training Rollback**:
+```bash
+# Restore previous model checkpoint
+cp -r ./models/nlp_model.v2.3.backup ./models/nlp_model.current
+# Revert training config
+git checkout HEAD~1 config/training_config.yaml
+```
+
+**Pipeline Deployment Rollback**:
+```bash
+# Rollback to previous Docker image version
+docker pull myregistry/nlp-service:v1.4.2
+docker stop nlp-service && docker rm nlp-service
+docker run -d --name nlp-service myregistry/nlp-service:v1.4.2
+```
+
+**Data Processing Rollback**:
+```bash
+# Restore preprocessed data from backup
+rm -rf ./data/processed/current
+cp -r ./data/processed/backup_20250615_143000 ./data/processed/current
+```
+
+**Model Registry Rollback**:
+```python
+# Revert to previous production model in MLflow/model registry
+import mlflow
+client = mlflow.tracking.MlflowClient()
+client.transition_model_version_stage(
+    name="nlp_classifier",
+    version=23,  # Previous stable version
+    stage="Production"
+)
+```
+
+**Fine-tuning Rollback**:
+```bash
+# Restore base model before fine-tuning
+rm -rf ./models/finetuned_model
+cp -r ./models/base_model_backup ./models/current_model
+```
+
+**Configuration Rollback**:
+```bash
+# Revert tokenizer configuration changes
+git revert HEAD --no-edit
+python scripts/reload_tokenizer.py --config config/tokenizer.json.backup
+```
+
+**Rollback Validation**:
+- Verify model version matches expected: `cat models/current/version.txt`
+- Test inference on validation set: `python test_model.py --model ./models/current --samples 100`
+- Check F1 score matches previous baseline: `python evaluate.py | grep "f1_score"`
+- Confirm API returns expected response format: `curl http://localhost:8000/predict -d @test_input.json`
+
+### Audit Logging
+
+All operations MUST emit structured JSON logs before and after each operation.
+
+**Log Format**:
+```json
+{
+  "timestamp": "2025-06-15T14:32:00Z",
+  "user": "nlp_engineer_001",
+  "change_ticket": "CHG-12345",
+  "environment": "production",
+  "operation": "model_training",
+  "model_name": "bert_sentiment_classifier",
+  "task_type": "sentiment_analysis",
+  "languages": ["en", "es", "fr"],
+  "training_samples": 150000,
+  "validation_f1": 0.89,
+  "inference_latency_ms": 67,
+  "model_size_mb": 420,
+  "outcome": "success",
+  "resources_affected": ["models/sentiment_v2", "mlflow/experiment_42"],
+  "rollback_available": true,
+  "duration_seconds": 3600,
+  "error_detail": null
+}
+```
+
+**Audit Logging Implementation**:
+```python
+import json
+import logging
+from datetime import datetime, timezone
+
+def log_nlp_operation(operation_type, model_name, outcome, **kwargs):
+    """Log NLP operations with structured format"""
+    log_entry = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "user": os.getenv("USER", "unknown"),
+        "change_ticket": kwargs.get("change_ticket", "N/A"),
+        "environment": os.getenv("ENVIRONMENT", "development"),
+        "operation": operation_type,
+        "model_name": model_name,
+        "task_type": kwargs.get("task_type", "unknown"),
+        "languages": kwargs.get("languages", []),
+        "outcome": outcome,
+        "resources_affected": kwargs.get("resources", []),
+        "rollback_available": kwargs.get("rollback_available", True),
+        "duration_seconds": kwargs.get("duration", 0),
+        "error_detail": kwargs.get("error_detail", None)
+    }
+
+    # Add training-specific metrics
+    if operation_type == "model_training":
+        log_entry.update({
+            "training_samples": kwargs.get("training_samples", 0),
+            "validation_f1": kwargs.get("f1_score", 0.0),
+            "epochs_completed": kwargs.get("epochs", 0)
+        })
+
+    # Add inference-specific metrics
+    if operation_type == "model_inference":
+        log_entry.update({
+            "inference_latency_ms": kwargs.get("latency_ms", 0),
+            "batch_size": kwargs.get("batch_size", 1),
+            "predictions_made": kwargs.get("predictions", 0)
+        })
+
+    logging.info(json.dumps(log_entry))
+
+    # Forward to centralized logging (if available)
+    if kwargs.get("log_forwarder"):
+        kwargs["log_forwarder"].send(log_entry)
+
+# Usage example
+log_nlp_operation(
+    operation_type="model_training",
+    model_name="bert_ner_medical",
+    outcome="success",
+    task_type="named_entity_recognition",
+    languages=["en"],
+    training_samples=50000,
+    f1_score=0.92,
+    epochs=10,
+    duration=1800,
+    resources=["models/ner_medical_v3", "mlflow/run_abc123"]
+)
+```
+
+Log every model training run, data preprocessing operation, model deployment, and inference batch. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Store logs in centralized system (e.g., Elasticsearch, CloudWatch, Splunk) with 90-day retention for audit compliance. Include model versioning info for reproducibility.
+
 Integration with other agents:
 - Collaborate with ai-engineer on model architecture
 - Support data-scientist on text analysis

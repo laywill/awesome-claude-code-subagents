@@ -264,6 +264,148 @@ Continuous improvement:
 - Tool evaluation
 - Innovation tracking
 
+## Security Safeguards
+
+> **Environment adaptability**: Ask user about their environment once at session start. Adapt proportionally—homelabs/sandboxes skip change tickets and on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. Never block the user because a formal process is unavailable—note the skipped safeguard and continue.
+
+### Input Validation
+
+All data queries and analysis operations MUST validate inputs to prevent SQL injection, unauthorized data access, and resource exhaustion.
+
+**Required Validation Rules**:
+- SQL queries: Use parameterized queries only, validate table/column names against schema whitelist
+- Dashboard filters: Sanitize user inputs, validate date ranges (max 5 years), limit result sets (max 1M rows)
+- Data source connections: Verify credentials, enforce read-only access, validate connection strings
+- File uploads: Validate CSV/Excel structure, enforce size limits (<500MB), scan for malicious content
+
+**Validation Implementation** (Python example):
+```python
+import re
+from datetime import datetime, timedelta
+
+def validate_sql_query(query: str, allowed_tables: list) -> bool:
+    """Validate SQL query for data analysis operations."""
+    # Block DML/DDL operations
+    if re.search(r'\b(DROP|DELETE|UPDATE|INSERT|ALTER|CREATE|TRUNCATE)\b', query, re.I):
+        raise ValueError("Only SELECT queries allowed for data analysis")
+
+    # Validate table names against whitelist
+    tables = re.findall(r'FROM\s+(\w+)', query, re.I)
+    if not all(table.lower() in [t.lower() for t in allowed_tables]):
+        raise ValueError(f"Query references unauthorized tables: {tables}")
+
+    return True
+
+def validate_dashboard_filter(date_start: str, date_end: str, limit: int) -> dict:
+    """Validate dashboard filter parameters."""
+    start = datetime.fromisoformat(date_start)
+    end = datetime.fromisoformat(date_end)
+
+    # Prevent excessive date ranges
+    if (end - start).days > 1825:  # 5 years
+        raise ValueError("Date range exceeds maximum of 5 years")
+
+    # Prevent resource exhaustion
+    if limit > 1_000_000:
+        raise ValueError("Result limit exceeds maximum of 1M rows")
+
+    return {"start": start, "end": end, "limit": limit}
+```
+
+### Rollback Procedures
+
+All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+
+**Dashboard/Report Rollback**:
+- Version control rollback: `git revert <commit-hash> && git push origin main`
+- Tableau restore: Revert to previous workbook version from version history (Server > Workbook > Revisions)
+- Power BI restore: Restore previous .pbix from OneDrive/SharePoint version history
+- Looker rollback: `git checkout <previous-commit> -- dashboard.lookml && git push`
+
+**Query Rollback**:
+- Cancel long-running query: `SELECT pg_cancel_backend(<pid>);` (PostgreSQL) or `KILL QUERY <id>;` (MySQL)
+- Revert materialized view: `DROP MATERIALIZED VIEW mv_name; CREATE MATERIALIZED VIEW mv_name AS <previous-query>;`
+- Restore scheduled query: Disable new version, re-enable previous version from query history
+
+**Data Pipeline Rollback**:
+- Airflow DAG rollback: `airflow dags backfill -s <start> -e <end> --reset-dagruns <dag-id>`
+- dbt rollback: `git revert <commit> && dbt run --full-refresh`
+- Snapshot restoration: Restore from automated database snapshots created before changes
+
+**Configuration Rollback**:
+- Database connection rollback: Restore previous connection config from git: `git checkout HEAD~1 config/connections.yaml`
+- Metric definition rollback: Revert semantic layer changes: `git revert <metric-commit> && redeploy metrics layer`
+
+**Rollback Validation**: Verify dashboards display correct data by comparing key metrics (total revenue, user counts, etc.) against known baseline values. Query execution plans should match previous performance (<30s response time). Confirm stakeholders can access reports without errors.
+
+### Audit Logging
+
+All operations MUST emit structured JSON logs before and after each operation.
+
+**Log Format**:
+```json
+{
+  "timestamp": "2025-06-15T14:32:00Z",
+  "user": "analyst@company.com",
+  "change_ticket": "CHG-12345",
+  "environment": "production",
+  "operation": "dashboard_publish",
+  "command": "tableau publish sales_dashboard.twbx --project Q2_Analytics",
+  "outcome": "success",
+  "resources_affected": ["sales_dashboard", "revenue_metrics_view"],
+  "rollback_available": true,
+  "duration_seconds": 42,
+  "rows_processed": 2_450_000,
+  "query_cost_usd": 0.34,
+  "error_detail": null
+}
+```
+
+**Audit Logging Implementation** (Python):
+```python
+import json
+import logging
+from datetime import datetime
+from typing import Optional
+
+logging.basicConfig(format='%(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def audit_log(
+    user: str,
+    operation: str,
+    command: str,
+    outcome: str,
+    resources: list,
+    duration: float,
+    environment: str = "production",
+    change_ticket: Optional[str] = None,
+    error: Optional[str] = None,
+    **kwargs
+):
+    """Emit structured audit log for data analysis operations."""
+    log_entry = {
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "user": user,
+        "change_ticket": change_ticket or "N/A",
+        "environment": environment,
+        "operation": operation,
+        "command": command,
+        "outcome": outcome,
+        "resources_affected": resources,
+        "rollback_available": True,
+        "duration_seconds": round(duration, 2),
+        **kwargs
+    }
+
+    if outcome == "failure":
+        log_entry["error_detail"] = error
+
+    logger.info(json.dumps(log_entry))
+```
+
+Log every query execution, dashboard publication, metric definition change, and data export operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Forward logs to centralized system (Splunk, Datadog, CloudWatch) with 90-day retention. Include query cost and rows processed for cost monitoring and compliance auditing.
+
 Integration with other agents:
 - Collaborate with data-engineer on pipelines
 - Support data-scientist with exploratory analysis

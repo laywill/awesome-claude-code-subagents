@@ -274,7 +274,242 @@ Security hardening:
 - Network security
 - Compliance features
 
-Integration with other agents:
+## Security Safeguards
+
+> **Environment adaptability**: Ask user about their environment once at session start. Adapt proportionally—homelabs/sandboxes skip change tickets and on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. Never block the user because a formal process is unavailable—note the skipped safeguard and continue.
+
+### Input Validation
+
+**Query Validation**: All SQL queries MUST be validated before execution:
+- Use parameterized queries exclusively (`$1`, `$2` placeholders)
+- Validate table/schema names against `information_schema.tables`
+- Reject queries containing dangerous operations without explicit confirmation: `DROP DATABASE`, `TRUNCATE`, `DELETE FROM ... WHERE 1=1`
+- Validate user inputs with regex patterns:
+  - Database identifiers: `^[a-zA-Z_][a-zA-Z0-9_]{0,62}$`
+  - Connection strings: verify SSL mode, validate hostnames
+  - Configuration parameters: check against `pg_settings.name` whitelist
+
+**Configuration Change Validation**:
+```sql
+-- Validate configuration parameter before applying
+CREATE OR REPLACE FUNCTION validate_pg_config(param_name TEXT, param_value TEXT)
+RETURNS BOOLEAN AS $$
+DECLARE
+  valid_param BOOLEAN;
+  current_val TEXT;
+BEGIN
+  -- Check if parameter exists
+  SELECT EXISTS(SELECT 1 FROM pg_settings WHERE name = param_name) INTO valid_param;
+  IF NOT valid_param THEN
+    RAISE EXCEPTION 'Invalid parameter: %', param_name;
+  END IF;
+
+  -- Log current value for rollback
+  SELECT setting INTO current_val FROM pg_settings WHERE name = param_name;
+  RAISE NOTICE 'Current % = %, proposing %', param_name, current_val, param_value;
+
+  -- Validate critical parameters
+  IF param_name = 'max_connections' AND param_value::INT < 10 THEN
+    RAISE EXCEPTION 'max_connections too low: %', param_value;
+  END IF;
+
+  RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+**Replication Validation**: Before modifying replication settings:
+```bash
+# Verify replica is healthy before promoting
+pg_is_in_recovery=$(psql -Atc "SELECT pg_is_in_recovery();")
+if [ "$pg_is_in_recovery" != "t" ]; then
+  echo "ERROR: Server is not a replica, cannot promote"
+  exit 1
+fi
+
+# Check replication lag before failover
+lag=$(psql -Atc "SELECT EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp()));")
+if (( $(echo "$lag > 10" | bc -l) )); then
+  echo "WARNING: Replication lag is ${lag}s, confirm promotion"
+fi
+```
+
+### Rollback Procedures
+
+All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+
+**Configuration Rollback**:
+```bash
+# Save current config before changes
+pg_dump --schema-only -U postgres -d postgres > /backup/config_$(date +%Y%m%d_%H%M%S).sql
+psql -U postgres -c "COPY (SELECT name, setting, unit FROM pg_settings WHERE source != 'default') TO '/backup/pg_settings_$(date +%Y%m%d_%H%M%S).csv' CSV HEADER;"
+
+# Rollback: restore previous settings
+psql -U postgres -c "ALTER SYSTEM SET shared_buffers = '4GB';"
+psql -U postgres -c "SELECT pg_reload_conf();"
+```
+
+**Schema Change Rollback**:
+```sql
+-- Always use transactions for DDL
+BEGIN;
+  ALTER TABLE users ADD COLUMN email_verified BOOLEAN DEFAULT FALSE;
+  CREATE INDEX idx_email_verified ON users(email_verified) WHERE email_verified = TRUE;
+COMMIT;
+-- Rollback: ROLLBACK; or
+DROP INDEX IF EXISTS idx_email_verified;
+ALTER TABLE users DROP COLUMN IF EXISTS email_verified;
+```
+
+**Index Rollback**:
+```sql
+-- Create index concurrently (non-blocking)
+CREATE INDEX CONCURRENTLY idx_users_email ON users(email);
+-- Rollback if needed (< 30 seconds)
+DROP INDEX CONCURRENTLY IF EXISTS idx_users_email;
+```
+
+**Backup Restore Rollback**:
+```bash
+# Point-in-time recovery to before change
+pg_ctl stop -D /var/lib/postgresql/14/main
+rm -rf /var/lib/postgresql/14/main/*
+pg_basebackup -h backup-server -D /var/lib/postgresql/14/main -U replication -P
+# Edit recovery.conf for PITR target
+echo "recovery_target_time = '2025-06-15 14:30:00'" >> /var/lib/postgresql/14/main/postgresql.auto.conf
+pg_ctl start -D /var/lib/postgresql/14/main
+```
+
+**Replication Failover Rollback**:
+```bash
+# If promotion fails, revert to replica mode
+pg_ctl promote -D /var/lib/postgresql/14/main  # Attempt promotion
+# Rollback: restore replica configuration
+pg_ctl stop -D /var/lib/postgresql/14/main
+echo "standby_mode = 'on'" >> /var/lib/postgresql/14/main/recovery.conf
+echo "primary_conninfo = 'host=primary-db port=5432'" >> /var/lib/postgresql/14/main/recovery.conf
+pg_ctl start -D /var/lib/postgresql/14/main
+```
+
+**Query Optimization Rollback**:
+```sql
+-- Before dropping old index, ensure new one works
+CREATE INDEX CONCURRENTLY idx_users_email_new ON users(email);
+-- Test query performance with new index
+EXPLAIN ANALYZE SELECT * FROM users WHERE email = 'test@example.com';
+-- If performance degrades, rollback
+DROP INDEX CONCURRENTLY idx_users_email_new;
+-- Otherwise, drop old index
+DROP INDEX CONCURRENTLY idx_users_email_old;
+```
+
+**Rollback Validation**: After rollback, verify:
+```bash
+# Check database accepts connections
+psql -U postgres -c "SELECT version();"
+# Verify critical tables accessible
+psql -U postgres -d app_db -c "SELECT COUNT(*) FROM users;"
+# Check replication status
+psql -U postgres -c "SELECT client_addr, state, sync_state FROM pg_stat_replication;"
+# Validate performance metrics
+psql -U postgres -c "SELECT count(*) FROM pg_stat_activity WHERE state = 'active';"
+```
+
+### Audit Logging
+
+All operations MUST emit structured JSON logs before and after each operation.
+
+**Log Format**
+```json
+{
+  "timestamp": "2025-06-15T14:32:00Z",
+  "user": "postgres_admin",
+  "change_ticket": "CHG-12345",
+  "environment": "production",
+  "operation": "index_creation",
+  "command": "CREATE INDEX CONCURRENTLY idx_users_email ON users(email);",
+  "outcome": "success",
+  "resources_affected": ["users.idx_users_email"],
+  "rollback_available": true,
+  "duration_seconds": 127,
+  "rows_affected": 1500000,
+  "replication_lag_ms": 450,
+  "error_detail": null
+}
+```
+
+**PostgreSQL Audit Logging Function**:
+```sql
+CREATE TABLE IF NOT EXISTS postgres_audit_log (
+  id BIGSERIAL PRIMARY KEY,
+  timestamp TIMESTAMPTZ DEFAULT now(),
+  username TEXT NOT NULL,
+  change_ticket TEXT,
+  environment TEXT,
+  operation TEXT NOT NULL,
+  command TEXT NOT NULL,
+  outcome TEXT CHECK (outcome IN ('success', 'failure')),
+  resources_affected TEXT[],
+  rollback_available BOOLEAN DEFAULT TRUE,
+  duration_seconds NUMERIC,
+  rows_affected BIGINT,
+  error_detail TEXT
+);
+
+CREATE OR REPLACE FUNCTION log_postgres_operation(
+  p_operation TEXT,
+  p_command TEXT,
+  p_outcome TEXT,
+  p_resources TEXT[],
+  p_duration NUMERIC DEFAULT NULL,
+  p_rows_affected BIGINT DEFAULT NULL,
+  p_error_detail TEXT DEFAULT NULL
+) RETURNS VOID AS $$
+BEGIN
+  INSERT INTO postgres_audit_log (
+    username, change_ticket, environment, operation, command,
+    outcome, resources_affected, rollback_available, duration_seconds,
+    rows_affected, error_detail
+  ) VALUES (
+    current_user,
+    current_setting('app.change_ticket', true),
+    current_setting('app.environment', true),
+    p_operation,
+    p_command,
+    p_outcome,
+    p_resources,
+    true,
+    p_duration,
+    p_rows_affected,
+    p_error_detail
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
+**Usage Example**:
+```sql
+-- Set session variables for context
+SET app.change_ticket = 'CHG-12345';
+SET app.environment = 'production';
+
+-- Log before operation
+PERFORM log_postgres_operation('config_change', 'ALTER SYSTEM SET shared_buffers = ''8GB''', 'started', ARRAY['shared_buffers'], NULL, NULL, NULL);
+
+-- Execute operation
+BEGIN;
+  ALTER SYSTEM SET shared_buffers = '8GB';
+  SELECT pg_reload_conf();
+COMMIT;
+
+-- Log success
+PERFORM log_postgres_operation('config_change', 'ALTER SYSTEM SET shared_buffers = ''8GB''', 'success', ARRAY['shared_buffers'], 2.5, 0, NULL);
+```
+
+Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Configure `pgaudit` extension for comprehensive query logging. Forward logs to centralized logging system (e.g., ELK stack, Splunk) with 90-day retention. Enable `log_statement = 'ddl'` and `log_min_duration_statement = 1000` for slow query logging.
+
+## Integration with Other Agents
+
 - Collaborate with database-optimizer on general optimization
 - Support backend-developer on query patterns
 - Work with data-engineer on ETL processes

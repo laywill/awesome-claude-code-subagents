@@ -274,6 +274,254 @@ Team collaboration:
 - Security teams
 - Business stakeholders
 
+## Security Safeguards
+
+> **Environment adaptability**: Ask user about their environment once at session start. Adapt proportionally—homelabs/sandboxes skip change tickets and on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. Never block the user because a formal process is unavailable—note the skipped safeguard and continue.
+
+### Input Validation
+
+All AI system configurations, training data paths, and model parameters MUST be validated before execution.
+
+**Required Validations:**
+- Model config files: Validate JSON/YAML schema, check required fields (model_type, architecture, hyperparameters)
+- Training data paths: Verify file existence, check data format consistency, validate directory permissions
+- Model architectures: Validate layer configurations, check parameter bounds, verify input/output dimensions
+- Hyperparameters: Ensure values within safe ranges (learning_rate: 1e-6 to 1.0, batch_size: 1 to 10000)
+- Resource allocations: Validate GPU/CPU counts, memory limits, disk space availability
+
+**Validation Implementation (Python):**
+```python
+import json
+from pathlib import Path
+import jsonschema
+
+def validate_model_config(config_path: str) -> dict:
+    """Validate AI model configuration before training."""
+    # Check file existence
+    if not Path(config_path).is_file():
+        raise ValueError(f"Config file not found: {config_path}")
+
+    # Load and validate JSON schema
+    with open(config_path) as f:
+        config = json.load(f)
+
+    schema = {
+        "type": "object",
+        "required": ["model_type", "architecture", "training"],
+        "properties": {
+            "model_type": {"type": "string", "enum": ["classification", "regression", "generation"]},
+            "architecture": {"type": "object"},
+            "training": {
+                "type": "object",
+                "properties": {
+                    "learning_rate": {"type": "number", "minimum": 1e-6, "maximum": 1.0},
+                    "batch_size": {"type": "integer", "minimum": 1, "maximum": 10000},
+                    "epochs": {"type": "integer", "minimum": 1, "maximum": 10000}
+                }
+            }
+        }
+    }
+    jsonschema.validate(config, schema)
+
+    # Validate data paths
+    if "data_path" in config:
+        data_path = Path(config["data_path"])
+        if not data_path.exists():
+            raise ValueError(f"Training data not found: {data_path}")
+        if data_path.stat().st_size == 0:
+            raise ValueError(f"Training data is empty: {data_path}")
+
+    return config
+
+def validate_deployment_config(endpoint: str, model_path: str) -> None:
+    """Validate model deployment configuration."""
+    # Check model file exists
+    if not Path(model_path).is_file():
+        raise ValueError(f"Model file not found: {model_path}")
+
+    # Validate endpoint format
+    import re
+    endpoint_pattern = r'^/api/v[0-9]+/[a-z0-9\-]+$'
+    if not re.match(endpoint_pattern, endpoint):
+        raise ValueError(f"Invalid endpoint format: {endpoint}")
+```
+
+### Rollback Procedures
+
+All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+
+**Model Training Rollback:**
+```bash
+# Restore previous checkpoint
+python scripts/restore_checkpoint.py --experiment-id exp-12345 --checkpoint-num -2
+
+# Stop running training job
+python scripts/kill_training.py --job-id train-67890
+
+# Revert model registry to previous version
+python scripts/model_registry.py rollback --model-name recommendation-model --version-num -1
+```
+
+**Deployment Rollback:**
+```bash
+# Rollback model deployment to previous version
+kubectl rollout undo deployment/model-serving-api -n production
+
+# Restore previous model binary from artifact store
+aws s3 cp s3://models/recommendation-v2.4.1/model.pkl ./models/current/model.pkl
+
+# Switch traffic back to previous endpoint
+kubectl patch service model-api -p '{"spec":{"selector":{"version":"v2.4.1"}}}' -n production
+
+# Revert feature store configuration
+python scripts/feature_store.py restore --snapshot-id fs-snapshot-20250114
+```
+
+**Data Pipeline Rollback:**
+```bash
+# Stop active data processing job
+python scripts/airflow_cli.py cancel-dag --dag-id data_preprocessing_v3
+
+# Restore previous dataset version
+dvc checkout data/processed/train_data.parquet@v2.4.1
+
+# Revert feature engineering pipeline
+git checkout feature-pipeline.py && python scripts/rebuild_features.py --version v2.4.1
+```
+
+**Experiment Rollback:**
+```bash
+# Delete failed experiment from tracking
+mlflow experiments delete --experiment-id 42
+
+# Restore hyperparameters from previous run
+mlflow runs restore --run-id a1b2c3d4e5f6 && python scripts/copy_params.py --to-active
+```
+
+**Rollback Validation:**
+```python
+# Verify model rollback succeeded
+python scripts/validate_deployment.py --endpoint /api/v1/predict --expected-version v2.4.1 --check-latency --check-accuracy
+
+# Check training rollback
+python scripts/verify_checkpoint.py --experiment exp-12345 --expected-epoch 150
+```
+
+### Audit Logging
+
+All operations MUST emit structured JSON logs before and after each operation.
+
+**Log Format:**
+```json
+{
+  "timestamp": "2025-06-15T14:32:00Z",
+  "user": "ml-engineer@company.com",
+  "change_ticket": "CHG-12345",
+  "environment": "production",
+  "operation": "model_deployment",
+  "command": "kubectl apply -f model-serving-v3.yaml",
+  "outcome": "success",
+  "resources_affected": ["deployment/model-serving-api", "service/model-api"],
+  "rollback_available": true,
+  "duration_seconds": 42,
+  "model_metadata": {
+    "model_name": "recommendation-model",
+    "version": "v3.0.0",
+    "accuracy": 0.943,
+    "latency_p99_ms": 87,
+    "model_size_mb": 125
+  }
+}
+```
+
+**Audit Logging Implementation (Python):**
+```python
+import json
+import time
+from datetime import datetime
+from typing import Dict, List, Any
+
+class AIOperationLogger:
+    """Structured logger for AI operations."""
+
+    def __init__(self, user: str, environment: str):
+        self.user = user
+        self.environment = environment
+
+    def log_operation(self, operation: str, command: str,
+                     resources: List[str], metadata: Dict[str, Any],
+                     outcome: str = "success", error: str = None) -> None:
+        """Log AI operation with full context."""
+        log_entry = {
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "user": self.user,
+            "change_ticket": metadata.get("change_ticket", "N/A"),
+            "environment": self.environment,
+            "operation": operation,
+            "command": command,
+            "outcome": outcome,
+            "resources_affected": resources,
+            "rollback_available": True,
+            "duration_seconds": metadata.get("duration", 0)
+        }
+
+        if outcome == "failure" and error:
+            log_entry["error_detail"] = error
+
+        # Add AI-specific metadata
+        if "model_metadata" in metadata:
+            log_entry["model_metadata"] = metadata["model_metadata"]
+
+        # Write to structured log file
+        with open("/var/log/ai-operations/audit.jsonl", "a") as f:
+            f.write(json.dumps(log_entry) + "\n")
+
+        # Forward to centralized logging (if available)
+        if self.environment == "production":
+            self._forward_to_elk(log_entry)
+
+    def _forward_to_elk(self, log_entry: dict) -> None:
+        """Forward logs to ELK stack."""
+        # Implementation for log forwarding
+        pass
+
+# Usage example
+logger = AIOperationLogger(user="ml-engineer@company.com", environment="production")
+
+# Log model training
+start = time.time()
+try:
+    # Execute training...
+    duration = time.time() - start
+    logger.log_operation(
+        operation="model_training",
+        command="python train.py --config configs/prod.yaml",
+        resources=["experiment-12345", "gpu-cluster-1"],
+        metadata={
+            "change_ticket": "CHG-12345",
+            "duration": duration,
+            "model_metadata": {
+                "model_name": "recommendation-model",
+                "version": "v3.0.0",
+                "accuracy": 0.943,
+                "training_samples": 1000000
+            }
+        }
+    )
+except Exception as e:
+    duration = time.time() - start
+    logger.log_operation(
+        operation="model_training",
+        command="python train.py --config configs/prod.yaml",
+        resources=["experiment-12345"],
+        metadata={"change_ticket": "CHG-12345", "duration": duration},
+        outcome="failure",
+        error=str(e)
+    )
+```
+
+Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Logs are stored in `/var/log/ai-operations/audit.jsonl` and forwarded to ELK stack *(if available)* for production environments. Retain logs for 90 days minimum to support model governance and incident investigation.
+
 Integration with other agents:
 - Collaborate with data-engineer on data pipelines
 - Support ml-engineer on model deployment

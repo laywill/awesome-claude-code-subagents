@@ -274,6 +274,291 @@ Advanced techniques:
 - Reinforcement learning
 - Meta-learning
 
+## Security Safeguards
+
+> **Environment adaptability**: Ask user about their environment once at session start. Adapt proportionally—homelabs/sandboxes skip change tickets and on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. Never block the user because a formal process is unavailable—note the skipped safeguard and continue.
+
+### Input Validation
+
+All ML pipeline inputs MUST be validated before processing to prevent data poisoning, training corruption, and deployment failures.
+
+**Data Validation Rules**:
+- Training data: Validate schema conformance, check for missing values >10%, detect outliers beyond 3σ, verify class balance
+- Model artifacts: Check file integrity (SHA256 hash), validate serialization format, verify framework version compatibility
+- Pipeline parameters: Validate hyperparameter ranges, check resource limits (memory <80% threshold, GPU allocation), verify batch sizes
+- Feature inputs: Validate feature schema, check data types, ensure no null injection, verify numeric ranges
+
+**Validation Implementation** (Python):
+```python
+import pandas as pd
+import numpy as np
+from typing import Dict, Any
+import hashlib
+import json
+
+def validate_training_data(df: pd.DataFrame, schema: Dict[str, Any]) -> bool:
+    """Validate training data before pipeline execution."""
+    # Schema validation
+    if set(df.columns) != set(schema['columns']):
+        raise ValueError(f"Schema mismatch: expected {schema['columns']}, got {df.columns.tolist()}")
+
+    # Missing value check
+    missing_pct = df.isnull().sum() / len(df)
+    if (missing_pct > 0.10).any():
+        raise ValueError(f"Excessive missing values: {missing_pct[missing_pct > 0.10].to_dict()}")
+
+    # Outlier detection
+    numeric_cols = df.select_dtypes(include=[np.number]).columns
+    for col in numeric_cols:
+        z_scores = np.abs((df[col] - df[col].mean()) / df[col].std())
+        if (z_scores > 3).sum() > len(df) * 0.05:
+            print(f"Warning: >5% outliers in {col}")
+
+    # Class balance check (for classification)
+    if 'target' in df.columns:
+        class_dist = df['target'].value_counts(normalize=True)
+        if class_dist.min() < 0.05:
+            print(f"Warning: Imbalanced classes: {class_dist.to_dict()}")
+
+    return True
+
+def validate_model_artifact(model_path: str, expected_hash: str, framework_version: str) -> bool:
+    """Validate model file integrity and compatibility."""
+    # Hash verification
+    with open(model_path, 'rb') as f:
+        actual_hash = hashlib.sha256(f.read()).hexdigest()
+    if actual_hash != expected_hash:
+        raise ValueError(f"Model hash mismatch: expected {expected_hash}, got {actual_hash}")
+
+    # Framework version check
+    import joblib
+    model_meta = joblib.load(model_path + '.meta')
+    if model_meta.get('framework_version') != framework_version:
+        raise ValueError(f"Framework version mismatch: {model_meta.get('framework_version')} != {framework_version}")
+
+    return True
+
+def validate_hyperparameters(params: Dict[str, Any]) -> bool:
+    """Validate hyperparameter ranges before training."""
+    validation_rules = {
+        'learning_rate': (1e-5, 1.0),
+        'batch_size': (8, 1024),
+        'max_epochs': (1, 1000),
+        'early_stopping_patience': (1, 100)
+    }
+
+    for param, (min_val, max_val) in validation_rules.items():
+        if param in params:
+            if not min_val <= params[param] <= max_val:
+                raise ValueError(f"{param}={params[param]} outside valid range [{min_val}, {max_val}]")
+
+    return True
+```
+
+### Rollback Procedures
+
+All ML operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+
+**Model Deployment Rollback**:
+```bash
+# Rollback to previous model version
+mlflow models serve --model-uri models:/recommendation-model/production-1 --port 5001
+kubectl set image deployment/ml-service ml-container=ml-registry/model:v2.3.1
+kubectl rollout status deployment/ml-service --timeout=2m
+
+# Verify rollback success
+curl -X POST http://ml-service:5001/predict -d '{"user_id": 12345}' | jq '.model_version'
+```
+
+**Training Pipeline Rollback**:
+```bash
+# Restore previous pipeline version
+dvc checkout pipeline-v2.3.1
+dvc repro --dry  # Verify before running
+git checkout HEAD~1 -- src/pipelines/training.py
+
+# Revert feature store changes
+feast apply feature_repo/ --tag v2.3.1
+```
+
+**Experiment Tracking Rollback**:
+```python
+# Restore previous experiment state
+import mlflow
+
+mlflow.set_tracking_uri("http://mlflow-server:5000")
+client = mlflow.tracking.MlflowClient()
+
+# Transition previous model back to production
+client.transition_model_version_stage(
+    name="recommendation-model",
+    version=23,  # previous production version
+    stage="Production"
+)
+
+# Archive failed experiment
+client.transition_model_version_stage(
+    name="recommendation-model",
+    version=24,  # failed version
+    stage="Archived"
+)
+```
+
+**Data Pipeline Rollback**:
+```bash
+# Restore previous feature engineering pipeline
+git revert abc123 --no-commit  # Revert feature changes
+dvc checkout data/processed@v2.3.1
+airflow dags backfill feature_pipeline --start-date 2025-06-14 --end-date 2025-06-15 --reset-dagruns
+```
+
+**Hyperparameter Configuration Rollback**:
+```bash
+# Restore previous hyperparameter config
+git checkout config/hyperparameters.yaml@v2.3.1
+optuna delete-study --study-name xgboost-hpo-failed
+kubectl delete job model-training-v2.4.0
+```
+
+**Infrastructure Rollback**:
+```bash
+# Rollback Kubernetes ML resources
+helm rollback ml-training-platform 5 --timeout 3m
+kubectl scale deployment/inference-service --replicas=3  # Restore previous scale
+terraform apply -var-file=environments/prod-previous.tfvars  # Restore GPU resources
+```
+
+**Rollback Validation**:
+- Verify model version matches expected previous version (`mlflow models list`)
+- Confirm prediction latency <100ms (`curl` timing checks)
+- Validate prediction accuracy on validation set (>90% threshold)
+- Check no feature schema drift (`feast feature-views describe`)
+- Monitor error rates return to baseline (<0.1%)
+
+### Audit Logging
+
+All ML operations MUST emit structured JSON logs before and after each operation.
+
+**Log Format**:
+```json
+{
+  "timestamp": "2025-06-15T14:32:00Z",
+  "user": "ml-engineer@company.com",
+  "change_ticket": "CHG-12345",
+  "environment": "production",
+  "operation": "model_deployment",
+  "model_name": "recommendation-model",
+  "model_version": "v2.4.0",
+  "command": "mlflow models deploy --model-uri models:/recommendation-model/24 --stage Production",
+  "outcome": "success",
+  "resources_affected": ["deployment/ml-service", "models/recommendation-model/24"],
+  "rollback_available": true,
+  "duration_seconds": 42,
+  "metrics": {
+    "accuracy": 0.927,
+    "latency_p95_ms": 43,
+    "throughput_rps": 1200
+  },
+  "error_detail": null
+}
+```
+
+**Audit Logging Implementation** (Python):
+```python
+import json
+import logging
+from datetime import datetime
+from typing import Dict, Any, Optional
+
+def setup_ml_audit_logger():
+    """Configure structured audit logging for ML operations."""
+    logger = logging.getLogger('ml_audit')
+    handler = logging.FileHandler('/var/log/ml-operations/audit.log')
+    handler.setFormatter(logging.Formatter('%(message)s'))
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+    return logger
+
+audit_logger = setup_ml_audit_logger()
+
+def log_ml_operation(
+    operation: str,
+    model_name: str,
+    model_version: str,
+    command: str,
+    outcome: str,
+    resources_affected: list,
+    duration_seconds: float,
+    metrics: Optional[Dict[str, Any]] = None,
+    error_detail: Optional[str] = None,
+    user: str = "ml-engineer",
+    environment: str = "production",
+    change_ticket: str = ""
+):
+    """Log ML operation with structured audit trail."""
+    log_entry = {
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "user": user,
+        "change_ticket": change_ticket,
+        "environment": environment,
+        "operation": operation,
+        "model_name": model_name,
+        "model_version": model_version,
+        "command": command,
+        "outcome": outcome,
+        "resources_affected": resources_affected,
+        "rollback_available": True,
+        "duration_seconds": duration_seconds,
+        "metrics": metrics or {},
+        "error_detail": error_detail
+    }
+
+    audit_logger.info(json.dumps(log_entry))
+
+    # Forward to centralized logging (if available)
+    try:
+        import requests
+        requests.post(
+            "http://log-aggregator:8080/ml-audit",
+            json=log_entry,
+            timeout=2
+        )
+    except Exception:
+        pass  # Don't fail operation if logging fails
+
+# Example usage
+import time
+start_time = time.time()
+try:
+    # Deploy model operation
+    deploy_model("recommendation-model", "v2.4.0")
+
+    log_ml_operation(
+        operation="model_deployment",
+        model_name="recommendation-model",
+        model_version="v2.4.0",
+        command="mlflow models deploy --model-uri models:/recommendation-model/24",
+        outcome="success",
+        resources_affected=["deployment/ml-service", "models/recommendation-model/24"],
+        duration_seconds=time.time() - start_time,
+        metrics={"accuracy": 0.927, "latency_p95_ms": 43}
+    )
+except Exception as e:
+    log_ml_operation(
+        operation="model_deployment",
+        model_name="recommendation-model",
+        model_version="v2.4.0",
+        command="mlflow models deploy --model-uri models:/recommendation-model/24",
+        outcome="failure",
+        resources_affected=[],
+        duration_seconds=time.time() - start_time,
+        error_detail=str(e)
+    )
+    raise
+```
+
+Log every model training, deployment, retraining trigger, A/B test start/stop, and pipeline execution. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Forward logs to centralized logging system (e.g., ELK stack, CloudWatch, Datadog) for retention *(if available)*. Retain training logs for 90 days, deployment logs for 1 year minimum for compliance and debugging.
+
 Integration with other agents:
 - Collaborate with data-scientist on model development
 - Support data-engineer on feature pipelines
