@@ -124,6 +124,149 @@ Cross-platform debugging:
 - Hardware dependencies
 - Network conditions
 
+## Security Safeguards
+
+> **Environment adaptability**: Ask user about their environment once at session start. Adapt proportionally—homelabs/sandboxes skip change tickets and on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. Never block the user because a formal process is unavailable—note the skipped safeguard and continue.
+
+### Input Validation
+
+Before executing debugging operations, validate all inputs to prevent command injection, path traversal, and malicious debugging commands.
+
+**Required Validations:**
+- **Process IDs**: Must be numeric and belong to user's processes: `^[0-9]+$`
+- **File paths**: Must be within project directory, no parent traversal: `^(?!.*\.\.).*$`
+- **Breakpoint expressions**: Must not contain shell metacharacters: `^[a-zA-Z0-9_\.\:\[\]\(\)\s\-\>\*\&]+$`
+- **Debug commands**: Must be from allowlist (continue, step, print, backtrace, etc.)
+- **Memory addresses**: Must be valid hex format: `^0x[0-9a-fA-F]+$`
+
+**Example Validation (Python):**
+```python
+import re
+import os
+
+def validate_debug_input(debug_config):
+    """Validate debugging configuration before execution"""
+    # Validate PID
+    if not re.match(r'^[0-9]+$', str(debug_config.get('pid', ''))):
+        raise ValueError(f"Invalid PID format: {debug_config.get('pid')}")
+
+    # Validate file paths (no directory traversal)
+    core_dump = debug_config.get('core_dump_path', '')
+    if '..' in core_dump or core_dump.startswith('/'):
+        raise ValueError(f"Suspicious path detected: {core_dump}")
+
+    # Validate breakpoint expressions
+    breakpoint = debug_config.get('breakpoint', '')
+    if re.search(r'[;&|`$()]', breakpoint):
+        raise ValueError(f"Invalid characters in breakpoint: {breakpoint}")
+
+    # Validate debug command is in allowlist
+    command = debug_config.get('command', '')
+    allowed_commands = ['continue', 'step', 'next', 'print', 'backtrace', 'info', 'list', 'finish']
+    if command not in allowed_commands:
+        raise ValueError(f"Debug command not allowed: {command}")
+
+    return True
+```
+
+### Rollback Procedures
+
+All debugging operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+
+**Pre-execution Requirements:**
+- Create system snapshot before attaching debugger to production process
+- Backup original binary/core dump before symbol manipulation
+- Record process state before modifying memory/registers
+- Document original breakpoints before adding instrumentation
+
+**Rollback Commands:**
+```bash
+# Detach debugger from process without side effects
+gdb -batch -ex "detach" -p <PID>
+lldb --batch -o "process detach" -p <PID>
+
+# Restore process from snapshot
+systemctl stop myapp
+cp /backups/myapp.snapshot /var/run/myapp/state
+systemctl start myapp
+
+# Revert binary patch for debugging
+cp /backups/myapp.original /usr/bin/myapp
+systemctl restart myapp
+
+# Remove breakpoints and resume process
+gdb -batch -ex "delete breakpoints" -ex "continue" -p <PID>
+
+# Restore memory dump to original state
+mv /debug/core.dump.backup /debug/core.dump
+
+# Rollback symbol table changes
+objcopy --remove-section=.debug_modified myapp myapp.restored
+```
+
+**Rollback Validation**: After rollback, verify process memory usage returns to baseline, no zombie processes remain (`ps aux | grep defunct`), CPU usage normalizes, and application health checks pass. Check for orphaned debug sessions with `lsof -i | grep gdb`.
+
+### Audit Logging
+
+All debugging operations MUST emit structured JSON logs before and after each operation.
+
+**Log Format:**
+```json
+{
+  "timestamp": "2025-06-15T14:32:00Z",
+  "user": "debug-engineer",
+  "change_ticket": "CHG-12345",
+  "environment": "staging",
+  "operation": "attach_debugger",
+  "command": "gdb -p 42891",
+  "outcome": "success",
+  "resources_affected": ["process:myapp:42891", "core_dump:/tmp/core.42891"],
+  "rollback_available": true,
+  "duration_seconds": 18,
+  "debug_details": {
+    "breakpoints_set": 3,
+    "memory_modified": false,
+    "symbols_loaded": "/usr/lib/debug/myapp.debug",
+    "crash_signature": "SIGSEGV at 0x7fffa8c0b000"
+  },
+  "error_detail": null
+}
+```
+
+**Example Logging (Python):**
+```python
+import json
+import time
+from datetime import datetime
+
+def log_debug_operation(operation, command, resources, outcome, error=None, **kwargs):
+    """Log all debugging operations with structured format"""
+    log_entry = {
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "user": os.getenv("USER"),
+        "change_ticket": os.getenv("CHANGE_TICKET", "N/A"),
+        "environment": os.getenv("ENV", "development"),
+        "operation": operation,
+        "command": command,
+        "outcome": outcome,
+        "resources_affected": resources,
+        "rollback_available": True,
+        "duration_seconds": kwargs.get('duration', 0),
+        "debug_details": kwargs.get('debug_details', {}),
+        "error_detail": error
+    }
+
+    # Write to structured log file
+    with open("/var/log/debug-operations.jsonl", "a") as f:
+        f.write(json.dumps(log_entry) + "\n")
+
+    # Forward to centralized logging if available
+    if os.path.exists("/usr/bin/logger"):
+        os.system(f"logger -t debugger '{json.dumps(log_entry)}'")
+```
+
+Log every breakpoint operation, memory inspection, process attachment/detachment, core dump analysis, and symbol loading. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Retain debug logs for 90 days minimum for incident correlation. Forward to SIEM *(if available)* for security analysis of unexpected debugging activity.
+
 ## Communication Protocol
 
 ### Debugging Context

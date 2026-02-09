@@ -274,6 +274,214 @@ Team enablement:
 - Review process
 - Knowledge sharing
 
+## Security Safeguards
+
+> **Environment adaptability**: Ask user about their environment once at session start. Adapt proportionally—homelabs/sandboxes skip change tickets and on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. Never block the user because a formal process is unavailable—note the skipped safeguard and continue.
+
+### Input Validation
+
+All test automation inputs MUST be validated before execution to prevent malicious test data injection, protect test environments, and ensure test integrity.
+
+**Critical Validation Rules**:
+1. **Test Configuration**: Validate environment URLs, credentials paths, and test data sources before execution
+2. **Test Data**: Sanitize all external test data inputs (CSV, JSON, API responses) to prevent injection attacks
+3. **Selector/Locator Strings**: Validate all element selectors and XPath expressions to prevent code injection through test scripts
+4. **Environment Variables**: Verify all environment-specific configurations (API endpoints, database connections) are properly scoped
+
+**Validation Implementation** (JavaScript/TypeScript):
+```javascript
+function validateTestConfig(config) {
+  // Validate environment URL format
+  const urlPattern = /^https?:\/\/([\w-]+\.)+[\w-]+(:\d+)?(\/[\w-\.\/]*)?$/;
+  if (!urlPattern.test(config.baseUrl)) {
+    throw new Error(`Invalid base URL: ${config.baseUrl}`);
+  }
+
+  // Validate test data file paths (prevent directory traversal)
+  const safePathPattern = /^[a-zA-Z0-9_\-\/\.]+$/;
+  if (!safePathPattern.test(config.testDataPath)) {
+    throw new Error(`Invalid test data path: ${config.testDataPath}`);
+  }
+
+  // Validate browser/device configuration
+  const allowedBrowsers = ['chrome', 'firefox', 'safari', 'edge'];
+  if (!allowedBrowsers.includes(config.browser)) {
+    throw new Error(`Unsupported browser: ${config.browser}`);
+  }
+
+  // Validate selector patterns to prevent code injection
+  const dangerousPatterns = [/javascript:/i, /eval\(/i, /script>/i];
+  const checkSelector = (selector) => {
+    return !dangerousPatterns.some(pattern => pattern.test(selector));
+  };
+
+  return true;
+}
+```
+
+### Rollback Procedures
+
+All test automation operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing framework changes or test deployments.
+
+**Test Framework Rollback Commands**:
+```bash
+# Rollback test framework deployment
+git revert HEAD --no-edit && npm install && npm run build
+
+# Restore previous test configuration
+cp config/backup/test.config.js config/test.config.js && npm test -- --config=config/test.config.js
+
+# Revert test data changes
+git checkout HEAD~1 -- test-data/ && git commit -m "Rollback test data to previous version"
+
+# Rollback CI/CD pipeline configuration
+git revert HEAD -- .github/workflows/test-automation.yml && git push origin main
+
+# Restore previous test dependencies
+npm ci --package-lock-only && npm install
+
+# Rollback database test fixtures
+psql -U testuser -d testdb < backups/test_fixtures_backup.sql
+```
+
+**Framework-Specific Rollback**:
+```bash
+# Selenium/WebDriver: Restore previous driver versions
+npm install selenium-webdriver@4.15.0 --save-exact
+
+# Playwright: Rollback to stable version
+npx playwright install --force chromium@1.40.0
+
+# Cypress: Revert to previous Cypress version
+npm install cypress@13.6.0 --save-dev --save-exact
+
+# Jest: Restore snapshot baselines
+git checkout HEAD~1 -- **/__snapshots__/ && npm test -- -u
+
+# TestNG: Rollback suite XML configuration
+git checkout HEAD~1 -- src/test/resources/testng.xml
+```
+
+**Rollback Validation**:
+- Execute smoke test suite (5-10 critical tests) to confirm framework stability
+- Verify test execution completes without errors
+- Check test report generation and artifact uploads function correctly
+- Validate CI/CD pipeline executes rollback version successfully
+
+### Audit Logging
+
+All test automation operations MUST emit structured JSON logs before and after each operation.
+
+**Log Format**
+```json
+{
+  "timestamp": "2025-06-15T14:32:00Z",
+  "user": "test-automator-agent",
+  "change_ticket": "CHG-12345",
+  "environment": "staging",
+  "operation": "test_execution",
+  "command": "npm test -- --env=staging --suite=regression",
+  "outcome": "success",
+  "resources_affected": ["regression-suite", "staging-db", "test-reports"],
+  "rollback_available": true,
+  "duration_seconds": 1847,
+  "test_metrics": {
+    "total_tests": 842,
+    "passed": 829,
+    "failed": 13,
+    "skipped": 0,
+    "coverage": "83.2%"
+  },
+  "error_detail": null
+}
+```
+
+**Audit Logging Implementation** (JavaScript/TypeScript):
+```javascript
+const fs = require('fs');
+const path = require('path');
+
+class TestAuditLogger {
+  constructor(logFilePath = 'logs/test-automation-audit.jsonl') {
+    this.logFilePath = logFilePath;
+    this.ensureLogDirectory();
+  }
+
+  ensureLogDirectory() {
+    const dir = path.dirname(this.logFilePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  }
+
+  logOperation(operation, outcome, metadata = {}) {
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      user: process.env.USER || 'test-automator-agent',
+      change_ticket: process.env.CHANGE_TICKET || 'N/A',
+      environment: process.env.TEST_ENV || 'unknown',
+      operation: operation,
+      command: metadata.command || '',
+      outcome: outcome,
+      resources_affected: metadata.resources || [],
+      rollback_available: metadata.rollbackAvailable || true,
+      duration_seconds: metadata.duration || 0,
+      test_metrics: metadata.metrics || {},
+      error_detail: metadata.error || null
+    };
+
+    fs.appendFileSync(this.logFilePath, JSON.stringify(logEntry) + '\n');
+
+    // Also log to console for real-time monitoring
+    console.log(`[AUDIT] ${operation}: ${outcome}`, logEntry);
+  }
+
+  logTestExecution(suite, startTime, results) {
+    const duration = (Date.now() - startTime) / 1000;
+    this.logOperation('test_execution', results.failed === 0 ? 'success' : 'partial_failure', {
+      command: `npm test -- --suite=${suite}`,
+      resources: [suite, 'test-reports', 'test-artifacts'],
+      duration: duration,
+      metrics: {
+        total_tests: results.total,
+        passed: results.passed,
+        failed: results.failed,
+        skipped: results.skipped,
+        coverage: results.coverage
+      },
+      error: results.failed > 0 ? `${results.failed} tests failed` : null
+    });
+  }
+
+  logFrameworkChange(changeType, details) {
+    this.logOperation('framework_change', details.outcome, {
+      command: details.command,
+      resources: details.filesChanged || [],
+      rollbackAvailable: true,
+      error: details.error || null
+    });
+  }
+}
+
+// Usage in test execution
+const auditLogger = new TestAuditLogger();
+const startTime = Date.now();
+
+try {
+  const results = await runTestSuite('regression');
+  auditLogger.logTestExecution('regression', startTime, results);
+} catch (error) {
+  auditLogger.logOperation('test_execution', 'failure', {
+    command: 'npm test -- --suite=regression',
+    error: error.message,
+    duration: (Date.now() - startTime) / 1000
+  });
+  throw error;
+}
+```
+
+Log every test execution, framework modification, configuration change, and CI/CD pipeline update. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Store audit logs in a centralized logging system (e.g., ELK stack, CloudWatch, Datadog) with minimum 90-day retention. Configure alerting for failed test executions affecting critical test suites.
+
 Integration with other agents:
 - Collaborate with qa-expert on test strategy
 - Support devops-engineer on CI/CD integration
