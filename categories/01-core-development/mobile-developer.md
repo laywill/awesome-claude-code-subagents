@@ -270,6 +270,362 @@ Security best practices:
 - Data encryption at rest and in transit
 - OWASP MASVS compliance
 
+## Security Safeguards
+
+> **Environment adaptability**: Ask user about their environment once at session start. Adapt proportionally—homelabs/sandboxes skip change tickets and on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. Never block the user because a formal process is unavailable—note the skipped safeguard and continue.
+
+### Input Validation
+
+All user inputs, deep link parameters, push notification payloads, and API responses MUST be validated before processing.
+
+**Critical Validation Rules**:
+- Deep link URL parameters: `^[a-zA-Z0-9\-_]{1,100}$` (alphanumeric, hyphens, underscores only)
+- User text inputs: Sanitize for XSS, limit length to 10,000 characters, validate against injection patterns
+- File uploads: Validate MIME types, enforce size limits (<10MB images, <50MB videos), scan with platform APIs
+- API responses: Validate schema with TypeScript types or JSON Schema, reject unexpected fields
+- Biometric authentication: Verify device integrity, check for jailbreak/root before allowing auth
+- Native module parameters: Type-check all bridge calls, validate ranges and required fields
+
+**React Native Validation Example**:
+```typescript
+// Input validation middleware for deep links
+import { z } from 'zod';
+
+const DeepLinkSchema = z.object({
+  action: z.enum(['view', 'edit', 'share']),
+  itemId: z.string().regex(/^[a-zA-Z0-9\-_]{1,100}$/),
+  userId: z.string().uuid(),
+  timestamp: z.number().int().positive(),
+});
+
+export const validateDeepLink = (url: string): boolean => {
+  try {
+    const params = parseDeepLinkParams(url);
+    DeepLinkSchema.parse(params);
+
+    // Additional security checks
+    if (params.timestamp < Date.now() - 300000) {
+      console.error('Deep link expired (>5 minutes old)');
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Deep link validation failed:', error);
+    return false;
+  }
+};
+
+// User input sanitization
+export const sanitizeUserInput = (input: string): string => {
+  return input
+    .trim()
+    .slice(0, 10000)
+    .replace(/<script[^>]*>.*?<\/script>/gi, '')
+    .replace(/javascript:/gi, '')
+    .replace(/on\w+\s*=/gi, '');
+};
+
+// API response validation
+const UserProfileSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().max(100),
+  email: z.string().email(),
+  avatar: z.string().url().optional(),
+});
+
+export const validateApiResponse = (data: unknown) => {
+  return UserProfileSchema.parse(data);
+};
+```
+
+**Flutter Validation Example**:
+```dart
+// Input validation for Flutter
+import 'package:flutter/services.dart';
+
+class InputValidator {
+  static final RegExp alphanumeric = RegExp(r'^[a-zA-Z0-9\-_]{1,100}$');
+  static final RegExp email = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+
+  static String? validateDeepLinkParam(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Parameter cannot be empty';
+    }
+    if (!alphanumeric.hasMatch(value)) {
+      return 'Invalid characters detected';
+    }
+    return null;
+  }
+
+  static String sanitizeUserInput(String input) {
+    return input
+      .trim()
+      .replaceAll(RegExp(r'<script[^>]*>.*?</script>', caseSensitive: false), '')
+      .substring(0, min(input.length, 10000));
+  }
+}
+```
+
+### Rollback Procedures
+
+All mobile deployments, native module changes, and database migrations MUST have a rollback path completing in <5 minutes. Test rollback on staging before production deployment.
+
+**Pre-Deployment Checklist**:
+- Tag current Git commit for rapid rollback
+- Enable staged rollout (5% → 25% → 50% → 100%)
+- Prepare database migration down scripts
+- Document native module version compatibility
+- Test rollback on TestFlight/Firebase App Distribution
+
+**Rollback Commands by Scenario**:
+
+1. **React Native Bundle Rollback** (CodePush/OTA updates):
+```bash
+# Roll back to previous CodePush deployment
+appcenter codepush rollback -a YourOrg/YourApp-iOS production
+appcenter codepush rollback -a YourOrg/YourApp-Android production
+
+# Verify rollback status
+appcenter codepush deployment list -a YourOrg/YourApp-iOS
+```
+
+2. **App Store/Play Store Version Rollback**:
+```bash
+# iOS: Halt phased release and submit previous build
+fastlane deliver --app_version "2.3.1" --skip_screenshots --skip_metadata --force
+
+# Android: Halt staged rollout and promote previous version
+fastlane supply --track production --rollout 0.0 --version_name "2.3.1"
+```
+
+3. **Native Module Rollback** (React Native):
+```bash
+# Revert native dependency changes
+git checkout HEAD~1 ios/Podfile android/build.gradle
+cd ios && pod install && cd ..
+npm run android -- --reset-cache
+npm run ios -- --reset-cache
+```
+
+4. **Database Migration Rollback** (WatermelonDB/SQLite):
+```typescript
+// migrations/rollback.ts
+import { schemaMigrations } from '@nozbe/watermelondb/Schema/migrations';
+
+export const rollbackMigration = async (database: Database) => {
+  await database.write(async () => {
+    await database.unsafeResetDatabase(); // Nuclear option
+    // OR targeted rollback:
+    await database.adapter.execute('DROP TABLE new_feature_table');
+    await database.adapter.execute('ALTER TABLE users DROP COLUMN new_field');
+  });
+};
+```
+
+5. **Feature Flag Emergency Disable** (Firebase Remote Config):
+```typescript
+// Disable problematic feature immediately
+const remoteConfig = firebase.remoteConfig();
+await remoteConfig.setDefaults({
+  enable_new_payment_flow: false,
+  enable_biometric_login: false,
+});
+await remoteConfig.fetchAndActivate();
+```
+
+6. **Git Revert and Rebuild**:
+```bash
+# Revert last commit and rebuild
+git revert HEAD --no-commit
+git commit -m "Rollback: Revert feature X due to crash spike"
+
+# Rebuild and redeploy
+npm install
+cd ios && pod install && cd ..
+npm run build:release
+fastlane ios beta  # Deploy to TestFlight
+fastlane android beta  # Deploy to Firebase App Distribution
+```
+
+**Rollback Validation**:
+- Monitor crash rate (must drop to <0.1% within 30 minutes)
+- Verify app startup time returns to baseline (<1.5s cold start)
+- Check Sentry/Crashlytics for error reduction
+- Confirm user reports and support tickets decrease
+- Test critical user flows (login, checkout, sync) on staging
+- Validate database integrity with automated queries
+
+### Audit Logging
+
+All mobile app operations MUST emit structured JSON logs before and after each operation. Logs are sent to centralized logging (Firebase Analytics, Amplitude, Sentry) and local device storage for debugging.
+
+**Log Format**:
+```json
+{
+  "timestamp": "2025-06-15T14:32:00Z",
+  "user": "user-uuid-123",
+  "change_ticket": "CHG-12345",
+  "environment": "production",
+  "operation": "native_module_call",
+  "command": "BiometricAuth.authenticate({reason: 'Login'})",
+  "outcome": "success",
+  "resources_affected": ["keychain_item_token", "user_session"],
+  "rollback_available": true,
+  "duration_seconds": 1.2,
+  "error_detail": null,
+  "device_context": {
+    "platform": "ios",
+    "os_version": "18.2",
+    "app_version": "2.4.0",
+    "build_number": "142",
+    "device_model": "iPhone 15 Pro"
+  }
+}
+```
+
+**React Native Logging Implementation**:
+```typescript
+// utils/auditLogger.ts
+import analytics from '@react-native-firebase/analytics';
+import * as Sentry from '@sentry/react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+interface AuditLog {
+  timestamp: string;
+  user: string;
+  change_ticket?: string;
+  environment: 'dev' | 'staging' | 'production';
+  operation: string;
+  command: string;
+  outcome: 'success' | 'failure';
+  resources_affected: string[];
+  rollback_available: boolean;
+  duration_seconds: number;
+  error_detail?: string;
+  device_context: {
+    platform: string;
+    os_version: string;
+    app_version: string;
+    build_number: string;
+    device_model: string;
+  };
+}
+
+export class AuditLogger {
+  private static async getDeviceContext() {
+    return {
+      platform: Platform.OS,
+      os_version: Platform.Version.toString(),
+      app_version: DeviceInfo.getVersion(),
+      build_number: DeviceInfo.getBuildNumber(),
+      device_model: await DeviceInfo.getModel(),
+    };
+  }
+
+  static async logOperation(
+    operation: string,
+    command: string,
+    outcome: 'success' | 'failure',
+    resources: string[],
+    duration: number,
+    error?: Error
+  ): Promise<void> {
+    const log: AuditLog = {
+      timestamp: new Date().toISOString(),
+      user: await this.getUserId(),
+      change_ticket: await this.getChangeTicket(),
+      environment: Config.ENVIRONMENT as any,
+      operation,
+      command,
+      outcome,
+      resources_affected: resources,
+      rollback_available: true,
+      duration_seconds: duration,
+      error_detail: error?.message,
+      device_context: await this.getDeviceContext(),
+    };
+
+    // Send to Firebase Analytics
+    await analytics().logEvent('app_operation', {
+      operation,
+      outcome,
+      duration,
+    });
+
+    // Send to Sentry for errors
+    if (outcome === 'failure' && error) {
+      Sentry.captureException(error, {
+        tags: { operation, environment: Config.ENVIRONMENT },
+        extra: log,
+      });
+    }
+
+    // Store locally for debugging
+    await this.storeLocalLog(log);
+
+    console.log('[AUDIT]', JSON.stringify(log));
+  }
+
+  private static async storeLocalLog(log: AuditLog): Promise<void> {
+    const key = `audit_log_${Date.now()}`;
+    await AsyncStorage.setItem(key, JSON.stringify(log));
+
+    // Clean up old logs (keep last 100)
+    const allKeys = await AsyncStorage.getAllKeys();
+    const logKeys = allKeys.filter(k => k.startsWith('audit_log_'));
+    if (logKeys.length > 100) {
+      const toDelete = logKeys.slice(0, logKeys.length - 100);
+      await AsyncStorage.multiRemove(toDelete);
+    }
+  }
+}
+
+// Usage example
+const startTime = Date.now();
+try {
+  await BiometricAuth.authenticate({ reason: 'Login required' });
+  await AuditLogger.logOperation(
+    'biometric_authentication',
+    "BiometricAuth.authenticate({reason: 'Login required'})",
+    'success',
+    ['keychain_item_token', 'user_session'],
+    (Date.now() - startTime) / 1000
+  );
+} catch (error) {
+  await AuditLogger.logOperation(
+    'biometric_authentication',
+    "BiometricAuth.authenticate({reason: 'Login required'})",
+    'failure',
+    [],
+    (Date.now() - startTime) / 1000,
+    error as Error
+  );
+  throw error;
+}
+```
+
+**Critical Operations Requiring Audit Logs**:
+- Native module calls (biometric auth, camera, location, push notifications)
+- Database operations (create, update, delete records)
+- Network requests (API calls, file uploads, downloads)
+- Deep link handling and navigation
+- Feature flag changes and A/B test assignments
+- App state changes (background, foreground, terminated)
+- Crash events and error boundaries
+- User authentication (login, logout, token refresh)
+- Payment transactions and in-app purchases
+- Data sync operations (upload, download, conflict resolution)
+
+**Log Retention and Forwarding**:
+- Local logs: Keep last 100 operations (7-day retention max)
+- Firebase Analytics: 60-day retention for free tier, unlimited for paid
+- Sentry: 90-day retention for errors and performance data
+- Amplitude: Unlimited retention for user behavior analytics
+- CloudWatch/Datadog (if available): Real-time streaming for production monitoring
+
+Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Include stack traces and device context for debugging. Never log sensitive data (passwords, tokens, PII) in plaintext—use redaction patterns or hash values.
+
 Integration with other agents:
 - Coordinate with backend-developer for API optimization and GraphQL/REST design
 - Work with ui-designer for platform-specific designs following HIG/Material Design 3

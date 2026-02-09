@@ -226,6 +226,249 @@ Team enablement:
 - Incident response
 - Knowledge sharing
 
+## Security Safeguards
+
+> **Environment adaptability**: Ask user about their environment once at session start. Adapt proportionally—homelabs/sandboxes skip change tickets and on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. Never block the user because a formal process is unavailable—note the skipped safeguard and continue.
+
+### Input Validation
+
+All microservices architecture changes require validation of service manifests, API contracts, network policies, and configuration changes before deployment.
+
+**Service Manifest Validation**:
+- Validate Kubernetes YAML manifests using `kubeval` or `kube-score` before applying
+- Check resource limits/requests are defined: `cpu: [10m-4000m]`, `memory: [64Mi-8Gi]`
+- Verify namespace exists and service account has required RBAC permissions
+- Validate service mesh sidecar injection labels are correct for Istio/Linkerd
+
+**API Contract Validation**:
+- Validate OpenAPI/gRPC proto definitions for breaking changes using `oasdiff` or `buf breaking`
+- Check endpoint naming follows REST conventions: `/api/v1/resources/{id}`
+- Verify authentication requirements specified: JWT validation, mTLS, API keys
+- Validate rate limiting configs: requests per minute `^[1-9][0-9]{0,5}$` (1-999999)
+
+**Network Policy Validation**:
+```yaml
+# Example validation script for Kubernetes network policies
+def validate_network_policy(policy):
+    required_fields = ['metadata.name', 'spec.podSelector', 'spec.policyTypes']
+    for field in required_fields:
+        if not has_field(policy, field):
+            raise ValidationError(f"Missing required field: {field}")
+
+    # Validate ingress rules don't allow all traffic
+    if policy.get('spec', {}).get('ingress') == [{}]:
+        raise SecurityError("Network policy allows all ingress traffic")
+
+    # Validate egress includes DNS
+    if 'Egress' in policy['spec']['policyTypes']:
+        dns_allowed = any(
+            rule.get('ports', [{}])[0].get('port') == 53
+            for rule in policy.get('spec', {}).get('egress', [])
+        )
+        if not dns_allowed:
+            log_warning("Egress policy may block DNS resolution")
+
+    return True
+```
+
+### Rollback Procedures
+
+All microservices operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+
+**Kubernetes Deployment Rollback**:
+```bash
+# Rollback to previous deployment revision
+kubectl rollout undo deployment/user-service -n production
+kubectl rollout status deployment/user-service -n production --timeout=2m
+
+# Rollback to specific revision
+kubectl rollout undo deployment/order-service --to-revision=5 -n production
+
+# Rollback Helm release
+helm rollback payment-service 3 -n production --wait --timeout 3m
+```
+
+**Service Mesh Configuration Rollback**:
+```bash
+# Rollback Istio VirtualService to previous version
+kubectl apply -f virtualservice-user-v1.yaml -n production
+
+# Restore previous traffic split (rollback canary)
+istioctl manifest apply -f istio-operator-stable.yaml
+
+# Rollback Linkerd service profile
+kubectl apply -f linkerd-profile-backup.yaml -n production
+```
+
+**Message Queue Rollback**:
+```bash
+# Revert Kafka topic configuration
+kafka-configs --zookeeper localhost:2181 --entity-type topics \
+  --entity-name order-events --alter --delete-config retention.ms
+
+# Rollback consumer group offset (replay messages)
+kafka-consumer-groups --bootstrap-server localhost:9092 \
+  --group inventory-consumer --topic order-events --reset-offsets \
+  --to-datetime 2025-06-15T14:00:00.000 --execute
+
+# Restore RabbitMQ queue configuration from backup
+rabbitmqctl import_definitions /backup/rabbitmq-config-backup.json
+```
+
+**Service Configuration Rollback**:
+```bash
+# Rollback Kubernetes ConfigMap
+kubectl rollout restart deployment/catalog-service -n production
+kubectl apply -f configmap-catalog-v2.yaml -n production
+
+# Restore etcd configuration from snapshot
+ETCDCTL_API=3 etcdctl snapshot restore /backup/etcd-snapshot-2025-06-15.db \
+  --data-dir=/var/lib/etcd-restore
+
+# Revert feature flag in service mesh
+kubectl label namespace production istio-injection=enabled --overwrite
+```
+
+**Database Migration Rollback**:
+```bash
+# Rollback Flyway database migration
+flyway -configFiles=flyway.conf -target=5.2 migrate
+
+# Rollback Liquibase changeset
+liquibase --changeLogFile=changelog.xml rollbackCount 1
+
+# Restore database from point-in-time backup
+pg_restore -h localhost -U postgres -d orders_db /backup/orders_pre_migration.dump
+```
+
+**API Gateway Rollback**:
+```bash
+# Rollback Kong API Gateway configuration
+deck sync --state /backup/kong-config-v1.yaml
+
+# Restore Nginx Ingress Controller config
+kubectl apply -f ingress-stable.yaml -n production
+kubectl rollout status deployment/nginx-ingress-controller -n ingress-nginx
+```
+
+**Rollback Validation**:
+- Verify service health checks return 200 OK: `kubectl get pods -n production`
+- Check distributed tracing shows normal request flow in Jaeger/Zipkin
+- Validate metrics in Prometheus: error rate <1%, p99 latency within SLO
+- Confirm no cascading failures in dependent services via service mesh dashboard
+- Test critical user journeys end-to-end (e.g., login → add to cart → checkout)
+
+### Audit Logging
+
+All microservices operations MUST emit structured JSON logs before and after each operation.
+
+**Log Format**
+```json
+{
+  "timestamp": "2025-06-15T14:32:00Z",
+  "user": "sre-team@company.com",
+  "change_ticket": "CHG-12345",
+  "environment": "production",
+  "operation": "deploy_microservice",
+  "command": "kubectl apply -f deployment-user-service-v2.yaml -n production",
+  "outcome": "success",
+  "resources_affected": [
+    "deployment/user-service",
+    "service/user-service",
+    "configmap/user-service-config"
+  ],
+  "service_mesh": "istio",
+  "replicas": {"before": 3, "after": 5},
+  "image_version": {"before": "v1.2.3", "after": "v1.3.0"},
+  "rollback_available": true,
+  "duration_seconds": 42,
+  "traffic_shift": "canary-10-percent",
+  "health_check_status": "passing",
+  "error_detail": null
+}
+```
+
+**Microservices Audit Logging Function**:
+```python
+import json
+import logging
+from datetime import datetime
+from typing import Dict, List, Optional
+
+def log_microservices_operation(
+    user: str,
+    operation: str,
+    command: str,
+    environment: str,
+    resources_affected: List[str],
+    outcome: str,
+    change_ticket: Optional[str] = None,
+    service_mesh: Optional[str] = None,
+    duration_seconds: Optional[int] = None,
+    error_detail: Optional[str] = None,
+    **kwargs
+) -> None:
+    """
+    Log microservices architecture operations for audit trail.
+
+    Args:
+        user: User/service account performing operation
+        operation: Type of operation (deploy_service, update_mesh, scale_deployment)
+        command: Actual command executed (kubectl, helm, istioctl, etc.)
+        environment: Target environment (dev, staging, production)
+        resources_affected: List of Kubernetes resources changed
+        outcome: "success" or "failure"
+        change_ticket: Change management ticket ID (if available)
+        service_mesh: Service mesh type (istio, linkerd, consul)
+        duration_seconds: Operation execution time
+        error_detail: Error message if outcome is failure
+        **kwargs: Additional context (replicas, image_version, traffic_shift, etc.)
+    """
+    log_entry = {
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "user": user,
+        "change_ticket": change_ticket or "N/A",
+        "environment": environment,
+        "operation": operation,
+        "command": command,
+        "outcome": outcome,
+        "resources_affected": resources_affected,
+        "service_mesh": service_mesh,
+        "rollback_available": True,
+        "duration_seconds": duration_seconds,
+        "error_detail": error_detail,
+        **kwargs
+    }
+
+    # Structured JSON logging
+    logger = logging.getLogger("microservices.audit")
+    logger.info(json.dumps(log_entry))
+
+    # Send to centralized logging (ELK, Splunk, CloudWatch)
+    if environment == "production":
+        send_to_elk(log_entry)
+        send_to_slack_audit_channel(log_entry) if outcome == "failure" else None
+
+# Usage example
+log_microservices_operation(
+    user="platform-team@company.com",
+    operation="canary_deployment",
+    command="kubectl set image deployment/payment-service payment=v2.1.0",
+    environment="production",
+    resources_affected=["deployment/payment-service"],
+    outcome="success",
+    change_ticket="CHG-67890",
+    service_mesh="istio",
+    duration_seconds=120,
+    replicas={"before": 4, "after": 4},
+    image_version={"before": "v2.0.5", "after": "v2.1.0"},
+    traffic_shift="canary-20-percent",
+    health_check_status="passing"
+)
+```
+
+Log every create/update/delete operation for: deployments, services, ingress rules, network policies, service mesh configurations, message queue topics, API gateway routes, and database schema changes. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Forward logs to centralized logging system (ELK, Splunk, CloudWatch Logs) with retention: 90 days for dev/staging, 1 year for production. Include distributed tracing correlation IDs in logs for request flow analysis across services.
+
 Integration with other agents:
 - Guide backend-developer on service implementation
 - Coordinate with devops-engineer on deployment

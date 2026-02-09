@@ -227,6 +227,233 @@ Native module management:
 - Security validation
 - Performance impact
 
+## Security Safeguards
+
+> **Environment adaptability**: Ask user about their environment once at session start. Adapt proportionally—homelabs/sandboxes skip change tickets and on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. Never block the user because a formal process is unavailable—note the skipped safeguard and continue.
+
+### Input Validation
+
+Before executing any desktop application operations, validate all inputs to prevent injection attacks and ensure secure IPC communication:
+
+**IPC Channel Validation**
+- Validate all IPC channel names against allowlist: `^[a-zA-Z0-9:_-]{1,64}$`
+- Sanitize file paths: `^[a-zA-Z0-9/_.-]{1,255}$` (no path traversal)
+- Validate URLs before loading: Must match `^(https?|file)://[a-zA-Z0-9.-]+` (no `file://` for remote content)
+- Check protocol handlers: `^[a-z][a-z0-9+.-]*://` (must be registered)
+
+**Preload Script Input Sanitization**
+```javascript
+// Electron preload script validation
+const { contextBridge, ipcRenderer } = require('electron');
+
+const ALLOWED_CHANNELS = {
+  send: ['save-file', 'open-dialog', 'app-quit', 'update-check'],
+  receive: ['file-saved', 'dialog-result', 'update-available']
+};
+
+contextBridge.exposeInMainWorld('electron', {
+  send: (channel, data) => {
+    // Validate channel name
+    if (!ALLOWED_CHANNELS.send.includes(channel)) {
+      throw new Error(`Invalid IPC channel: ${channel}`);
+    }
+
+    // Validate data payload
+    if (typeof data !== 'object' || data === null) {
+      throw new Error('IPC data must be a plain object');
+    }
+
+    // Sanitize file paths
+    if (data.filePath && !/^[a-zA-Z0-9/_.-]{1,255}$/.test(data.filePath)) {
+      throw new Error('Invalid file path format');
+    }
+
+    ipcRenderer.send(channel, data);
+  }
+});
+```
+
+**Configuration Validation**
+- Verify `contextIsolation: true` and `nodeIntegration: false` in all BrowserWindow configs
+- Check CSP headers: Must include `default-src 'self'` minimum
+- Validate code signing certificates before building installers
+- Verify update server URLs against configured allowlist
+
+### Rollback Procedures
+
+All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+
+**Application Update Rollback**
+```bash
+# Rollback to previous app version (auto-updater)
+electron-builder --publish never --config.productName="AppName" --config.version="1.2.3"
+# Restore previous installer from backup
+cp ~/app-backups/AppName-1.2.3.dmg ~/Downloads/
+```
+
+**Configuration Rollback**
+```bash
+# Restore previous electron-builder config
+git checkout HEAD~1 -- electron-builder.json
+npm run build
+
+# Restore main process configuration
+git checkout HEAD~1 -- src/main/index.js
+npm run start
+```
+
+**IPC Channel Rollback**
+```javascript
+// Revert IPC channel changes in preload script
+git diff HEAD~1 src/preload/index.js > /tmp/ipc-rollback.patch
+git checkout HEAD~1 -- src/preload/index.js
+npm run build:preload
+```
+
+**Native Module Rollback**
+```bash
+# Rollback native module version
+npm install electron-native-module@1.2.3 --save-exact
+electron-rebuild
+
+# Restore previous build artifacts
+rm -rf dist/
+git checkout HEAD~1 -- dist/
+```
+
+**Code Signing Rollback**
+```bash
+# Restore previous signing configuration
+git checkout HEAD~1 -- build/entitlements.mac.plist
+git checkout HEAD~1 -- .env.signing
+
+# Rebuild with previous certificates
+npm run build -- --mac --config.mac.identity="Previous Developer ID"
+```
+
+**Window Configuration Rollback**
+```javascript
+// Restore previous window state
+const fs = require('fs');
+fs.copyFileSync(
+  '~/.config/AppName/window-state.backup.json',
+  '~/.config/AppName/window-state.json'
+);
+app.relaunch();
+```
+
+**Rollback Validation**: After rollback, verify:
+- Application launches without errors (`npm run start` succeeds)
+- IPC channels function correctly (test with DevTools console)
+- Code signature valid (`codesign -dv --verbose=4 AppName.app` on macOS)
+- Auto-updater connects to server (check update endpoint)
+- Native modules load successfully (no `MODULE_NOT_FOUND` errors)
+
+### Audit Logging
+
+All operations MUST emit structured JSON logs before and after each operation.
+
+**Log Format**
+```json
+{
+  "timestamp": "2025-06-15T14:32:00Z",
+  "user": "developer@company.com",
+  "change_ticket": "CHG-12345",
+  "environment": "production",
+  "operation": "electron_build",
+  "command": "electron-builder --mac --publish always",
+  "target_platform": "darwin",
+  "app_version": "2.1.0",
+  "outcome": "success",
+  "resources_affected": ["dist/AppName-2.1.0.dmg", "dist/AppName-2.1.0-mac.zip"],
+  "rollback_available": true,
+  "duration_seconds": 127,
+  "build_artifacts": {
+    "installer_size_mb": 89.3,
+    "code_signed": true,
+    "notarized": true
+  },
+  "error_detail": ""
+}
+```
+
+**Audit Logging Implementation**
+```javascript
+// Electron main process audit logger
+const fs = require('fs');
+const path = require('path');
+const { app } = require('electron');
+
+class ElectronAuditLogger {
+  constructor() {
+    this.logPath = path.join(app.getPath('userData'), 'audit-logs');
+    fs.mkdirSync(this.logPath, { recursive: true });
+  }
+
+  log(operation, command, outcome, details = {}) {
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      user: process.env.USER || process.env.USERNAME,
+      change_ticket: process.env.CHANGE_TICKET || 'N/A',
+      environment: process.env.NODE_ENV || 'development',
+      operation: operation,
+      command: command,
+      outcome: outcome,
+      resources_affected: details.resources || [],
+      rollback_available: details.rollbackAvailable || false,
+      duration_seconds: details.duration || 0,
+      error_detail: details.error || ''
+    };
+
+    const logFile = path.join(
+      this.logPath,
+      `audit-${new Date().toISOString().split('T')[0]}.jsonl`
+    );
+
+    fs.appendFileSync(logFile, JSON.stringify(logEntry) + '\n');
+
+    // Forward to external logging service (if available)
+    if (process.env.AUDIT_LOG_ENDPOINT) {
+      this.forwardToRemote(logEntry);
+    }
+  }
+
+  forwardToRemote(logEntry) {
+    const https = require('https');
+    const data = JSON.stringify(logEntry);
+
+    const options = {
+      hostname: process.env.AUDIT_LOG_ENDPOINT,
+      port: 443,
+      path: '/audit-logs',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': data.length
+      }
+    };
+
+    const req = https.request(options);
+    req.write(data);
+    req.end();
+  }
+}
+
+module.exports = new ElectronAuditLogger();
+```
+
+**Operations to Log**:
+- IPC channel registrations and invocations
+- Window creation and destruction
+- File system operations (save, open, delete)
+- Auto-update checks and installations
+- Code signing and notarization
+- Native module loading
+- Protocol handler registrations
+- System tray interactions
+
+Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Store logs in `app.getPath('userData')/audit-logs/` and rotate daily. Forward to centralized logging *(if available)* via HTTPS endpoint configured in `AUDIT_LOG_ENDPOINT` environment variable.
+
 Integration with other agents:
 - Work with frontend-developer on UI components
 - Coordinate with backend-developer for API integration
