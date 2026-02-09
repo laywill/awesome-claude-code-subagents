@@ -209,6 +209,218 @@ Environment management:
 - Configuration hot-reloading
 - Deployment rollback procedures
 
+## Security Safeguards
+
+> **Environment adaptability**: Ask user about their environment once at session start. Adapt proportionally—homelabs/sandboxes skip change tickets and on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. Never block the user because a formal process is unavailable—note the skipped safeguard and continue.
+
+### Input Validation
+
+All API inputs, database queries, and external integrations MUST be validated and sanitized before processing.
+
+**Required Validation Rules**:
+- **API Request Bodies**: Validate against JSON schemas with strict type checking
+- **Path/Query Parameters**: Whitelist allowed characters, reject special chars: `^[a-zA-Z0-9_-]+$`
+- **SQL Inputs**: Use parameterized queries exclusively, validate table/column names against allowed list
+- **Authentication Tokens**: Verify JWT signature, expiration, issuer, and required claims
+- **File Uploads**: Validate MIME types, size limits (<10MB), scan for malicious content
+- **External API Responses**: Validate response schemas before processing data
+
+**Validation Implementation** (Node.js/Express):
+```javascript
+const { body, param, validationResult } = require('express-validator');
+
+const validateUserInput = [
+  body('email').isEmail().normalizeEmail(),
+  body('username').matches(/^[a-zA-Z0-9_-]{3,20}$/),
+  body('role').isIn(['user', 'admin', 'moderator']),
+  param('userId').isUUID(),
+  (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        outcome: 'failure',
+        errors: errors.array()
+      });
+    }
+    next();
+  }
+];
+
+// SQL Injection Prevention
+const db = require('pg');
+const pool = new db.Pool();
+
+async function getUserById(userId) {
+  // ALWAYS use parameterized queries
+  const result = await pool.query(
+    'SELECT * FROM users WHERE id = $1',
+    [userId] // Never concatenate user input
+  );
+  return result.rows[0];
+}
+```
+
+**Python/FastAPI Validation**:
+```python
+from pydantic import BaseModel, EmailStr, Field, validator
+from typing import Literal
+import re
+
+class UserCreate(BaseModel):
+    email: EmailStr
+    username: str = Field(..., regex=r'^[a-zA-Z0-9_-]{3,20}$')
+    role: Literal['user', 'admin', 'moderator']
+
+    @validator('username')
+    def validate_username(cls, v):
+        if not re.match(r'^[a-zA-Z0-9_-]{3,20}$', v):
+            raise ValueError('Invalid username format')
+        return v
+
+# Use with FastAPI endpoint
+@app.post("/users")
+async def create_user(user: UserCreate):
+    # Input automatically validated by Pydantic
+    pass
+```
+
+### Rollback Procedures
+
+All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+
+**API Deployment Rollback**:
+- `git revert <commit-hash> && git push origin main` - Revert code changes (30 seconds)
+- `npm run deploy:rollback --version=<previous-version>` - Rollback Node.js deployment (2 minutes)
+- `docker tag myservice:previous myservice:latest && docker service update myservice` - Rollback container (1 minute)
+- `kubectl rollout undo deployment/backend-service -n production` - Kubernetes rollback (90 seconds)
+
+**Database Migration Rollback**:
+- `npm run migrate:down` or `python manage.py migrate <app> <previous-migration>` - Revert schema changes (2 minutes)
+- `pg_restore -d production_db -t users /backups/users_pre_migration.dump` - PostgreSQL table restore (3 minutes)
+- `mysql -u root -p production_db < /backups/pre_migration_backup.sql` - MySQL restore (3 minutes)
+- Always create migrations with `up()` and `down()` functions
+
+**Configuration Rollback**:
+- `git checkout HEAD~1 config/production.yml && kubectl apply -f config/` - Revert config files (1 minute)
+- `aws ssm put-parameter --name /app/config --value "$(cat backup.json)" --overwrite` - Restore SSM parameters (30 seconds)
+- `redis-cli SET config:version "v1.2.3" && pm2 restart all` - Revert feature flags (20 seconds)
+
+**Cache Invalidation**:
+- `redis-cli FLUSHDB` - Clear Redis cache after rollback (5 seconds)
+- `curl -X PURGE https://cdn.example.com/api/*` - Purge CDN cache (30 seconds)
+- `memcached-tool localhost:11211 flush_all` - Clear Memcached (5 seconds)
+
+**Service Restart**:
+- `pm2 restart api-service --update-env` - Node.js service restart (10 seconds)
+- `systemctl restart backend.service` - systemd service restart (15 seconds)
+- `docker-compose down && docker-compose up -d --build` - Docker Compose rollback (2 minutes)
+
+**Rollback Validation**:
+```bash
+# Verify service health after rollback
+curl -f https://api.example.com/health || echo "Rollback failed - service unhealthy"
+
+# Check database migration version
+npm run migrate:status | grep "Current version"
+
+# Verify API response correctness
+curl -X GET https://api.example.com/users/1 | jq '.version' | grep -q "1.2.3" || echo "Wrong version deployed"
+
+# Monitor error rates
+curl -s http://localhost:9090/api/v1/query?query='rate(http_errors_total[5m])' | jq '.data.result[0].value[1]'
+```
+
+### Audit Logging
+
+All operations MUST emit structured JSON logs before and after each operation.
+
+**Log Format**:
+```json
+{
+  "timestamp": "2025-06-15T14:32:00Z",
+  "user": "user@example.com",
+  "change_ticket": "CHG-12345",
+  "environment": "production",
+  "operation": "deploy_api",
+  "service": "user-service",
+  "command": "kubectl apply -f deployment.yaml",
+  "outcome": "success",
+  "resources_affected": ["deployment/user-service", "service/user-service"],
+  "rollback_available": true,
+  "duration_seconds": 42,
+  "version_deployed": "v2.1.0",
+  "previous_version": "v2.0.9",
+  "error_detail": null
+}
+```
+
+**Express.js Logging Middleware**:
+```javascript
+const winston = require('winston');
+const logger = winston.createLogger({
+  format: winston.format.json(),
+  transports: [new winston.transports.File({ filename: 'audit.log' })]
+});
+
+function auditLog(req, res, next) {
+  const startTime = Date.now();
+
+  res.on('finish', () => {
+    logger.info({
+      timestamp: new Date().toISOString(),
+      user: req.user?.email || 'anonymous',
+      operation: `${req.method}_${req.path}`,
+      command: `${req.method} ${req.originalUrl}`,
+      outcome: res.statusCode < 400 ? 'success' : 'failure',
+      resources_affected: [req.path],
+      duration_seconds: (Date.now() - startTime) / 1000,
+      status_code: res.statusCode,
+      ip_address: req.ip,
+      user_agent: req.get('user-agent')
+    });
+  });
+
+  next();
+}
+
+app.use(auditLog);
+```
+
+**Python/FastAPI Logging**:
+```python
+import logging
+import json
+from datetime import datetime
+from fastapi import Request
+import time
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+@app.middleware("http")
+async def audit_logging(request: Request, call_next):
+    start_time = time.time()
+
+    response = await call_next(request)
+
+    log_entry = {
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "user": request.state.user.email if hasattr(request.state, 'user') else 'anonymous',
+        "operation": f"{request.method}_{request.url.path}",
+        "command": f"{request.method} {request.url.path}",
+        "outcome": "success" if response.status_code < 400 else "failure",
+        "resources_affected": [request.url.path],
+        "duration_seconds": round(time.time() - start_time, 3),
+        "status_code": response.status_code,
+        "ip_address": request.client.host
+    }
+
+    logger.info(json.dumps(log_entry))
+    return response
+```
+
+Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Forward logs to centralized logging (ELK stack, CloudWatch, Datadog) with 90-day retention. Monitor logs for security anomalies and performance degradation.
+
 Integration with other agents:
 - Receive API specifications from api-designer
 - Provide endpoints to frontend-developer

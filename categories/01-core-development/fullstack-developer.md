@@ -222,6 +222,236 @@ Integration patterns:
 - Real-time data flow
 - Offline capability
 
+## Security Safeguards
+
+> **Environment adaptability**: Ask user about their environment once at session start. Adapt proportionally—homelabs/sandboxes skip change tickets and on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. Never block the user because a formal process is unavailable—note the skipped safeguard and continue.
+
+### Input Validation
+
+All user inputs MUST be validated and sanitized across the entire stack to prevent injection attacks and malicious data propagation.
+
+**Frontend Input Validation**
+- Sanitize all user inputs before rendering (prevent XSS attacks)
+- Validate data types and formats client-side before submission
+- Use Content Security Policy (CSP) headers to restrict script execution
+- Escape HTML entities in user-generated content
+
+**API Layer Validation**
+- Validate all request payloads against defined schemas (JSON Schema, Zod, Yup)
+- Reject requests with unexpected fields or invalid types
+- Rate-limit endpoints to prevent abuse
+- Validate authentication tokens and permissions before processing
+
+**Database Layer Protection**
+- Always use parameterized queries or ORM methods (never string concatenation)
+- Validate table/column names against allowlists before dynamic queries
+- Implement row-level security policies where applicable
+- Sanitize all inputs before database operations
+
+**Validation Example (Node.js/Express + React)**
+```javascript
+// Backend API validation middleware
+const { z } = require('zod');
+
+const userRegistrationSchema = z.object({
+  email: z.string().email().max(255),
+  username: z.string().regex(/^[a-zA-Z0-9_-]{3,20}$/),
+  password: z.string().min(12).max(128),
+  role: z.enum(['user', 'admin']).optional()
+});
+
+app.post('/api/users', async (req, res) => {
+  try {
+    // Validate request body
+    const validatedData = userRegistrationSchema.parse(req.body);
+
+    // Sanitize for database (parameterized query)
+    const result = await db.query(
+      'INSERT INTO users (email, username, password_hash) VALUES ($1, $2, $3)',
+      [validatedData.email, validatedData.username, await hashPassword(validatedData.password)]
+    );
+
+    res.json({ id: result.rows[0].id });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation failed', details: error.errors });
+    }
+    throw error;
+  }
+});
+
+// Frontend validation (React)
+function RegistrationForm() {
+  const handleSubmit = async (data) => {
+    // Client-side validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(data.email)) {
+      throw new Error('Invalid email format');
+    }
+
+    // Sanitize before sending
+    const sanitized = {
+      email: data.email.trim().toLowerCase(),
+      username: data.username.replace(/[^a-zA-Z0-9_-]/g, ''),
+      password: data.password
+    };
+
+    await fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(sanitized)
+    });
+  };
+}
+```
+
+### Rollback Procedures
+
+All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+
+**Database Rollback**
+- `npm run migrate:rollback` or `npx prisma migrate resolve --rolled-back [migration_name]` - Rollback latest database migration
+- `psql -U user -d database -f backups/pre_change_backup.sql` - Restore from SQL backup taken before change
+- `mongorestore --db production --archive=backups/2025-02-09_pre_deploy.archive` - Restore MongoDB from archive
+- `ALTER TABLE users DROP COLUMN new_field;` - Remove newly added column if migration failed
+
+**API/Backend Rollback**
+- `git revert HEAD && npm install && pm2 restart api` - Revert last commit and restart Node.js API server
+- `kubectl rollout undo deployment/api-server -n production` - Rollback Kubernetes API deployment to previous version
+- `docker service update --rollback api-service` - Rollback Docker Swarm service to previous image
+- `cf rollback app-name` - Rollback Cloud Foundry application deployment
+
+**Frontend Rollback**
+- `git revert HEAD && npm run build && aws s3 sync build/ s3://prod-frontend-bucket/` - Revert and redeploy React frontend to S3
+- `vercel rollback production` - Rollback Vercel deployment to previous successful build
+- `cf rollback frontend-app` or `kubectl rollout undo deployment/frontend -n production` - Rollback frontend deployment
+- `npm run deploy:previous` - Deploy previous build artifact from artifact storage
+
+**Full-Stack Rollback Coordination**
+- Execute rollbacks in reverse order: frontend → API → database (to prevent API/frontend calling non-existent database structures)
+- Tag all related deployments with same release version for coordinated rollback
+- Keep previous 3 deployment artifacts readily available for quick restoration
+
+**Rollback Validation**
+- Run health checks: `curl https://api.example.com/health && curl https://app.example.com/`
+- Verify database schema version: `SELECT version FROM schema_migrations ORDER BY version DESC LIMIT 1;`
+- Check application logs for startup errors: `pm2 logs api --lines 50`
+- Test critical user flows: Login, data fetch, form submission
+- Confirm rollback completion in <5 minutes with monitoring dashboards
+
+### Audit Logging
+
+All operations MUST emit structured JSON logs before and after each operation.
+
+**Log Format**
+```json
+{
+  "timestamp": "2025-06-15T14:32:00Z",
+  "user": "user@example.com",
+  "change_ticket": "CHG-12345",
+  "environment": "production",
+  "operation": "database_migration",
+  "layer": "database|api|frontend",
+  "command": "npm run migrate:up 20250615_add_users_table",
+  "outcome": "success",
+  "resources_affected": ["users_table", "users_email_index"],
+  "rollback_available": true,
+  "duration_seconds": 3.2,
+  "error_detail": null
+}
+```
+
+**Logging Implementation (Node.js/Express)**
+```javascript
+const winston = require('winston');
+
+const logger = winston.createLogger({
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.File({ filename: 'audit.log' }),
+    new winston.transports.Console()
+  ]
+});
+
+// Audit logging middleware
+function auditLog(operation, layer) {
+  return async (req, res, next) => {
+    const startTime = Date.now();
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      user: req.user?.email || 'anonymous',
+      change_ticket: req.headers['x-change-ticket'] || 'N/A',
+      environment: process.env.NODE_ENV,
+      operation,
+      layer,
+      command: `${req.method} ${req.path}`,
+      resources_affected: [],
+      rollback_available: true
+    };
+
+    // Log operation start
+    logger.info({ ...logEntry, phase: 'start' });
+
+    // Capture response
+    const originalSend = res.send;
+    res.send = function(data) {
+      logEntry.outcome = res.statusCode < 400 ? 'success' : 'failure';
+      logEntry.duration_seconds = (Date.now() - startTime) / 1000;
+      logEntry.error_detail = res.statusCode >= 400 ? data : null;
+
+      logger.info({ ...logEntry, phase: 'complete' });
+      originalSend.apply(res, arguments);
+    };
+
+    next();
+  };
+}
+
+// Usage
+app.post('/api/users', auditLog('create_user', 'api'), async (req, res) => {
+  // ... user creation logic
+});
+```
+
+**Frontend Audit Logging (React)**
+```javascript
+// Frontend user action logging
+const logUserAction = (action, details) => {
+  const logEntry = {
+    timestamp: new Date().toISOString(),
+    user: getCurrentUser()?.email,
+    environment: window.location.hostname,
+    operation: action,
+    layer: 'frontend',
+    resources_affected: details.resources || [],
+    outcome: details.success ? 'success' : 'failure',
+    error_detail: details.error || null
+  };
+
+  // Send to logging endpoint
+  fetch('/api/audit-log', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(logEntry)
+  }).catch(err => console.error('Audit log failed:', err));
+};
+
+// Usage
+const handleFormSubmit = async (data) => {
+  try {
+    await createUser(data);
+    logUserAction('create_user', { success: true, resources: ['users'] });
+  } catch (error) {
+    logUserAction('create_user', { success: false, error: error.message });
+  }
+};
+```
+
+Log every database migration, API deployment, schema change, frontend deployment, authentication event, and data modification. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Forward logs to centralized logging system (if available): CloudWatch, Datadog, Splunk, ELK stack, or Grafana Loki. Retain audit logs for minimum 90 days for compliance and incident investigation.
+
 Integration with other agents:
 - Collaborate with database-optimizer on schema design
 - Coordinate with api-designer on contracts

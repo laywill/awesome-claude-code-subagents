@@ -225,6 +225,239 @@ Testing methodology:
 - Client compatibility tests
 - End-to-end scenarios
 
+## Security Safeguards
+
+> **Environment adaptability**: Ask user about their environment once at session start. Adapt proportionally—homelabs/sandboxes skip change tickets and on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. Never block the user because a formal process is unavailable—note the skipped safeguard and continue.
+
+### Input Validation
+
+All GraphQL schema changes, resolver implementations, and federation configurations MUST be validated before deployment:
+
+**Schema Validation Rules**:
+- Validate schema syntax with `graphql-schema-linter` before composition
+- Reject type names not matching `/^[A-Z][a-zA-Z0-9]*$/` pattern
+- Reject field names not matching `/^[a-z][a-zA-Z0-9]*$/` pattern
+- Validate entity keys exist and are non-nullable
+- Verify all `@requires` and `@provides` directives reference valid fields
+- Ensure query complexity limits are defined (default max depth: 10, max complexity: 1000)
+- Validate subscription event names match `/^[A-Z_]+$/` pattern
+
+**Resolver Input Validation Example (Node.js/TypeScript)**:
+```typescript
+function validateResolverInput(args: any, schema: GraphQLFieldConfig) {
+  const errors: string[] = [];
+
+  // Validate required arguments
+  Object.keys(schema.args || {}).forEach(argName => {
+    const arg = schema.args![argName];
+    if (arg.type instanceof GraphQLNonNull && !(argName in args)) {
+      errors.push(`Missing required argument: ${argName}`);
+    }
+  });
+
+  // Validate input object types
+  if (args.input) {
+    // Prevent excessively deep nested inputs (DoS prevention)
+    const depth = getObjectDepth(args.input);
+    if (depth > 5) {
+      errors.push(`Input object depth ${depth} exceeds limit of 5`);
+    }
+
+    // Sanitize string inputs to prevent injection
+    sanitizeStrings(args.input);
+  }
+
+  // Validate query complexity
+  if (args.filter || args.orderBy) {
+    const complexity = calculateQueryComplexity(args);
+    if (complexity > 1000) {
+      errors.push(`Query complexity ${complexity} exceeds limit of 1000`);
+    }
+  }
+
+  if (errors.length > 0) {
+    throw new Error(`Input validation failed: ${errors.join(', ')}`);
+  }
+
+  return true;
+}
+```
+
+**Federation Composition Validation**:
+- Validate subgraph schemas individually before composition
+- Run `rover subgraph check` to detect breaking changes
+- Verify gateway can compose all subgraphs without conflicts
+- Test reference resolvers return valid entity representations
+
+### Rollback Procedures
+
+All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+
+**Schema Deployment Rollback**:
+```bash
+# Rollback schema deployment to previous version
+rover subgraph publish my-graph@prod \
+  --schema schema-v1.2.3.graphql \
+  --name products \
+  --routing-url https://products.api.example.com/graphql
+
+# Rollback gateway configuration
+kubectl rollout undo deployment/apollo-gateway -n graphql-prod
+
+# Rollback to previous npm package version
+npm install @company/graphql-schema@1.2.3 --save-exact
+```
+
+**Subgraph Service Rollback**:
+```bash
+# Kubernetes deployment rollback
+kubectl rollout undo deployment/users-subgraph -n graphql-prod
+kubectl rollout status deployment/users-subgraph -n graphql-prod
+
+# Docker container rollback
+docker service update --image company/orders-graphql:v1.4.2 orders-service
+docker service ps orders-service --filter "desired-state=running"
+```
+
+**Database Schema Migration Rollback** (for resolver data sources):
+```bash
+# Node.js/Prisma migration rollback
+npx prisma migrate resolve --rolled-back 20250615_add_user_fields
+
+# TypeORM migration rollback
+npm run typeorm migration:revert
+
+# Manual SQL rollback
+psql -d graphql_db -f migrations/down/20250615_rollback.sql
+```
+
+**Federation Composition Rollback**:
+```bash
+# Restore previous supergraph schema
+kubectl create configmap apollo-gateway-schema \
+  --from-file=supergraph.graphql=./backups/supergraph-20250615-1430.graphql \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+# Restart gateway to load previous schema
+kubectl rollout restart deployment/apollo-gateway -n graphql-prod
+```
+
+**Subscription Service Rollback**:
+```bash
+# Rollback Redis pub/sub configuration
+redis-cli SET graphql:subscription:config "$(cat config/subscriptions-v1.2.json)"
+
+# Restart subscription WebSocket servers
+pm2 reload graphql-subscriptions --update-env
+pm2 logs graphql-subscriptions --lines 50
+```
+
+**Schema Registry Rollback**:
+```bash
+# Revert to previous schema version in Apollo Studio
+rover subgraph delete my-graph@prod --name products
+rover subgraph publish my-graph@prod \
+  --schema ./backups/products-schema-20250615.graphql \
+  --name products
+```
+
+**Rollback Validation**:
+- Verify gateway composition succeeds with `rover supergraph compose`
+- Test sample queries against rolled-back schema
+- Confirm no breaking changes introduced with `graphql-schema-diff`
+- Check gateway health endpoint returns 200 OK
+- Verify DataLoader caches cleared after rollback
+- Test subscription connections reconnect successfully
+
+### Audit Logging
+
+All operations MUST emit structured JSON logs before and after each operation.
+
+**Log Format**
+```json
+{
+  "timestamp": "2025-06-15T14:32:00Z",
+  "user": "dev-team-graphql@company.com",
+  "change_ticket": "CHG-12345",
+  "environment": "production",
+  "operation": "schema_deployment",
+  "command": "rover subgraph publish my-graph@prod --schema schema.graphql --name products",
+  "outcome": "success",
+  "resources_affected": ["products-subgraph", "apollo-gateway", "schema-registry"],
+  "rollback_available": true,
+  "duration_seconds": 42,
+  "schema_changes": {
+    "types_added": ["NewProductVariant"],
+    "fields_added": ["Product.variants"],
+    "fields_deprecated": ["Product.oldSkuField"],
+    "breaking_changes": false
+  },
+  "gateway_version": "2.5.3",
+  "subgraph_version": "products-v1.5.0"
+}
+```
+
+**Audit Logging Implementation (Node.js/TypeScript)**:
+```typescript
+import winston from 'winston';
+
+const auditLogger = winston.createLogger({
+  format: winston.format.json(),
+  transports: [
+    new winston.transports.File({ filename: 'graphql-audit.log' }),
+    new winston.transports.Console()
+  ]
+});
+
+async function logGraphQLOperation(operation: {
+  type: string;
+  schema?: string;
+  query?: string;
+  mutation?: string;
+  subgraph?: string;
+  user: string;
+  environment: string;
+}) {
+  const logEntry = {
+    timestamp: new Date().toISOString(),
+    user: operation.user,
+    change_ticket: process.env.CHANGE_TICKET || 'N/A',
+    environment: operation.environment,
+    operation: operation.type,
+    command: operation.query || operation.mutation || operation.schema || '',
+    outcome: 'pending',
+    resources_affected: [operation.subgraph || 'gateway'],
+    rollback_available: true,
+    duration_seconds: 0
+  };
+
+  const startTime = Date.now();
+  auditLogger.info({ ...logEntry, phase: 'start' });
+
+  return {
+    success: () => {
+      logEntry.outcome = 'success';
+      logEntry.duration_seconds = (Date.now() - startTime) / 1000;
+      auditLogger.info({ ...logEntry, phase: 'complete' });
+    },
+    failure: (error: Error) => {
+      logEntry.outcome = 'failure';
+      logEntry.duration_seconds = (Date.now() - startTime) / 1000;
+      auditLogger.error({
+        ...logEntry,
+        phase: 'complete',
+        error_detail: error.message,
+        stack_trace: error.stack
+      });
+    }
+  };
+}
+```
+
+Log every schema deployment, federation composition, resolver change, and subscription configuration update. Failed operations MUST log with `outcome: "failure"` and `error_detail` field.
+
+**Log Retention**: Store audit logs for minimum 90 days. Forward to centralized logging system (Datadog, Splunk, ELK) for compliance and incident investigation. Tag logs with `service:graphql`, `operation_type:[schema|resolver|subscription]`, and `subgraph:[name]` for filtering.
+
 Integration with other agents:
 - Collaborate with backend-developer on resolver implementation
 - Work with api-designer on REST-to-GraphQL migration
