@@ -274,6 +274,362 @@ Best practices:
 - Error tracking
 - Performance monitoring
 
+## Security Safeguards
+
+> **Environment adaptability**: Ask user about their environment once at session start. Adapt proportionally—homelabs/sandboxes skip change tickets and on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. Never block the user because a formal process is unavailable—note the skipped safeguard and continue.
+
+### Input Validation
+
+Validate all inputs before executing Flutter operations.
+
+Rules:
+- **File paths**: Must match project structure patterns (`^(lib|test|android|ios|web|assets)/[a-zA-Z0-9_/.-]+$`). Block path traversal (`..`, absolute paths outside project root)
+- **Package names**: Must match pub.dev naming conventions (`^[a-z][a-z0-9_]*$`, max 64 chars). Validate against pub.dev registry before adding dependencies
+- **Version constraints**: Must be valid semantic versioning (`^[0-9]+\.[0-9]+\.[0-9]+([-+][a-zA-Z0-9.]+)?$`). Reject wildcard or unbounded version ranges in production
+- **Widget names**: Valid Dart class names (`^[A-Z][a-zA-Z0-9]*$`). Prevent name collisions with Flutter SDK widgets
+- **Platform identifiers**: Approved enum only: `android`, `ios`, `web`, `macos`, `windows`, `linux`. Reject freeform platform references
+- **Build flavors**: Alphanumeric + underscores only (`^[a-zA-Z][a-zA-Z0-9_]*$`, max 32 chars). No shell metacharacters
+- **Asset paths**: Must exist in `pubspec.yaml` assets declaration. Validate file existence before build
+
+Example validation function:
+```dart
+class FlutterInputValidator {
+  static const _pathPattern = r'^(lib|test|android|ios|web|assets)/[a-zA-Z0-9_/.-]+$';
+  static const _packagePattern = r'^[a-z][a-z0-9_]*$';
+  static const _versionPattern = r'^[0-9]+\.[0-9]+\.[0-9]+([-+][a-zA-Z0-9.]+)?$';
+  static const _allowedPlatforms = {'android', 'ios', 'web', 'macos', 'windows', 'linux'};
+
+  static bool validateFilePath(String path) {
+    if (!RegExp(_pathPattern).hasMatch(path)) {
+      throw ValidationError('Invalid file path: $path. Must be within project structure.');
+    }
+    if (path.contains('..')) {
+      throw ValidationError('Path traversal detected: $path');
+    }
+    return true;
+  }
+
+  static bool validatePackageName(String name) {
+    if (!RegExp(_packagePattern).hasMatch(name)) {
+      throw ValidationError('Invalid package name: $name. Must match ^[a-z][a-z0-9_]*\$');
+    }
+    if (name.length > 64) {
+      throw ValidationError('Package name too long: $name (max 64 chars)');
+    }
+    return true;
+  }
+
+  static bool validateVersion(String version) {
+    if (!RegExp(_versionPattern).hasMatch(version)) {
+      throw ValidationError('Invalid version format: $version. Must be semantic versioning.');
+    }
+    if (version.contains('*') || version.contains('any')) {
+      throw ValidationError('Wildcard versions not allowed in production: $version');
+    }
+    return true;
+  }
+
+  static bool validatePlatform(String platform) {
+    if (!_allowedPlatforms.contains(platform)) {
+      throw ValidationError('Invalid platform: $platform. Must be one of: ${_allowedPlatforms.join(', ')}');
+    }
+    return true;
+  }
+}
+
+// Usage before operations
+FlutterInputValidator.validateFilePath(targetFile);
+FlutterInputValidator.validatePackageName(dependencyName);
+FlutterInputValidator.validateVersion(versionConstraint);
+FlutterInputValidator.validatePlatform(targetPlatform);
+```
+
+Validation examples:
+```
+INPUT:  path="lib/screens/home_screen.dart", package="http", version="^1.1.0"
+CHECK:  path matches pattern? YES | package valid? YES | version semantic? YES → PASS
+
+INPUT:  path="../../etc/passwd", package="malicious-pkg", version="*"
+CHECK:  path has traversal? YES | package exists? NO | version wildcard? YES → REJECT, log violation, halt
+```
+
+### Rollback Procedures
+
+All Flutter operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+
+Requirements:
+- Max rollback time: < 5 minutes
+- Test rollback in development environment before production changes
+- Maintain rollback logs with timestamps and affected files
+- Automate common rollback scenarios (dependency downgrades, widget reverts, build config changes)
+
+**Code Changes:**
+```bash
+# Rollback to previous commit
+git log --oneline -n 5  # Identify target commit
+git revert HEAD --no-edit  # Revert last commit
+flutter pub get  # Restore dependencies
+flutter test  # Verify tests pass
+```
+
+**Dependency Rollback:**
+```bash
+# Rollback package version
+cp pubspec.yaml.backup pubspec.yaml  # Restore previous pubspec
+flutter pub get  # Install previous dependencies
+flutter pub outdated  # Verify versions
+flutter test  # Confirm app stability
+```
+
+**Widget/UI Rollback:**
+```bash
+# Restore previous widget implementation
+git checkout HEAD~1 -- lib/widgets/critical_widget.dart
+flutter analyze  # Check for errors
+flutter test test/widgets/critical_widget_test.dart  # Verify tests
+```
+
+**Build Configuration Rollback:**
+```bash
+# Revert build.gradle changes (Android)
+git checkout HEAD~1 -- android/app/build.gradle
+cd android && ./gradlew clean  # Clean build cache
+cd .. && flutter build apk --debug  # Verify build succeeds
+
+# Revert Info.plist changes (iOS)
+git checkout HEAD~1 -- ios/Runner/Info.plist
+cd ios && rm -rf Pods/ Podfile.lock  # Clean CocoaPods
+pod install  # Reinstall pods
+cd .. && flutter build ios --debug --no-codesign  # Verify build
+```
+
+**Platform Channel Rollback:**
+```bash
+# Rollback native code changes
+git checkout HEAD~1 -- android/app/src/main/kotlin/
+git checkout HEAD~1 -- ios/Runner/
+flutter clean && flutter pub get
+flutter run --debug  # Verify platform integration
+```
+
+**State Management Rollback:**
+```bash
+# Revert state management changes (BLoC/Riverpod)
+git checkout HEAD~1 -- lib/blocs/ lib/providers/
+flutter pub get
+flutter test test/blocs/ test/providers/  # Run state tests
+```
+
+**Rollback Validation:**
+```bash
+# Comprehensive validation after rollback
+flutter doctor -v  # Verify environment
+flutter analyze  # Check for static analysis errors
+flutter test  # Run all tests
+flutter build apk --debug  # Verify Android build
+flutter build ios --debug --no-codesign  # Verify iOS build (macOS only)
+```
+
+**Emergency Rollback (Full App Restore):**
+```bash
+# Complete app state rollback from backup tag
+git fetch --tags
+git checkout tags/v1.2.3-stable  # Last known good version
+flutter clean
+flutter pub get
+flutter test
+flutter build apk --release  # Rebuild production artifacts
+# Estimated time: 3-4 minutes
+```
+
+### Audit Logging
+
+All Flutter operations MUST emit structured JSON logs before and after each operation.
+
+**Log Format**
+```json
+{
+  "timestamp": "2025-06-15T14:32:00Z",
+  "user": "developer@company.com",
+  "change_ticket": "CHG-12345",
+  "environment": "development",
+  "operation": "add_dependency",
+  "command": "flutter pub add http:^1.1.0",
+  "outcome": "success",
+  "resources_affected": ["pubspec.yaml", "pubspec.lock", ".dart_tool/package_config.json"],
+  "rollback_available": true,
+  "duration_seconds": 8,
+  "metadata": {
+    "flutter_version": "3.16.0",
+    "dart_version": "3.2.0",
+    "platform": "android",
+    "build_mode": "debug",
+    "affected_files": ["lib/services/http_service.dart"],
+    "dependency_changes": [
+      {"package": "http", "old_version": "1.0.0", "new_version": "1.1.0"}
+    ]
+  }
+}
+```
+
+**Dart Logging Implementation:**
+```dart
+import 'dart:convert';
+import 'dart:io';
+import 'package:intl/intl.dart';
+
+class FlutterAuditLogger {
+  static const _logPath = 'logs/flutter_operations.jsonl';
+
+  static Future<void> logOperation({
+    required String user,
+    required String operation,
+    required String command,
+    required String outcome,
+    required List<String> resourcesAffected,
+    String? changeTicket,
+    String environment = 'development',
+    bool rollbackAvailable = true,
+    int? durationSeconds,
+    Map<String, dynamic>? metadata,
+    String? errorDetail,
+  }) async {
+    final logEntry = {
+      'timestamp': DateTime.now().toUtc().toIso8601String(),
+      'user': user,
+      'change_ticket': changeTicket ?? 'N/A',
+      'environment': environment,
+      'operation': operation,
+      'command': command,
+      'outcome': outcome,
+      'resources_affected': resourcesAffected,
+      'rollback_available': rollbackAvailable,
+      'duration_seconds': durationSeconds ?? 0,
+      if (metadata != null) 'metadata': metadata,
+      if (errorDetail != null) 'error_detail': errorDetail,
+    };
+
+    final logFile = File(_logPath);
+    await logFile.parent.create(recursive: true);
+    await logFile.writeAsString(
+      '${jsonEncode(logEntry)}\n',
+      mode: FileMode.append,
+    );
+
+    // Also log to console in development
+    if (environment == 'development') {
+      print('AUDIT: ${jsonEncode(logEntry)}');
+    }
+  }
+
+  static Future<void> logDependencyChange({
+    required String packageName,
+    required String operation,
+    String? oldVersion,
+    String? newVersion,
+    required bool success,
+    String? error,
+  }) async {
+    await logOperation(
+      user: Platform.environment['USER'] ?? 'unknown',
+      operation: 'dependency_$operation',
+      command: 'flutter pub ${operation == 'add' ? 'add' : 'remove'} $packageName',
+      outcome: success ? 'success' : 'failure',
+      resourcesAffected: ['pubspec.yaml', 'pubspec.lock'],
+      metadata: {
+        'package': packageName,
+        'old_version': oldVersion,
+        'new_version': newVersion,
+      },
+      errorDetail: error,
+    );
+  }
+
+  static Future<void> logBuildOperation({
+    required String platform,
+    required String buildMode,
+    required bool success,
+    int? durationSeconds,
+    String? error,
+  }) async {
+    await logOperation(
+      user: Platform.environment['USER'] ?? 'unknown',
+      operation: 'build',
+      command: 'flutter build $platform --$buildMode',
+      outcome: success ? 'success' : 'failure',
+      resourcesAffected: ['build/$platform'],
+      metadata: {
+        'platform': platform,
+        'build_mode': buildMode,
+        'flutter_version': await _getFlutterVersion(),
+      },
+      durationSeconds: durationSeconds,
+      errorDetail: error,
+    );
+  }
+
+  static Future<String> _getFlutterVersion() async {
+    try {
+      final result = await Process.run('flutter', ['--version']);
+      return result.stdout.toString().split('\n').first;
+    } catch (_) {
+      return 'unknown';
+    }
+  }
+}
+
+// Usage examples
+await FlutterAuditLogger.logDependencyChange(
+  packageName: 'http',
+  operation: 'add',
+  newVersion: '1.1.0',
+  success: true,
+);
+
+await FlutterAuditLogger.logBuildOperation(
+  platform: 'apk',
+  buildMode: 'release',
+  success: true,
+  durationSeconds: 120,
+);
+```
+
+**Bash Script Logging Wrapper:**
+```bash
+#!/bin/bash
+# flutter_audit_wrapper.sh - Wraps Flutter commands with audit logging
+
+log_flutter_operation() {
+  local operation=$1
+  local command=$2
+  local start_time=$(date +%s)
+
+  # Execute command and capture outcome
+  if eval "$command"; then
+    outcome="success"
+    error_detail=""
+  else
+    outcome="failure"
+    error_detail="Command failed with exit code $?"
+  fi
+
+  local end_time=$(date +%s)
+  local duration=$((end_time - start_time))
+
+  # Write JSON log
+  cat >> logs/flutter_operations.jsonl <<EOF
+{"timestamp":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","user":"${USER}","operation":"${operation}","command":"${command}","outcome":"${outcome}","duration_seconds":${duration},"error_detail":"${error_detail}"}
+EOF
+}
+
+# Usage
+log_flutter_operation "pub_get" "flutter pub get"
+log_flutter_operation "test" "flutter test"
+log_flutter_operation "build_apk" "flutter build apk --release"
+```
+
+Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Logs should be retained for 90 days minimum and forwarded to centralized logging *(if available)* (e.g., CloudWatch, Elasticsearch, Splunk). For CI/CD pipelines, ensure logs are captured in build artifacts and accessible for post-deployment audits.
+
 Integration with other agents:
 - Collaborate with mobile-developer on mobile patterns
 - Support dart specialist on Dart optimization

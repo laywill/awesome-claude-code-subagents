@@ -274,6 +274,392 @@ Best practices:
 - Security scanning
 - Documentation current
 
+## Security Safeguards
+
+> **Environment adaptability**: Ask user about their environment once at session start. Adapt proportionally—homelabs/sandboxes skip change tickets and on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. Never block the user because a formal process is unavailable—note the skipped safeguard and continue.
+
+### Input Validation
+
+All .NET operations must validate inputs before execution to prevent injection attacks, unauthorized package installations, and configuration errors.
+
+**Required Validation Patterns**:
+
+1. **Package and dependency names** - NuGet package identifiers must match official naming patterns:
+   ```csharp
+   private static readonly Regex PackageNameRegex = new(@"^[A-Za-z0-9_.-]+$", RegexOptions.Compiled);
+
+   public static bool IsValidPackageName(string packageName)
+   {
+       if (string.IsNullOrWhiteSpace(packageName) || packageName.Length > 100)
+           return false;
+
+       return PackageNameRegex.IsMatch(packageName) &&
+              !packageName.Contains("..") &&
+              !Path.GetInvalidFileNameChars().Any(packageName.Contains);
+   }
+   ```
+
+2. **File paths and project names** - Prevent path traversal and directory injection:
+   ```csharp
+   public static bool IsValidProjectPath(string path)
+   {
+       if (string.IsNullOrWhiteSpace(path)) return false;
+
+       var fullPath = Path.GetFullPath(path);
+       var workspaceRoot = Path.GetFullPath(Environment.CurrentDirectory);
+
+       // Ensure path is within workspace and doesn't contain dangerous patterns
+       return fullPath.StartsWith(workspaceRoot, StringComparison.OrdinalIgnoreCase) &&
+              !fullPath.Contains("..\\") &&
+              !fullPath.Contains("../");
+   }
+   ```
+
+3. **Connection strings** - Validate database connection parameters before use:
+   ```csharp
+   public static bool ValidateConnectionString(string connectionString)
+   {
+       try
+       {
+           var builder = new SqlConnectionStringBuilder(connectionString);
+
+           // Enforce security requirements
+           return builder.IntegratedSecurity ||
+                  (!string.IsNullOrEmpty(builder.UserID) && !string.IsNullOrEmpty(builder.Password)) &&
+                  builder.Encrypt &&
+                  !builder.TrustServerCertificate;
+       }
+       catch
+       {
+           return false;
+       }
+   }
+   ```
+
+**Pre-Execution Validation Function**:
+```csharp
+public class DotnetOperationValidator
+{
+    public static ValidationResult ValidateOperation(DotnetOperation operation)
+    {
+        var errors = new List<string>();
+
+        // Validate package operations
+        if (operation.Type == OperationType.AddPackage)
+        {
+            if (!IsValidPackageName(operation.PackageName))
+                errors.Add($"Invalid package name: {operation.PackageName}");
+
+            if (!IsValidVersion(operation.Version))
+                errors.Add($"Invalid version format: {operation.Version}");
+        }
+
+        // Validate file operations
+        if (operation.Type == OperationType.CreateProject ||
+            operation.Type == OperationType.ModifyFile)
+        {
+            if (!IsValidProjectPath(operation.TargetPath))
+                errors.Add($"Invalid or unsafe path: {operation.TargetPath}");
+        }
+
+        // Validate configuration changes
+        if (operation.Type == OperationType.UpdateConfig)
+        {
+            if (operation.Config.ConnectionStrings?.Any() == true)
+            {
+                foreach (var cs in operation.Config.ConnectionStrings)
+                {
+                    if (!ValidateConnectionString(cs.Value))
+                        errors.Add($"Invalid connection string: {cs.Key}");
+                }
+            }
+        }
+
+        return new ValidationResult
+        {
+            IsValid = !errors.Any(),
+            Errors = errors
+        };
+    }
+
+    private static bool IsValidVersion(string version)
+    {
+        return Version.TryParse(version, out _) ||
+               Regex.IsMatch(version, @"^\d+\.\d+\.\d+(-[a-zA-Z0-9.]+)?$");
+    }
+}
+```
+
+### Rollback Procedures
+
+All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+
+**Before executing ANY operation**:
+1. Create snapshot: `dotnet build --no-restore > pre-change-build.log`
+2. Backup critical files: `git stash push -u -m "pre-dotnet-operation-$(date +%s)"`
+3. Document package versions: `dotnet list package --include-transitive > packages-before.txt`
+
+**Rollback Commands by Operation Type**:
+
+1. **NuGet package addition/update rollback**:
+   ```bash
+   # Remove added package
+   dotnet remove package Newtonsoft.Json
+
+   # Restore previous version
+   dotnet add package Newtonsoft.Json --version 12.0.3
+
+   # Restore all packages to previous state
+   git restore packages.lock.json
+   dotnet restore --force-evaluate
+   ```
+
+2. **Code generation or scaffolding rollback**:
+   ```bash
+   # Remove generated files
+   git clean -fd Controllers/ Models/
+
+   # Restore from backup
+   git restore Controllers/ Models/
+
+   # Or revert specific scaffold
+   dotnet aspnet-codegenerator controller -name BlogController -async -api -actions -outDir Controllers/
+   rm Controllers/BlogController.cs
+   ```
+
+3. **Database migration rollback**:
+   ```bash
+   # Rollback last migration
+   dotnet ef database update PreviousMigrationName
+
+   # Remove migration files
+   dotnet ef migrations remove
+
+   # Full rollback with verification
+   dotnet ef migrations script PreviousMigration CurrentMigration > rollback.sql
+   # Review rollback.sql before applying
+   dotnet ef database update PreviousMigrationName --verbose
+   ```
+
+4. **Configuration changes rollback**:
+   ```bash
+   # Restore appsettings files
+   git restore appsettings*.json
+
+   # Restore user secrets
+   dotnet user-secrets clear
+   cat secrets-backup.json | dotnet user-secrets set
+
+   # Restore environment variables
+   export $(cat .env.backup | xargs)
+   ```
+
+5. **Build configuration rollback**:
+   ```bash
+   # Restore project files
+   git restore **/*.csproj
+
+   # Restore solution file
+   git restore *.sln
+
+   # Clean and rebuild
+   dotnet clean
+   dotnet restore
+   dotnet build --no-incremental
+   ```
+
+6. **Deployment rollback**:
+   ```bash
+   # Container rollback
+   docker tag myapp:previous myapp:latest
+   docker push myapp:latest
+   kubectl rollout undo deployment/myapp
+
+   # Or direct version rollback
+   kubectl set image deployment/myapp myapp=myapp:v1.2.3
+   kubectl rollout status deployment/myapp --timeout=300s
+   ```
+
+**Rollback Validation**:
+```bash
+# Verify build succeeds
+dotnet build --no-restore
+echo "Build exit code: $?"
+
+# Verify tests pass
+dotnet test --no-build --verbosity normal
+echo "Test exit code: $?"
+
+# Verify package integrity
+dotnet list package --vulnerable --include-transitive
+echo "No vulnerabilities: $?"
+
+# Verify application starts
+timeout 30s dotnet run --no-build &
+sleep 10
+curl http://localhost:5000/health || echo "Health check failed"
+```
+
+### Audit Logging
+
+All operations MUST emit structured JSON logs before and after each operation.
+
+**Log Format**:
+```json
+{
+  "timestamp": "2025-06-15T14:32:00Z",
+  "user": "developer@company.com",
+  "change_ticket": "CHG-12345",
+  "environment": "development",
+  "operation": "add_nuget_package",
+  "command": "dotnet add package Microsoft.EntityFrameworkCore --version 10.0.0",
+  "project": "MyApp.Api.csproj",
+  "outcome": "success",
+  "resources_affected": [
+    "MyApp.Api.csproj",
+    "obj/project.assets.json",
+    "packages.lock.json"
+  ],
+  "packages_modified": [
+    {"name": "Microsoft.EntityFrameworkCore", "version": "10.0.0", "action": "added"}
+  ],
+  "rollback_available": true,
+  "rollback_command": "dotnet remove package Microsoft.EntityFrameworkCore",
+  "duration_seconds": 12.4,
+  "build_succeeded": true,
+  "test_results": {"total": 156, "passed": 156, "failed": 0},
+  "error_detail": null
+}
+```
+
+**Logging Implementation**:
+```csharp
+public class DotnetAuditLogger
+{
+    private readonly ILogger<DotnetAuditLogger> _logger;
+
+    public async Task<AuditLog> LogOperationAsync(
+        string operation,
+        string command,
+        Func<Task<OperationResult>> executeOperation)
+    {
+        var auditLog = new AuditLog
+        {
+            Timestamp = DateTime.UtcNow,
+            User = Environment.UserName,
+            Environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "unknown",
+            Operation = operation,
+            Command = command,
+            Project = GetCurrentProjectFile()
+        };
+
+        // Log operation start
+        _logger.LogInformation(
+            "Starting .NET operation: {Operation}",
+            JsonSerializer.Serialize(auditLog)
+        );
+
+        var stopwatch = Stopwatch.StartNew();
+        OperationResult result;
+
+        try
+        {
+            result = await executeOperation();
+            auditLog.Outcome = result.Success ? "success" : "failure";
+            auditLog.ResourcesAffected = result.ModifiedFiles;
+            auditLog.PackagesModified = result.PackageChanges;
+            auditLog.BuildSucceeded = result.BuildStatus;
+            auditLog.TestResults = result.TestSummary;
+        }
+        catch (Exception ex)
+        {
+            auditLog.Outcome = "failure";
+            auditLog.ErrorDetail = ex.Message;
+            result = OperationResult.Failed(ex.Message);
+        }
+        finally
+        {
+            stopwatch.Stop();
+            auditLog.DurationSeconds = stopwatch.Elapsed.TotalSeconds;
+            auditLog.RollbackAvailable = DetermineRollbackAvailability(operation);
+            auditLog.RollbackCommand = GenerateRollbackCommand(operation, command);
+        }
+
+        // Log final operation result
+        _logger.LogInformation(
+            ".NET operation {Outcome}: {Operation}",
+            auditLog.Outcome,
+            JsonSerializer.Serialize(auditLog)
+        );
+
+        // Forward to centralized logging if available
+        await ForwardToAuditServiceAsync(auditLog);
+
+        return auditLog;
+    }
+
+    private async Task ForwardToAuditServiceAsync(AuditLog log)
+    {
+        try
+        {
+            // Forward to Azure Application Insights, Elasticsearch, or other audit store
+            // Example: Application Insights
+            var telemetry = new EventTelemetry("DotnetOperation")
+            {
+                Timestamp = log.Timestamp
+            };
+
+            foreach (var prop in log.GetType().GetProperties())
+            {
+                telemetry.Properties[prop.Name] = prop.GetValue(log)?.ToString();
+            }
+
+            _telemetryClient.TrackEvent(telemetry);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to forward audit log to centralized service");
+        }
+    }
+}
+```
+
+**Usage Example**:
+```csharp
+var auditLogger = new DotnetAuditLogger(logger);
+
+await auditLogger.LogOperationAsync(
+    "add_nuget_package",
+    "dotnet add package Serilog.AspNetCore --version 10.0.0",
+    async () =>
+    {
+        var result = await ExecuteDotnetCommandAsync(
+            "add",
+            new[] { "package", "Serilog.AspNetCore", "--version", "10.0.0" }
+        );
+
+        return new OperationResult
+        {
+            Success = result.ExitCode == 0,
+            ModifiedFiles = new[] { "MyApp.csproj", "packages.lock.json" },
+            PackageChanges = new[]
+            {
+                new PackageChange
+                {
+                    Name = "Serilog.AspNetCore",
+                    Version = "10.0.0",
+                    Action = "added"
+                }
+            },
+            BuildStatus = await VerifyBuildAsync(),
+            TestSummary = await RunTestsAsync()
+        };
+    }
+);
+```
+
+Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Send logs to Application Insights, Seq, Elasticsearch, or file-based JSON logs at `./logs/dotnet-operations-{date}.json` with daily rotation. Retain audit logs for minimum 90 days for compliance.
+
 Integration with other agents:
 - Collaborate with csharp-developer on C# optimization
 - Support microservices-architect on architecture

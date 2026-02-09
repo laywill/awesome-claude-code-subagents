@@ -274,6 +274,215 @@ Best practices:
 - Documentation current
 - Code reviews thorough
 
+## Security Safeguards
+
+> **Environment adaptability**: Ask user about their environment once at session start. Adapt proportionally—homelabs/sandboxes skip change tickets and on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. Never block the user because a formal process is unavailable—note the skipped safeguard and continue.
+
+### Input Validation
+
+All user-supplied inputs MUST be validated before use in Angular operations.
+
+Validation rules:
+- **Component names**: `^[A-Z][a-zA-Z0-9]+Component$`, max 50 chars; reject shell metacharacters, ensure PascalCase with Component suffix
+- **Module names**: `^[A-Z][a-zA-Z0-9]+Module$`; verify follows Angular naming conventions
+- **Route paths**: `^[a-z0-9\-/]+$`, no `..`, no leading/trailing slashes; reject special chars that could break routing
+- **API endpoints**: Must match URL pattern `^https?://[a-zA-Z0-9\-\.]+\.[a-z]{2,}(/[a-zA-Z0-9\-_/]*)?$`; reject `localhost` in production
+- **Environment names**: allowed values only: `development`, `staging`, `production`
+- **Package names**: Must exist in `package.json` dependencies; reject arbitrary `npm install` commands
+- **Bundle names**: `^[a-z0-9\-]+$`; validate against `angular.json` projects
+
+```typescript
+// validation.utils.ts
+export function validateComponentName(name: string): boolean {
+  const pattern = /^[A-Z][a-zA-Z0-9]+Component$/;
+  if (!pattern.test(name)) {
+    throw new Error(`Invalid component name: ${name}. Must be PascalCase ending with 'Component'`);
+  }
+  if (name.length > 50) {
+    throw new Error(`Component name too long: ${name}. Max 50 characters.`);
+  }
+  return true;
+}
+
+export function validateApiEndpoint(url: string, env: string): boolean {
+  if (env === 'production' && url.includes('localhost')) {
+    throw new Error('localhost URLs not allowed in production environment');
+  }
+  const pattern = /^https?:\/\/[a-zA-Z0-9\-\.]+\.[a-z]{2,}(\/[a-zA-Z0-9\-_\/]*)?$/;
+  if (!pattern.test(url)) {
+    throw new Error(`Invalid API endpoint format: ${url}`);
+  }
+  return true;
+}
+
+export function validateEnvironment(env: string): boolean {
+  const allowed = ['development', 'staging', 'production'];
+  if (!allowed.includes(env)) {
+    throw new Error(`Invalid environment: ${env}. Must be one of: ${allowed.join(', ')}`);
+  }
+  return true;
+}
+```
+
+### Rollback Procedures
+
+All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+
+**Git revert for code changes:**
+```bash
+# Revert last commit
+git revert HEAD --no-edit
+git push origin main
+
+# Revert specific commit
+git revert <commit-hash> --no-edit
+git push origin main
+```
+
+**Angular build rollback:**
+```bash
+# Restore previous build from backup
+cp -r dist/backup/previous-build/* dist/app/
+# Or redeploy previous git tag
+git checkout v1.2.3
+npm ci
+ng build --configuration=production
+```
+
+**Deployment rollback (containerized):**
+```bash
+# Roll back to previous Docker image
+docker stop angular-app
+docker run -d --name angular-app -p 80:80 myregistry/angular-app:v1.2.3
+
+# Kubernetes rollback
+kubectl rollout undo deployment/angular-app -n production
+kubectl rollout status deployment/angular-app -n production
+```
+
+**NPM dependency rollback:**
+```bash
+# Restore package-lock.json from git
+git checkout HEAD~1 -- package-lock.json package.json
+npm ci
+ng build --configuration=production
+
+# Or restore from backup
+cp package-lock.backup.json package-lock.json
+npm ci
+```
+
+**NgRx state schema rollback:**
+```typescript
+// Implement state migration with version checking
+export function migrateState(state: any): AppState {
+  const version = state?.version || 1;
+  if (version < CURRENT_VERSION) {
+    // Fallback to previous state structure
+    return getPreviousStateSchema(state);
+  }
+  return state;
+}
+```
+
+**Configuration rollback:**
+```bash
+# Restore environment configuration
+git checkout production -- src/environments/environment.prod.ts
+ng build --configuration=production
+```
+
+**Rollback Validation**: After rollback, verify:
+- Application builds successfully: `ng build --configuration=production`
+- Unit tests pass: `ng test --watch=false`
+- E2E tests pass: `ng e2e`
+- Bundle size within budget: Check `dist/` output
+- Lighthouse score >90 (if applicable)
+
+### Audit Logging
+
+All operations MUST emit structured JSON logs before and after each operation.
+
+**Log Format**
+```json
+{
+  "timestamp": "2025-06-15T14:32:00Z",
+  "user": "developer@company.com",
+  "change_ticket": "CHG-12345",
+  "environment": "production",
+  "operation": "deploy",
+  "command": "ng build --configuration=production && docker build -t angular-app:v1.3.0",
+  "outcome": "success",
+  "resources_affected": ["angular-app", "dist/bundle.js", "nginx-config"],
+  "rollback_available": true,
+  "duration_seconds": 42,
+  "bundle_size_kb": 385,
+  "error_detail": ""
+}
+```
+
+```typescript
+// audit-logger.service.ts
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+
+export interface AuditLog {
+  timestamp: string;
+  user: string;
+  change_ticket?: string;
+  environment: string;
+  operation: string;
+  command: string;
+  outcome: 'success' | 'failure';
+  resources_affected: string[];
+  rollback_available: boolean;
+  duration_seconds: number;
+  bundle_size_kb?: number;
+  error_detail?: string;
+}
+
+@Injectable({ providedIn: 'root' })
+export class AuditLoggerService {
+  constructor(private http: HttpClient) {}
+
+  logOperation(log: AuditLog): void {
+    const auditEntry = {
+      ...log,
+      timestamp: new Date().toISOString(),
+      user: this.getCurrentUser(),
+    };
+
+    // Log to console in development
+    if (log.environment === 'development') {
+      console.log('[AUDIT]', JSON.stringify(auditEntry, null, 2));
+    }
+
+    // Send to centralized logging service
+    this.http.post('/api/audit-logs', auditEntry).subscribe({
+      error: (err) => console.error('Failed to send audit log:', err)
+    });
+
+    // Also write to local storage as fallback
+    this.writeLocalAuditLog(auditEntry);
+  }
+
+  private getCurrentUser(): string {
+    // Retrieve from auth service or environment
+    return localStorage.getItem('user_email') || 'unknown';
+  }
+
+  private writeLocalAuditLog(entry: AuditLog): void {
+    const logs = JSON.parse(localStorage.getItem('audit_logs') || '[]');
+    logs.push(entry);
+    // Keep last 100 entries
+    if (logs.length > 100) logs.shift();
+    localStorage.setItem('audit_logs', JSON.stringify(logs));
+  }
+}
+```
+
+Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. For production environments, forward logs to centralized logging (CloudWatch, Stackdriver, ELK). Retain logs for 90 days minimum. Track: component generation, builds, deployments, state changes, route modifications, dependency updates, configuration changes.
+
 Integration with other agents:
 - Collaborate with frontend-developer on UI patterns
 - Support fullstack-developer on Angular integration

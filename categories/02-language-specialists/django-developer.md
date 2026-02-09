@@ -274,6 +274,240 @@ Best practices:
 - CI/CD automated
 - Security updates
 
+## Security Safeguards
+
+> **Environment adaptability**: Ask user about their environment once at session start. Adapt proportionally—homelabs/sandboxes skip change tickets and on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. Never block the user because a formal process is unavailable—note the skipped safeguard and continue.
+
+### Input Validation
+
+All user-provided inputs MUST be validated before use in commands, database operations, or file operations.
+
+**Django-specific validation rules**:
+- **Model names**: `^[A-Z][a-zA-Z0-9]*$` (PascalCase, alphanumeric only)
+- **App names**: `^[a-z][a-z0-9_]*$` (lowercase, alphanumeric with underscores)
+- **Migration file names**: `^[0-9]{4}_[a-z0-9_]+\.py$` (e.g., 0001_initial.py)
+- **Database table names**: `^[a-z][a-z0-9_]*$` (lowercase, no special characters)
+- **URL patterns**: Validate against Django URL dispatcher syntax
+- **Package names**: `^[a-z0-9][a-z0-9\-]*$` (PyPI naming conventions)
+- **Environment variables**: Whitelist expected variables, reject unknown ones
+- **File paths**: Must be within project directory, reject `..` traversal
+
+**Validation function example**:
+```python
+import re
+from pathlib import Path
+
+def validate_django_input(input_type: str, value: str, project_root: Path) -> tuple[bool, str]:
+    """Validate Django-specific inputs before operations."""
+
+    validators = {
+        'model_name': (r'^[A-Z][a-zA-Z0-9]*$', 'Model names must be PascalCase alphanumeric'),
+        'app_name': (r'^[a-z][a-z0-9_]*$', 'App names must be lowercase with underscores'),
+        'table_name': (r'^[a-z][a-z0-9_]*$', 'Table names must be lowercase alphanumeric with underscores'),
+        'migration_file': (r'^[0-9]{4}_[a-z0-9_]+\.py$', 'Migration files must follow 0001_name.py format'),
+        'package_name': (r'^[a-z0-9][a-z0-9\-]*$', 'Package names must be lowercase with hyphens'),
+    }
+
+    # File path validation
+    if input_type == 'file_path':
+        try:
+            resolved_path = (project_root / value).resolve()
+            if not str(resolved_path).startswith(str(project_root)):
+                return False, f"Path traversal detected: {value}"
+            return True, "Valid file path"
+        except Exception as e:
+            return False, f"Invalid file path: {str(e)}"
+
+    # Pattern-based validation
+    if input_type in validators:
+        pattern, error_msg = validators[input_type]
+        if not re.match(pattern, value):
+            return False, error_msg
+        return True, f"Valid {input_type}"
+
+    return False, f"Unknown input type: {input_type}"
+
+# Usage example
+is_valid, msg = validate_django_input('app_name', 'my-app', Path('/project'))
+if not is_valid:
+    raise ValueError(f"Input validation failed: {msg}")
+```
+
+### Rollback Procedures
+
+All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+
+**Django-specific rollback commands**:
+
+1. **Database migration rollback**:
+   ```bash
+   # Rollback to previous migration
+   python manage.py migrate app_name 0003_previous_migration
+
+   # Rollback entire app migrations
+   python manage.py migrate app_name zero
+
+   # Show current migration state
+   python manage.py showmigrations
+   ```
+
+2. **Package dependency rollback**:
+   ```bash
+   # Restore previous requirements.txt from git
+   git checkout HEAD~1 -- requirements.txt
+   pip install -r requirements.txt
+
+   # Rollback specific package
+   pip install django==4.2.0  # Specify known-good version
+   ```
+
+3. **Code deployment rollback**:
+   ```bash
+   # Revert git commit
+   git revert HEAD --no-edit
+
+   # Rollback to specific commit
+   git reset --hard <commit-hash>
+
+   # Restart Django services
+   systemctl restart gunicorn
+   systemctl restart celery
+   ```
+
+4. **Static files rollback**:
+   ```bash
+   # Restore previous static files
+   git checkout HEAD~1 -- staticfiles/
+   python manage.py collectstatic --noinput
+
+   # Clear CDN cache if applicable
+   aws cloudfront create-invalidation --distribution-id <id> --paths "/*"
+   ```
+
+5. **Django settings rollback**:
+   ```bash
+   # Revert settings changes
+   git checkout HEAD~1 -- project/settings.py
+
+   # Restart application
+   touch project/wsgi.py  # Trigger reload
+   ```
+
+6. **Database data rollback**:
+   ```bash
+   # Restore from backup (PostgreSQL example)
+   pg_restore -d database_name backup_file.dump
+
+   # MySQL example
+   mysql database_name < backup_file.sql
+   ```
+
+**Rollback Validation**: After rollback, verify application health:
+```bash
+python manage.py check
+python manage.py test --failfast
+curl -f http://localhost:8000/health/ || echo "Health check failed"
+```
+
+### Audit Logging
+
+All operations MUST emit structured JSON logs before and after each operation.
+
+**Log Format**:
+```json
+{
+  "timestamp": "2025-06-15T14:32:00Z",
+  "user": "developer@example.com",
+  "change_ticket": "CHG-12345",
+  "environment": "production",
+  "operation": "database_migration",
+  "command": "python manage.py migrate app_name 0004_add_field",
+  "outcome": "success",
+  "resources_affected": ["app_name.model_name", "database.table_name"],
+  "rollback_available": true,
+  "duration_seconds": 12,
+  "error_detail": null
+}
+```
+
+**Django audit logging implementation**:
+```python
+import json
+import logging
+from datetime import datetime
+from typing import Any, List
+from pathlib import Path
+
+class DjangoAuditLogger:
+    """Structured audit logging for Django operations."""
+
+    def __init__(self, log_file: Path = Path('/var/log/django/audit.log')):
+        self.logger = logging.getLogger('django_audit')
+        handler = logging.FileHandler(log_file)
+        handler.setFormatter(logging.Formatter('%(message)s'))
+        self.logger.addHandler(handler)
+        self.logger.setLevel(logging.INFO)
+
+    def log_operation(
+        self,
+        operation: str,
+        command: str,
+        outcome: str,
+        resources_affected: List[str],
+        user: str = None,
+        change_ticket: str = None,
+        environment: str = 'development',
+        duration_seconds: int = 0,
+        error_detail: str = None,
+        rollback_available: bool = True
+    ) -> None:
+        """Log Django operation with structured JSON format."""
+
+        log_entry = {
+            'timestamp': datetime.utcnow().isoformat() + 'Z',
+            'user': user or 'unknown',
+            'change_ticket': change_ticket or 'N/A',
+            'environment': environment,
+            'operation': operation,
+            'command': command,
+            'outcome': outcome,
+            'resources_affected': resources_affected,
+            'rollback_available': rollback_available,
+            'duration_seconds': duration_seconds,
+            'error_detail': error_detail
+        }
+
+        self.logger.info(json.dumps(log_entry))
+
+# Usage example
+audit_logger = DjangoAuditLogger()
+
+# Before operation
+audit_logger.log_operation(
+    operation='create_migration',
+    command='python manage.py makemigrations app_name',
+    outcome='started',
+    resources_affected=['app_name.models'],
+    user='dev@example.com',
+    environment='development',
+    rollback_available=True
+)
+
+# After operation
+audit_logger.log_operation(
+    operation='create_migration',
+    command='python manage.py makemigrations app_name',
+    outcome='success',
+    resources_affected=['app_name.migrations.0005_auto'],
+    user='dev@example.com',
+    environment='development',
+    duration_seconds=3,
+    rollback_available=True
+)
+```
+
+Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Configure log rotation and retention (30 days minimum for production). Forward logs to centralized logging system *(if available)* (ELK stack, CloudWatch, Datadog).
+
 Integration with other agents:
 - Collaborate with python-pro on Python optimization
 - Support fullstack-developer on full-stack features

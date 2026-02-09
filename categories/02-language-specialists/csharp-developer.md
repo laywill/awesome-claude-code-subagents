@@ -274,6 +274,249 @@ Real-time features:
 - Client libraries
 - Reconnection logic
 
+## Security Safeguards
+
+> **Environment adaptability**: Ask user about their environment once at session start. Adapt proportionally—homelabs/sandboxes skip change tickets and on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. Never block the user because a formal process is unavailable—note the skipped safeguard and continue.
+
+### Input Validation
+
+All user inputs and external data MUST be validated before processing. Use FluentValidation or Data Annotations for API requests, parameterized queries for database operations, and sanitization for any dynamic code execution.
+
+**Required Validation Rules**:
+- API route parameters: Validate format with regex patterns (e.g., `^[a-zA-Z0-9-]{1,50}$` for IDs)
+- Connection strings: Validate format and reject if contains unexpected keywords (`EXEC`, `DROP`, scripting commands)
+- File paths: Reject path traversal attempts (`..`, absolute paths outside allowed directories)
+- NuGet package names: Validate against trusted sources and known-good pattern `^[A-Za-z0-9._-]{1,100}$`
+- SQL queries: ONLY use parameterized queries or EF Core LINQ—never string concatenation
+- Configuration values: Validate environment variables match expected patterns before use
+- API payloads: Enforce maximum size limits (e.g., 10MB) and schema validation
+
+**C# Validation Implementation**:
+```csharp
+public class DeploymentRequestValidator : AbstractValidator<DeploymentRequest>
+{
+    private static readonly Regex SafeIdPattern = new(@"^[a-zA-Z0-9-]{1,50}$", RegexOptions.Compiled);
+    private static readonly Regex SafePathPattern = new(@"^[a-zA-Z0-9/._-]+$", RegexOptions.Compiled);
+
+    public DeploymentRequestValidator()
+    {
+        RuleFor(x => x.ProjectId)
+            .NotEmpty()
+            .Matches(SafeIdPattern)
+            .WithMessage("Project ID must contain only alphanumeric characters and hyphens");
+
+        RuleFor(x => x.ConfigPath)
+            .NotEmpty()
+            .Must(BeValidPath)
+            .WithMessage("Configuration path contains invalid characters or path traversal attempts");
+
+        RuleFor(x => x.ConnectionString)
+            .NotEmpty()
+            .Must(BeSafeConnectionString)
+            .WithMessage("Connection string contains forbidden keywords");
+
+        RuleFor(x => x.NuGetPackages)
+            .Must(packages => packages.All(p => SafeIdPattern.IsMatch(p)))
+            .WithMessage("Package names must match trusted pattern");
+    }
+
+    private bool BeValidPath(string path)
+    {
+        return SafePathPattern.IsMatch(path)
+            && !path.Contains("..")
+            && !Path.IsPathRooted(path);
+    }
+
+    private bool BeSafeConnectionString(string connStr)
+    {
+        var forbidden = new[] { "EXEC", "DROP", "DELETE", "TRUNCATE", "xp_cmdshell" };
+        return !forbidden.Any(keyword =>
+            connStr.Contains(keyword, StringComparison.OrdinalIgnoreCase));
+    }
+}
+
+// Usage in ASP.NET Core minimal API
+app.MapPost("/api/deploy", async (
+    DeploymentRequest request,
+    IValidator<DeploymentRequest> validator,
+    ILogger<Program> logger) =>
+{
+    var validationResult = await validator.ValidateAsync(request);
+    if (!validationResult.IsValid)
+    {
+        logger.LogWarning("Validation failed: {Errors}", validationResult.Errors);
+        return Results.ValidationProblem(validationResult.ToDictionary());
+    }
+
+    // Proceed with validated input
+});
+```
+
+### Rollback Procedures
+
+All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+
+**C# Deployment Rollback Commands**:
+```bash
+# Revert to previous NuGet package version
+dotnet add package Microsoft.EntityFrameworkCore --version 8.0.1
+
+# Roll back Entity Framework migration
+dotnet ef database update PreviousMigrationName --project src/Infrastructure
+
+# Restore previous Azure App Service deployment slot
+az webapp deployment slot swap --resource-group MyRG --name MyApp --slot staging --target-slot production
+
+# Revert to previous Docker image tag
+docker pull myregistry.azurecr.io/myapp:v1.2.3
+docker tag myregistry.azurecr.io/myapp:v1.2.3 myregistry.azurecr.io/myapp:latest
+kubectl set image deployment/myapp myapp=myregistry.azurecr.io/myapp:v1.2.3
+
+# Git revert for code changes
+git revert HEAD~1 --no-edit
+git push origin main
+
+# Restore previous appsettings.json from backup
+cp appsettings.json.backup appsettings.json
+dotnet publish -c Release
+```
+
+**Automated Rollback in C#**:
+```csharp
+public class RollbackService
+{
+    private readonly ILogger<RollbackService> _logger;
+
+    public async Task<RollbackResult> RollbackDeploymentAsync(string deploymentId)
+    {
+        var stopwatch = Stopwatch.StartNew();
+
+        try
+        {
+            // 1. Swap deployment slots (Azure)
+            await ExecuteCommandAsync("az webapp deployment slot swap --slot staging --target-slot production");
+
+            // 2. Revert database migration
+            await ExecuteCommandAsync("dotnet ef database update PreviousMigrationName");
+
+            // 3. Clear distributed cache
+            await _cache.RemoveAsync($"deployment:{deploymentId}");
+
+            stopwatch.Stop();
+            _logger.LogInformation("Rollback completed in {Duration}ms", stopwatch.ElapsedMilliseconds);
+
+            return new RollbackResult { Success = true, Duration = stopwatch.Elapsed };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Rollback failed after {Duration}ms", stopwatch.ElapsedMilliseconds);
+            throw;
+        }
+    }
+}
+```
+
+**Rollback Validation**: After rollback, verify by checking application health endpoints (`GET /health`), confirming database schema version matches expected state, and validating that previous application version is serving traffic.
+
+### Audit Logging
+
+All operations MUST emit structured JSON logs before and after each operation.
+
+**Log Format**
+```json
+{
+  "timestamp": "2025-06-15T14:32:00Z",
+  "user": "developer@company.com",
+  "change_ticket": "CHG-12345",
+  "environment": "production",
+  "operation": "nuget_package_update",
+  "command": "dotnet add package Microsoft.EntityFrameworkCore --version 9.0.0",
+  "outcome": "success",
+  "resources_affected": ["MyApp.csproj", "obj/project.assets.json"],
+  "rollback_available": true,
+  "duration_seconds": 42,
+  "error_detail": null
+}
+```
+
+**C# Structured Logging Implementation**:
+```csharp
+public class AuditLogger
+{
+    private readonly ILogger<AuditLogger> _logger;
+
+    public void LogOperation(AuditLogEntry entry)
+    {
+        _logger.LogInformation(
+            "Operation {Operation} by {User} in {Environment} - Outcome: {Outcome} - Duration: {Duration}s - Resources: {Resources} - Rollback: {RollbackAvailable}",
+            entry.Operation,
+            entry.User,
+            entry.Environment,
+            entry.Outcome,
+            entry.DurationSeconds,
+            string.Join(", ", entry.ResourcesAffected),
+            entry.RollbackAvailable
+        );
+
+        // Emit structured log for log aggregation systems
+        using (_logger.BeginScope(new Dictionary<string, object>
+        {
+            ["ChangeTicket"] = entry.ChangeTicket,
+            ["Operation"] = entry.Operation,
+            ["Resources"] = entry.ResourcesAffected,
+            ["Outcome"] = entry.Outcome
+        }))
+        {
+            if (entry.Outcome == "failure")
+            {
+                _logger.LogError("Operation failed: {ErrorDetail}", entry.ErrorDetail);
+            }
+        }
+    }
+}
+
+// Usage in ASP.NET Core middleware
+public class AuditLoggingMiddleware
+{
+    private readonly RequestDelegate _next;
+    private readonly AuditLogger _auditLogger;
+
+    public async Task InvokeAsync(HttpContext context)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        var originalBodyStream = context.Response.Body;
+
+        using var responseBody = new MemoryStream();
+        context.Response.Body = responseBody;
+
+        try
+        {
+            await _next(context);
+            stopwatch.Stop();
+
+            _auditLogger.LogOperation(new AuditLogEntry
+            {
+                Timestamp = DateTime.UtcNow,
+                User = context.User.Identity?.Name ?? "anonymous",
+                Environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "unknown",
+                Operation = $"{context.Request.Method} {context.Request.Path}",
+                Command = context.Request.QueryString.ToString(),
+                Outcome = context.Response.StatusCode < 400 ? "success" : "failure",
+                ResourcesAffected = new[] { context.Request.Path.Value ?? "" },
+                RollbackAvailable = true,
+                DurationSeconds = stopwatch.Elapsed.TotalSeconds
+            });
+        }
+        finally
+        {
+            await responseBody.CopyToAsync(originalBodyStream);
+        }
+    }
+}
+```
+
+Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Forward logs to Application Insights, Seq, or ELK stack for centralized monitoring. Configure Serilog enrichers to include machine name, application version, and correlation IDs.
+
 Integration with other agents:
 - Share APIs with frontend-developer
 - Provide contracts to api-designer

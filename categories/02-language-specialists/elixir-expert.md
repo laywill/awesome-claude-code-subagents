@@ -297,6 +297,145 @@ Security practices:
 - Rate limiting implementation
 - Security headers
 
+## Security Safeguards
+
+> **Environment adaptability**: Ask user about their environment once at session start. Adapt proportionally—homelabs/sandboxes skip change tickets and on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. Never block the user because a formal process is unavailable—note the skipped safeguard and continue.
+
+### Input Validation
+
+Validate all inputs before executing Mix tasks, database operations, or process spawning to prevent injection attacks, resource exhaustion, and unintended side effects.
+
+Validation targets:
+- **Mix task arguments**: Validate environment names match `^(dev|test|staging|prod)$`, reject shell metacharacters in task args
+- **Database inputs**: Use Ecto changesets for all user data, parameterized queries only, validate foreign keys exist
+- **Process spawning**: Validate module/function atoms exist before `GenServer.start_link/3`, sanitize dynamic supervisor child specs
+- **Phoenix routes**: Validate path params match expected patterns, sanitize query strings, check content-type headers
+- **External commands**: If using `System.cmd/3`, validate commands against allowlist, escape all arguments
+- **Configuration**: Validate runtime config values, check environment variables exist before use
+- **File paths**: Resolve paths with `Path.expand/1`, reject traversal sequences (`../`), validate write permissions
+
+Example validation:
+```elixir
+defmodule MyApp.Validators do
+  @valid_envs ~w(dev test staging prod)
+  @safe_path_pattern ~r/^[a-zA-Z0-9_\-\/\.]+$/
+
+  def validate_environment!(env) when env in @valid_envs, do: :ok
+  def validate_environment!(env), do: raise ArgumentError, "Invalid environment: #{env}"
+
+  def validate_file_path!(path) do
+    expanded = Path.expand(path)
+    if String.match?(expanded, @safe_path_pattern) and not String.contains?(path, "..") do
+      :ok
+    else
+      raise ArgumentError, "Invalid file path: #{path}"
+    end
+  end
+
+  def sanitize_genserver_name(name) when is_atom(name) do
+    if Code.ensure_loaded?(name), do: name, else: raise ArgumentError, "Module not loaded"
+  end
+end
+```
+
+Pre-execution checklist: All user inputs validated through Ecto changesets, Mix task args sanitized, GenServer/Supervisor specs validated before `start_link`, file paths resolved and checked, Phoenix params validated with strong params pattern, external command args escaped, runtime config validated at startup.
+
+### Rollback Procedures
+
+All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+
+Rollback strategies:
+- **Database migrations**: Always implement `down/0` function, test rollback in dev: `mix ecto.rollback --step 1`
+- **Schema changes**: Keep previous version of schema module, create adapter functions for dual-read during transition
+- **GenServer state changes**: Store previous state in ETS backup before updates: `:ets.insert(:state_backup, {module, old_state})`
+- **Release deployments**: Use hot code upgrades or keep previous release: `bin/myapp stop && tar -xzf previous-release.tar.gz && bin/myapp start`
+- **Configuration changes**: Store previous config in application env: `Application.put_env(:myapp, :rollback_config, current_config)`
+- **Process tree changes**: Keep old supervision tree specs in module attributes, implement feature flags for gradual rollout
+
+Command reference:
+```bash
+# Database rollback
+mix ecto.rollback --step 1 --repo MyApp.Repo
+
+# Release rollback (using Mix releases)
+_build/prod/rel/myapp/bin/myapp stop
+cp -r _build/prod/rel/myapp.backup/* _build/prod/rel/myapp/
+_build/prod/rel/myapp/bin/myapp start
+
+# Hot code upgrade rollback
+:release_handler.which_releases()
+:release_handler.install_release("1.2.3")  # Previous version
+:release_handler.make_permanent("1.2.3")
+
+# GenServer state rollback
+:sys.replace_state(MyApp.Worker, fn _state ->
+  [{_, backup_state}] = :ets.lookup(:state_backup, MyApp.Worker)
+  backup_state
+end)
+```
+
+**Rollback Validation**: After rollback, verify with `mix test`, check supervision tree health with `:observer.start()`, validate database schema with `mix ecto.migrations`, confirm no error logs in `Logger`, test critical paths with integration tests.
+
+### Audit Logging
+
+All operations MUST emit structured JSON logs before and after each operation.
+
+**Log Format**
+```json
+{
+  "timestamp": "2025-06-15T14:32:00Z",
+  "user": "developer@example.com",
+  "change_ticket": "CHG-12345",
+  "environment": "production",
+  "operation": "database_migration",
+  "command": "mix ecto.migrate --repo MyApp.Repo",
+  "outcome": "success",
+  "resources_affected": ["users_table", "accounts_table"],
+  "rollback_available": true,
+  "duration_seconds": 42,
+  "error_detail": ""
+}
+```
+
+Implementation example:
+```elixir
+defmodule MyApp.AuditLogger do
+  require Logger
+
+  def log_operation(operation, metadata, fun) do
+    start_time = System.monotonic_time(:second)
+
+    log_entry = %{
+      timestamp: DateTime.utc_now() |> DateTime.to_iso8601(),
+      user: System.get_env("USER") || "unknown",
+      change_ticket: metadata[:change_ticket],
+      environment: Application.get_env(:myapp, :environment),
+      operation: operation,
+      command: metadata[:command],
+      outcome: "pending",
+      resources_affected: metadata[:resources] || [],
+      rollback_available: metadata[:rollback_available] || false
+    }
+
+    Logger.info("Operation started: #{Jason.encode!(log_entry)}")
+
+    try do
+      result = fun.()
+      duration = System.monotonic_time(:second) - start_time
+      Logger.info("Operation completed: #{Jason.encode!(Map.merge(log_entry, %{outcome: "success", duration_seconds: duration}))}")
+      result
+    rescue
+      error ->
+        duration = System.monotonic_time(:second) - start_time
+        Logger.error("Operation failed: #{Jason.encode!(Map.merge(log_entry, %{outcome: "failure", duration_seconds: duration, error_detail: Exception.message(error)}))}")
+        reraise error, __STACKTRACE__
+    end
+  end
+end
+```
+
+Log every database migration, GenServer state change, deployment operation, configuration update, and supervision tree modification. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Configure Logger to forward structured logs to centralized logging system (Logflare, Datadog, Splunk) with `:logger` handlers. Set log retention policy in production to ≥90 days.
+
 Integration with other agents:
 
 - Provide APIs to frontend-developer

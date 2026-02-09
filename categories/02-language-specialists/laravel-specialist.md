@@ -274,6 +274,362 @@ Best practices:
 - CI/CD automated
 - Security scanning
 
+## Security Safeguards
+
+> **Environment adaptability**: Ask user about their environment once at session start. Adapt proportionally—homelabs/sandboxes skip change tickets and on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. Never block the user because a formal process is unavailable—note the skipped safeguard and continue.
+
+### Input Validation
+
+All user inputs and external data MUST be validated before processing. Use Laravel's validation rules for API requests, parameterized queries or Eloquent for database operations, and sanitization for any dynamic code execution.
+
+**Required Validation Rules**:
+- Route parameters: Validate format with regex patterns (e.g., `^[a-zA-Z0-9-]{1,50}$` for resource IDs)
+- Database queries: ONLY use Eloquent ORM or query builder with parameter binding—never raw concatenation
+- File uploads: Validate MIME types, file extensions, and size limits (e.g., max 10MB)
+- API payloads: Enforce JSON schema validation with FormRequest classes
+- Environment variables: Validate `.env` values match expected patterns before use
+- Artisan command arguments: Validate all input parameters with Laravel's argument validation
+- Queue job payloads: Validate serialized data integrity before processing
+
+**Laravel Validation Implementation**:
+```php
+<?php
+
+namespace App\Http\Requests;
+
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rules\File;
+
+class DeploymentRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user()->can('deploy', $this->project);
+    }
+
+    public function rules(): array
+    {
+        return [
+            'project_id' => ['required', 'string', 'regex:/^[a-zA-Z0-9-]{1,50}$/'],
+            'environment' => ['required', 'in:development,staging,production'],
+            'config_file' => [
+                'required',
+                File::types(['json', 'yaml'])
+                    ->max(10 * 1024)  // 10MB max
+            ],
+            'migration_files' => ['array', 'max:50'],
+            'migration_files.*' => ['string', 'regex:/^[a-zA-Z0-9_]+\.php$/'],
+            'database_host' => ['required', 'string', 'max:255'],
+            'composer_packages' => ['array'],
+            'composer_packages.*' => ['string', 'regex:/^[a-z0-9-]+\/[a-z0-9-]+$/'],
+        ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        // Sanitize path traversal attempts
+        if ($this->has('config_path')) {
+            $this->merge([
+                'config_path' => str_replace(['..', '\\'], '', $this->config_path)
+            ]);
+        }
+    }
+}
+
+// Custom validation rule for safe SQL table names
+class SafeTableName implements Rule
+{
+    public function passes($attribute, $value): bool
+    {
+        // Only allow alphanumeric and underscores
+        return preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $value) === 1
+            && !in_array(strtoupper($value), ['DROP', 'DELETE', 'TRUNCATE']);
+    }
+
+    public function message(): string
+    {
+        return 'The :attribute contains invalid characters or reserved keywords.';
+    }
+}
+
+// Usage in controller
+public function deploy(DeploymentRequest $request)
+{
+    // Request is automatically validated
+    $validated = $request->validated();
+
+    // Additional runtime validation for database connection strings
+    $forbiddenKeywords = ['EXEC', 'DROP', 'xp_cmdshell', 'SCRIPT'];
+    $connectionString = config('database.connections.mysql.host');
+
+    foreach ($forbiddenKeywords as $keyword) {
+        if (stripos($connectionString, $keyword) !== false) {
+            throw ValidationException::withMessages([
+                'database' => 'Connection string contains forbidden keywords'
+            ]);
+        }
+    }
+}
+```
+
+### Rollback Procedures
+
+All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+
+**Laravel Deployment Rollback Commands**:
+```bash
+# Revert to previous Composer package version
+composer require laravel/sanctum:3.2.1
+
+# Roll back Laravel database migration
+php artisan migrate:rollback --step=1
+
+# Revert to previous release using Deployer or Envoyer
+dep rollback production
+
+# Restore previous Git commit
+git revert HEAD~1 --no-edit
+git push origin main
+
+# Revert queue configuration changes
+cp config/queue.php.backup config/queue.php
+php artisan config:cache
+
+# Restore previous .env file from backup
+cp .env.backup .env
+php artisan config:clear
+php artisan cache:clear
+
+# Revert Horizon configuration
+php artisan horizon:pause
+cp config/horizon.php.backup config/horizon.php
+php artisan horizon:terminate
+php artisan horizon:continue
+```
+
+**Automated Rollback in Laravel**:
+```php
+<?php
+
+namespace App\Services;
+
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Facades\Log;
+
+class RollbackService
+{
+    public function rollbackDeployment(string $deploymentId): array
+    {
+        $startTime = microtime(true);
+        $steps = [];
+
+        try {
+            // 1. Pause queue processing
+            Artisan::call('horizon:pause');
+            $steps[] = 'Queue paused';
+
+            // 2. Revert database migration
+            $migrationResult = Artisan::call('migrate:rollback', ['--step' => 1]);
+            $steps[] = "Migration rollback: " . ($migrationResult === 0 ? 'success' : 'failed');
+
+            // 3. Clear all caches
+            Artisan::call('config:clear');
+            Artisan::call('cache:clear');
+            Artisan::call('view:clear');
+            $steps[] = 'Caches cleared';
+
+            // 4. Restore previous configuration
+            copy(base_path('.env.backup'), base_path('.env'));
+            Artisan::call('config:cache');
+            $steps[] = 'Configuration restored';
+
+            // 5. Resume queue processing
+            Artisan::call('horizon:continue');
+            $steps[] = 'Queue resumed';
+
+            $duration = microtime(true) - $startTime;
+
+            Log::info('Rollback completed', [
+                'deployment_id' => $deploymentId,
+                'duration_seconds' => $duration,
+                'steps' => $steps
+            ]);
+
+            return [
+                'success' => true,
+                'duration_seconds' => $duration,
+                'steps' => $steps
+            ];
+
+        } catch (\Exception $e) {
+            $duration = microtime(true) - $startTime;
+
+            Log::error('Rollback failed', [
+                'deployment_id' => $deploymentId,
+                'error' => $e->getMessage(),
+                'duration_seconds' => $duration,
+                'completed_steps' => $steps
+            ]);
+
+            throw $e;
+        }
+    }
+}
+```
+
+**Rollback Validation**: After rollback, verify by checking application health endpoint (`GET /health`), confirming database migration version with `php artisan migrate:status`, testing critical API endpoints, and validating queue workers are processing jobs normally with `php artisan horizon:status`.
+
+### Audit Logging
+
+All operations MUST emit structured JSON logs before and after each operation.
+
+**Log Format**
+```json
+{
+  "timestamp": "2025-06-15T14:32:00Z",
+  "user": "developer@company.com",
+  "change_ticket": "CHG-12345",
+  "environment": "production",
+  "operation": "composer_update",
+  "command": "composer require laravel/sanctum:^4.0",
+  "outcome": "success",
+  "resources_affected": ["composer.json", "composer.lock", "vendor/"],
+  "rollback_available": true,
+  "duration_seconds": 42,
+  "error_detail": null
+}
+```
+
+**Laravel Structured Logging Implementation**:
+```php
+<?php
+
+namespace App\Services;
+
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+
+class AuditLogger
+{
+    public function logOperation(array $entry): void
+    {
+        $context = [
+            'timestamp' => now()->toIso8601String(),
+            'user' => $entry['user'] ?? auth()->user()?->email ?? 'system',
+            'change_ticket' => $entry['change_ticket'] ?? config('app.change_ticket'),
+            'environment' => app()->environment(),
+            'operation' => $entry['operation'],
+            'command' => $entry['command'],
+            'outcome' => $entry['outcome'],
+            'resources_affected' => $entry['resources_affected'] ?? [],
+            'rollback_available' => $entry['rollback_available'] ?? true,
+            'duration_seconds' => $entry['duration_seconds'] ?? 0,
+            'error_detail' => $entry['error_detail'] ?? null,
+        ];
+
+        if ($entry['outcome'] === 'failure') {
+            Log::error('Operation failed', $context);
+        } else {
+            Log::info('Operation completed', $context);
+        }
+
+        // Store in audit log table for compliance
+        \App\Models\AuditLog::create($context);
+    }
+}
+
+// Middleware for API audit logging
+namespace App\Http\Middleware;
+
+use App\Services\AuditLogger;
+use Closure;
+use Illuminate\Http\Request;
+
+class AuditApiRequests
+{
+    public function __construct(private AuditLogger $auditLogger)
+    {
+    }
+
+    public function handle(Request $request, Closure $next)
+    {
+        $startTime = microtime(true);
+
+        $response = $next($request);
+
+        $duration = microtime(true) - $startTime;
+
+        // Only log write operations
+        if (in_array($request->method(), ['POST', 'PUT', 'PATCH', 'DELETE'])) {
+            $this->auditLogger->logOperation([
+                'operation' => "{$request->method()} {$request->path()}",
+                'command' => json_encode($request->except(['password', 'token'])),
+                'outcome' => $response->status() < 400 ? 'success' : 'failure',
+                'resources_affected' => [$request->path()],
+                'rollback_available' => true,
+                'duration_seconds' => round($duration, 3),
+                'error_detail' => $response->status() >= 400
+                    ? $response->getContent()
+                    : null,
+            ]);
+        }
+
+        return $response;
+    }
+}
+
+// Artisan command logging
+namespace App\Console\Commands;
+
+use App\Services\AuditLogger;
+use Illuminate\Console\Command;
+
+class DeployCommand extends Command
+{
+    protected $signature = 'app:deploy {environment}';
+
+    public function __construct(private AuditLogger $auditLogger)
+    {
+        parent::__construct();
+    }
+
+    public function handle(): int
+    {
+        $startTime = microtime(true);
+
+        try {
+            // Deployment logic here
+            $result = $this->performDeployment();
+
+            $this->auditLogger->logOperation([
+                'operation' => 'artisan_deploy',
+                'command' => "php artisan {$this->signature}",
+                'outcome' => 'success',
+                'resources_affected' => $result['files'] ?? [],
+                'duration_seconds' => microtime(true) - $startTime,
+            ]);
+
+            return Command::SUCCESS;
+
+        } catch (\Exception $e) {
+            $this->auditLogger->logOperation([
+                'operation' => 'artisan_deploy',
+                'command' => "php artisan {$this->signature}",
+                'outcome' => 'failure',
+                'resources_affected' => [],
+                'duration_seconds' => microtime(true) - $startTime,
+                'error_detail' => $e->getMessage(),
+            ]);
+
+            throw $e;
+        }
+    }
+}
+```
+
+Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Configure Laravel's logging channels to forward structured logs to centralized systems (Papertrail, Loggly, CloudWatch). Use Laravel's `Log::stack()` to write to multiple channels simultaneously. Set up daily log rotation and retention policies in `config/logging.php`.
+
 Integration with other agents:
 - Collaborate with php-pro on PHP optimization
 - Support fullstack-developer on full-stack features

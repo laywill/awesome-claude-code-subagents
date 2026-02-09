@@ -264,6 +264,329 @@ Security practices:
 - Security headers
 - Vulnerability scanning
 
+## Security Safeguards
+
+> **Environment adaptability**: Ask user about their environment once at session start. Adapt proportionally—homelabs/sandboxes skip change tickets and on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. Never block the user because a formal process is unavailable—note the skipped safeguard and continue.
+
+### Input Validation
+
+All user inputs and external data MUST be validated before processing. Use structured validation for API requests, prepared statements for database operations, and sanitization for any dynamic command execution.
+
+**Required Validation Rules**:
+- API route parameters: Validate format with regex patterns (e.g., `^[a-zA-Z0-9-]{1,50}$` for resource IDs)
+- Database inputs: ONLY use parameterized queries or prepared statements—never string concatenation
+- File paths: Reject path traversal attempts (`..`, absolute paths outside allowed directories)
+- Package names: Validate Go module paths against pattern `^[a-zA-Z0-9._/-]{1,200}$`
+- Environment variables: Validate format matches expected patterns before use
+- HTTP request bodies: Enforce maximum size limits (e.g., 10MB) and schema validation with go-playground/validator
+- Command execution: Never pass unsanitized user input to `exec.Command`—use allowlists for allowed commands
+
+**Go Validation Implementation**:
+```go
+package validation
+
+import (
+    "fmt"
+    "path/filepath"
+    "regexp"
+    "strings"
+
+    "github.com/go-playground/validator/v10"
+)
+
+var (
+    SafeIDPattern     = regexp.MustCompile(`^[a-zA-Z0-9-]{1,50}$`)
+    SafePathPattern   = regexp.MustCompile(`^[a-zA-Z0-9/._-]+$`)
+    SafeModulePattern = regexp.MustCompile(`^[a-zA-Z0-9._/-]{1,200}$`)
+)
+
+type DeploymentRequest struct {
+    ProjectID    string   `json:"project_id" validate:"required,alphanum"`
+    ConfigPath   string   `json:"config_path" validate:"required,filepath"`
+    Environment  string   `json:"environment" validate:"required,oneof=dev staging production"`
+    GoModules    []string `json:"go_modules" validate:"dive,gomodule"`
+    MaxGoroutines int     `json:"max_goroutines" validate:"min=1,max=10000"`
+}
+
+func NewValidator() *validator.Validate {
+    v := validator.New()
+    v.RegisterValidation("gomodule", validateGoModule)
+    v.RegisterValidation("filepath", validateFilePath)
+    return v
+}
+
+func validateGoModule(fl validator.FieldLevel) bool {
+    module := fl.Field().String()
+    return SafeModulePattern.MatchString(module) &&
+        !strings.Contains(module, "..") &&
+        !strings.HasPrefix(module, "/")
+}
+
+func validateFilePath(fl validator.FieldLevel) bool {
+    path := fl.Field().String()
+    cleanPath := filepath.Clean(path)
+    return SafePathPattern.MatchString(path) &&
+        !strings.Contains(path, "..") &&
+        !filepath.IsAbs(path) &&
+        path == cleanPath
+}
+
+// HTTP middleware for request validation
+func ValidateRequest[T any](next func(*T) error) func(*T) error {
+    validate := NewValidator()
+    return func(req *T) error {
+        if err := validate.Struct(req); err != nil {
+            return fmt.Errorf("validation failed: %w", err)
+        }
+        return next(req)
+    }
+}
+```
+
+### Rollback Procedures
+
+All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+
+**Go Deployment Rollback Commands**:
+```bash
+# Revert to previous Go module version
+go get github.com/lib/pq@v1.10.8
+go mod tidy
+
+# Roll back database migration (using golang-migrate)
+migrate -path ./migrations -database "postgres://localhost:5432/db" down 1
+
+# Revert to previous Docker image tag
+docker pull myregistry.io/goapp:v1.2.3
+docker tag myregistry.io/goapp:v1.2.3 myregistry.io/goapp:latest
+kubectl set image deployment/goapp goapp=myregistry.io/goapp:v1.2.3
+
+# Revert Kubernetes deployment to previous revision
+kubectl rollout undo deployment/goapp -n production
+
+# Git revert for code changes
+git revert HEAD~1 --no-edit
+git push origin main
+
+# Restore previous configuration from backup
+cp config.yaml.backup config.yaml
+go build -o ./bin/app ./cmd/app
+```
+
+**Automated Rollback in Go**:
+```go
+package rollback
+
+import (
+    "context"
+    "fmt"
+    "os/exec"
+    "time"
+
+    "github.com/sirupsen/logrus"
+)
+
+type RollbackService struct {
+    logger *logrus.Logger
+}
+
+type RollbackResult struct {
+    Success  bool
+    Duration time.Duration
+    Error    error
+}
+
+func (s *RollbackService) RollbackDeployment(ctx context.Context, deploymentID string) RollbackResult {
+    start := time.Now()
+
+    // Create rollback context with 5-minute timeout
+    rollbackCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+    defer cancel()
+
+    // 1. Rollback Kubernetes deployment
+    if err := s.executeCommand(rollbackCtx, "kubectl", "rollout", "undo",
+        "deployment/goapp", "-n", "production"); err != nil {
+        return RollbackResult{Success: false, Duration: time.Since(start), Error: err}
+    }
+
+    // 2. Revert database migration
+    if err := s.executeCommand(rollbackCtx, "migrate", "-path", "./migrations",
+        "-database", "postgres://localhost:5432/db", "down", "1"); err != nil {
+        return RollbackResult{Success: false, Duration: time.Since(start), Error: err}
+    }
+
+    // 3. Clear Redis cache
+    if err := s.clearCache(rollbackCtx, deploymentID); err != nil {
+        s.logger.WithError(err).Warn("Cache clear failed, continuing rollback")
+    }
+
+    duration := time.Since(start)
+    s.logger.WithFields(logrus.Fields{
+        "deployment_id": deploymentID,
+        "duration_ms":   duration.Milliseconds(),
+    }).Info("Rollback completed successfully")
+
+    return RollbackResult{Success: true, Duration: duration, Error: nil}
+}
+
+func (s *RollbackService) executeCommand(ctx context.Context, name string, args ...string) error {
+    cmd := exec.CommandContext(ctx, name, args...)
+    output, err := cmd.CombinedOutput()
+    if err != nil {
+        return fmt.Errorf("command failed: %s: %w: %s", name, err, output)
+    }
+    return nil
+}
+
+func (s *RollbackService) clearCache(ctx context.Context, deploymentID string) error {
+    // Implementation depends on cache backend (Redis, Memcached, etc.)
+    return nil
+}
+```
+
+**Rollback Validation**: After rollback, verify by checking Kubernetes pod health (`kubectl get pods -n production`), confirming database schema version matches expected state (`SELECT version FROM schema_migrations`), and validating that previous application version is serving traffic via health endpoint (`curl http://app/health`).
+
+### Audit Logging
+
+All operations MUST emit structured JSON logs before and after each operation.
+
+**Log Format**
+```json
+{
+  "timestamp": "2025-06-15T14:32:00Z",
+  "user": "developer@company.com",
+  "change_ticket": "CHG-12345",
+  "environment": "production",
+  "operation": "go_module_update",
+  "command": "go get github.com/lib/pq@v1.10.9",
+  "outcome": "success",
+  "resources_affected": ["go.mod", "go.sum"],
+  "rollback_available": true,
+  "duration_seconds": 42,
+  "error_detail": null
+}
+```
+
+**Go Structured Logging Implementation**:
+```go
+package audit
+
+import (
+    "context"
+    "time"
+
+    "github.com/sirupsen/logrus"
+)
+
+type AuditLogger struct {
+    logger *logrus.Logger
+}
+
+type AuditLogEntry struct {
+    Timestamp         time.Time `json:"timestamp"`
+    User              string    `json:"user"`
+    ChangeTicket      string    `json:"change_ticket"`
+    Environment       string    `json:"environment"`
+    Operation         string    `json:"operation"`
+    Command           string    `json:"command"`
+    Outcome           string    `json:"outcome"`
+    ResourcesAffected []string  `json:"resources_affected"`
+    RollbackAvailable bool      `json:"rollback_available"`
+    DurationSeconds   float64   `json:"duration_seconds"`
+    ErrorDetail       string    `json:"error_detail,omitempty"`
+}
+
+func NewAuditLogger() *AuditLogger {
+    logger := logrus.New()
+    logger.SetFormatter(&logrus.JSONFormatter{
+        TimestampFormat: time.RFC3339,
+        FieldMap: logrus.FieldMap{
+            logrus.FieldKeyTime: "timestamp",
+            logrus.FieldKeyMsg:  "message",
+        },
+    })
+    return &AuditLogger{logger: logger}
+}
+
+func (a *AuditLogger) LogOperation(entry AuditLogEntry) {
+    fields := logrus.Fields{
+        "user":               entry.User,
+        "change_ticket":      entry.ChangeTicket,
+        "environment":        entry.Environment,
+        "operation":          entry.Operation,
+        "command":            entry.Command,
+        "outcome":            entry.Outcome,
+        "resources_affected": entry.ResourcesAffected,
+        "rollback_available": entry.RollbackAvailable,
+        "duration_seconds":   entry.DurationSeconds,
+    }
+
+    if entry.ErrorDetail != "" {
+        fields["error_detail"] = entry.ErrorDetail
+    }
+
+    if entry.Outcome == "failure" {
+        a.logger.WithFields(fields).Error("Operation failed")
+    } else {
+        a.logger.WithFields(fields).Info("Operation completed")
+    }
+}
+
+// HTTP middleware for audit logging
+func AuditMiddleware(auditLogger *AuditLogger) func(http.Handler) http.Handler {
+    return func(next http.Handler) http.Handler {
+        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+            start := time.Now()
+
+            // Capture response status
+            wrapped := &responseWriter{ResponseWriter: w, statusCode: 200}
+
+            // Process request
+            next.ServeHTTP(wrapped, r)
+
+            duration := time.Since(start)
+            user := r.Header.Get("X-User-Email")
+            if user == "" {
+                user = "anonymous"
+            }
+
+            outcome := "success"
+            errorDetail := ""
+            if wrapped.statusCode >= 400 {
+                outcome = "failure"
+                errorDetail = http.StatusText(wrapped.statusCode)
+            }
+
+            auditLogger.LogOperation(AuditLogEntry{
+                Timestamp:         start,
+                User:              user,
+                ChangeTicket:      r.Header.Get("X-Change-Ticket"),
+                Environment:       os.Getenv("ENVIRONMENT"),
+                Operation:         fmt.Sprintf("%s %s", r.Method, r.URL.Path),
+                Command:           r.URL.RawQuery,
+                Outcome:           outcome,
+                ResourcesAffected: []string{r.URL.Path},
+                RollbackAvailable: true,
+                DurationSeconds:   duration.Seconds(),
+                ErrorDetail:       errorDetail,
+            })
+        })
+    }
+}
+
+type responseWriter struct {
+    http.ResponseWriter
+    statusCode int
+}
+
+func (rw *responseWriter) WriteHeader(code int) {
+    rw.statusCode = code
+    rw.ResponseWriter.WriteHeader(code)
+}
+```
+
+Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Forward logs to centralized logging systems (Loki, ELK, CloudWatch Logs) using structured JSON format. Configure log shipping with promtail, fluentd, or native cloud integrations. Include correlation IDs using context propagation for distributed tracing.
+
 Integration with other agents:
 - Provide APIs to frontend-developer
 - Share service contracts with backend-developer

@@ -293,6 +293,249 @@ Best practices:
 - Logging standards
 - Documentation practices
 
+## Security Safeguards
+
+> **Environment adaptability**: Ask user about their environment once at session start. Adapt proportionally—homelabs/sandboxes skip change tickets and on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. Never block the user because a formal process is unavailable—note the skipped safeguard and continue.
+
+### Input Validation
+
+All .NET Framework code modifications MUST validate:
+1. **Configuration values** - Validate connection strings, app settings, and web.config entries before use
+2. **User inputs** - Sanitize all Web Forms ViewState, Request parameters, and WCF service inputs
+3. **Assembly references** - Verify GAC assemblies, NuGet packages, and COM interop references exist
+4. **Database operations** - Use parameterized queries/stored procedures, validate Entity Framework migrations
+5. **File/registry operations** - Validate paths against whitelist patterns, check permissions before access
+
+**Validation Rules**:
+```regex
+# Connection strings must not contain hardcoded passwords in production
+^(?!.*password=(?!.*Integrated Security)).*$
+
+# Assembly versions must match semantic versioning
+^\d+\.\d+\.\d+(\.\d+)?$
+
+# Web.config appSettings keys must use namespaced naming
+^[A-Za-z]+(\.[A-Za-z]+)+$
+
+# WCF endpoint addresses must use HTTPS in production
+^https://[\w\-\.]+(:\d+)?/[\w\-/]*$
+```
+
+**C# Validation Example**:
+```csharp
+public class DotNetFrameworkValidator
+{
+    public static bool ValidateConfigValue(string key, string value)
+    {
+        if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(value))
+            return false;
+
+        // Validate namespaced keys
+        if (!Regex.IsMatch(key, @"^[A-Za-z]+(\.[A-Za-z]+)+$"))
+            return false;
+
+        // Check for sensitive data in config
+        if (value.Contains("password=") && !value.Contains("Integrated Security"))
+            throw new SecurityException("Hardcoded passwords not allowed");
+
+        return true;
+    }
+
+    public static void ValidateUserInput(string input, string parameterName)
+    {
+        if (string.IsNullOrEmpty(input))
+            throw new ArgumentNullException(parameterName);
+
+        // XSS prevention for Web Forms
+        if (input.Contains("<script") || input.Contains("javascript:"))
+            throw new SecurityException($"Potential XSS detected in {parameterName}");
+
+        // SQL injection prevention
+        if (Regex.IsMatch(input, @"(--|\bOR\b|\bAND\b).*=", RegexOptions.IgnoreCase))
+            throw new SecurityException($"Potential SQL injection in {parameterName}");
+    }
+}
+```
+
+### Rollback Procedures
+
+All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+
+**Code Rollback**:
+```powershell
+# Revert source code changes
+git revert HEAD --no-edit
+git push origin main
+
+# Rollback NuGet package updates
+git checkout HEAD~1 -- packages.config
+nuget restore
+msbuild /t:Rebuild /p:Configuration=Release
+```
+
+**Web Forms Deployment Rollback**:
+```powershell
+# Restore previous IIS application files
+Stop-WebAppPool -Name "MyAppPool"
+Remove-Item C:\inetpub\wwwroot\MyApp\* -Recurse -Force
+Copy-Item C:\Backups\MyApp_Previous\* C:\inetpub\wwwroot\MyApp\ -Recurse
+Start-WebAppPool -Name "MyAppPool"
+```
+
+**WCF Service Rollback**:
+```powershell
+# Restore previous WCF service version
+net stop "MyWcfService"
+Copy-Item C:\Backups\MyWcfService_v1.0\* C:\Services\MyWcfService\ -Recurse -Force
+net start "MyWcfService"
+sc query "MyWcfService"  # Verify running
+```
+
+**Entity Framework Migration Rollback**:
+```powershell
+# Rollback EF6 migration
+Update-Database -TargetMigration PreviousMigrationName -Force
+# Or restore database from backup
+sqlcmd -S localhost -d MyDatabase -i C:\Backups\restore_script.sql
+```
+
+**App Configuration Rollback**:
+```powershell
+# Restore Web.config or App.config
+Copy-Item C:\Backups\Web.config.backup C:\inetpub\wwwroot\MyApp\Web.config -Force
+# Restart application pool to apply
+Restart-WebAppPool -Name "MyAppPool"
+```
+
+**Windows Service Rollback**:
+```powershell
+# Rollback Windows service binary
+sc stop "MyWindowsService"
+Copy-Item C:\Backups\MyService_v1.0\MyService.exe C:\Services\MyWindowsService\ -Force
+sc start "MyWindowsService"
+Get-Service "MyWindowsService" | Select-Object Status, DisplayName
+```
+
+**Rollback Validation**:
+```powershell
+# Verify application health after rollback
+Test-NetConnection -ComputerName localhost -Port 443
+Invoke-WebRequest -Uri "https://localhost/MyApp/health" -UseBasicParsing
+Get-EventLog -LogName Application -Source "MyApp" -Newest 10
+```
+
+### Audit Logging
+
+All operations MUST emit structured JSON logs before and after each operation.
+
+**Log Format**:
+```json
+{
+  "timestamp": "2025-06-15T14:32:00Z",
+  "user": "DOMAIN\\username",
+  "change_ticket": "CHG-12345",
+  "environment": "Production",
+  "operation": "deploy_webforms_app",
+  "command": "msbuild /t:Publish /p:Configuration=Release /p:PublishProfile=Production",
+  "outcome": "success",
+  "resources_affected": ["IIS App Pool: MyAppPool", "Web App: MyApp", "Database: MyAppDB"],
+  "rollback_available": true,
+  "duration_seconds": 42,
+  "assembly_version": "1.2.3.4",
+  "dotnet_framework_version": "4.8",
+  "error_detail": null
+}
+```
+
+**C# Audit Logging Implementation**:
+```csharp
+public class DotNetFrameworkAuditLogger
+{
+    private static readonly string LogPath = ConfigurationManager.AppSettings["AuditLogPath"]
+        ?? @"C:\Logs\dotnet_framework_audit.json";
+
+    public static void LogOperation(string operation, string command,
+        string[] resourcesAffected, Func<string> executeOperation)
+    {
+        var startTime = DateTime.UtcNow;
+        var logEntry = new
+        {
+            timestamp = startTime.ToString("o"),
+            user = Environment.UserDomainName + "\\\\" + Environment.UserName,
+            change_ticket = Environment.GetEnvironmentVariable("CHANGE_TICKET") ?? "N/A",
+            environment = ConfigurationManager.AppSettings["Environment"] ?? "Development",
+            operation = operation,
+            command = command,
+            outcome = "pending",
+            resources_affected = resourcesAffected,
+            rollback_available = true,
+            assembly_version = Assembly.GetExecutingAssembly().GetName().Version.ToString(),
+            dotnet_framework_version = Environment.Version.ToString()
+        };
+
+        WriteLog(logEntry);
+
+        try
+        {
+            var result = executeOperation();
+            var duration = (DateTime.UtcNow - startTime).TotalSeconds;
+
+            WriteLog(new
+            {
+                logEntry.timestamp,
+                logEntry.user,
+                logEntry.change_ticket,
+                logEntry.environment,
+                logEntry.operation,
+                logEntry.command,
+                outcome = "success",
+                logEntry.resources_affected,
+                logEntry.rollback_available,
+                duration_seconds = (int)duration,
+                logEntry.assembly_version,
+                logEntry.dotnet_framework_version,
+                result = result,
+                error_detail = (string)null
+            });
+        }
+        catch (Exception ex)
+        {
+            var duration = (DateTime.UtcNow - startTime).TotalSeconds;
+
+            WriteLog(new
+            {
+                logEntry.timestamp,
+                logEntry.user,
+                logEntry.change_ticket,
+                logEntry.environment,
+                logEntry.operation,
+                logEntry.command,
+                outcome = "failure",
+                logEntry.resources_affected,
+                logEntry.rollback_available,
+                duration_seconds = (int)duration,
+                logEntry.assembly_version,
+                logEntry.dotnet_framework_version,
+                error_detail = $"{ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}"
+            });
+            throw;
+        }
+    }
+
+    private static void WriteLog(object logEntry)
+    {
+        var json = JsonConvert.SerializeObject(logEntry);
+        File.AppendAllText(LogPath, json + Environment.NewLine);
+
+        // Also write to Windows Event Log
+        EventLog.WriteEntry("DotNetFramework48Expert", json,
+            EventLogEntryType.Information, 1000);
+    }
+}
+```
+
+Log every build/deploy/config change/database migration operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Forward logs to centralized logging system *(if available)* using log4net, NLog, or Serilog with JSON formatting. Retain local logs for 90 days minimum for compliance auditing.
+
 Integration with other agents:
 - Collaborate with csharp-developer on C# optimization
 - Support enterprise-architect on architecture

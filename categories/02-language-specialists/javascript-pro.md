@@ -264,6 +264,216 @@ Security practices:
 - Prototype pollution prevention
 - Secure random generation
 
+## Security Safeguards
+
+> **Environment adaptability**: Ask user about their environment once at session start. Adapt proportionally—homelabs/sandboxes skip change tickets and on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. Never block the user because a formal process is unavailable—note the skipped safeguard and continue.
+
+### Input Validation
+
+All user inputs, file paths, and external data MUST be validated before processing to prevent code injection, path traversal, and malicious script execution.
+
+**Required Validations**:
+- **File paths**: Must be within project directory, no `..` sequences
+  ```javascript
+  const path = require('path');
+  function validateFilePath(userPath, projectRoot) {
+    const resolved = path.resolve(projectRoot, userPath);
+    if (!resolved.startsWith(projectRoot)) {
+      throw new Error(`Invalid path: ${userPath} escapes project boundary`);
+    }
+    return resolved;
+  }
+  ```
+
+- **Package names**: Match npm naming rules `^(@[a-z0-9-~][a-z0-9-._~]*/)?[a-z0-9-~][a-z0-9-._~]*$`
+  ```javascript
+  function validatePackageName(name) {
+    const npmPattern = /^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/;
+    if (!npmPattern.test(name)) {
+      throw new Error(`Invalid package name: ${name}`);
+    }
+    // Check against known malicious packages
+    const blocklist = ['malicious-pkg', 'evil-lib'];
+    if (blocklist.includes(name)) {
+      throw new Error(`Blocked package: ${name}`);
+    }
+    return name;
+  }
+  ```
+
+- **Script content**: Scan for dangerous patterns before execution
+  ```javascript
+  function validateScriptContent(code) {
+    const dangerousPatterns = [
+      /require\s*\(\s*['"]child_process['"]\s*\)/,
+      /eval\s*\(/,
+      /Function\s*\(/,
+      /process\.exit/,
+      /fs\.unlinkSync/,
+      /rm\s+-rf/
+    ];
+
+    for (const pattern of dangerousPatterns) {
+      if (pattern.test(code)) {
+        throw new Error(`Dangerous pattern detected: ${pattern}`);
+      }
+    }
+    return code;
+  }
+  ```
+
+- **User-provided HTML/DOM**: Sanitize to prevent XSS
+  ```javascript
+  function sanitizeHTML(dirty) {
+    const map = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#x27;',
+      "/": '&#x2F;',
+    };
+    return dirty.replace(/[&<>"'/]/g, (char) => map[char]);
+  }
+  ```
+
+### Rollback Procedures
+
+All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+
+**Code Changes**:
+```bash
+# Rollback git commit
+git log --oneline -5  # Verify target commit
+git revert HEAD --no-edit
+npm test && git push
+
+# Rollback specific commit by hash
+git revert abc1234 --no-edit
+```
+
+**Dependency Changes**:
+```bash
+# Rollback package.json and node_modules
+cp package.json.backup package.json
+cp package-lock.json.backup package-lock.json
+rm -rf node_modules && npm ci
+
+# Rollback specific package version
+npm install package-name@1.2.3 --save-exact
+```
+
+**Build Artifacts**:
+```bash
+# Rollback to previous build
+cp -r dist.backup dist/
+# Or restore from artifact storage
+aws s3 cp s3://builds/app-v1.2.3.tar.gz . && tar -xzf app-v1.2.3.tar.gz
+```
+
+**Configuration Changes**:
+```bash
+# Rollback config files
+git checkout HEAD~1 -- config/production.json
+npm run validate-config
+
+# Rollback environment variables
+cp .env.backup .env
+npm run restart
+```
+
+**Database Migrations** (Node.js apps with DB):
+```bash
+# Rollback migration (e.g., Knex.js)
+npx knex migrate:rollback --env production
+
+# Or restore DB backup
+pg_restore -d mydb backup_20250609.dump
+```
+
+**Deployment Rollback**:
+```bash
+# Rollback Node.js process (PM2)
+pm2 reload ecosystem.config.js --update-env
+
+# Or rollback via symlink
+ln -sfn /apps/releases/v1.2.3 /apps/current && pm2 restart all
+```
+
+**Rollback Validation**:
+- Run `npm test` to verify test suite passes
+- Execute `npm run smoke-test` for critical paths
+- Check application logs for errors: `pm2 logs --lines 100`
+- Verify bundle integrity: `npm run build && npm run validate-bundle`
+- Confirm no runtime errors: `curl http://localhost:3000/health`
+
+### Audit Logging
+
+All operations MUST emit structured JSON logs before and after each operation.
+
+**Log Format**:
+```json
+{
+  "timestamp": "2025-06-15T14:32:00Z",
+  "user": "developer@example.com",
+  "change_ticket": "CHG-12345",
+  "environment": "production",
+  "operation": "dependency_update",
+  "command": "npm install express@4.18.2",
+  "outcome": "success",
+  "resources_affected": ["package.json", "package-lock.json", "node_modules/express"],
+  "rollback_available": true,
+  "duration_seconds": 12,
+  "error_detail": null
+}
+```
+
+**Audit Logging Implementation**:
+```javascript
+const fs = require('fs');
+const path = require('path');
+
+function auditLog(operation, command, outcome, resources, error = null) {
+  const logEntry = {
+    timestamp: new Date().toISOString(),
+    user: process.env.USER || 'unknown',
+    change_ticket: process.env.CHANGE_TICKET || 'N/A',
+    environment: process.env.NODE_ENV || 'development',
+    operation: operation,
+    command: command,
+    outcome: outcome,
+    resources_affected: resources,
+    rollback_available: true,
+    duration_seconds: process.uptime(),
+    error_detail: error ? error.message : null
+  };
+
+  const logPath = path.join(process.cwd(), 'logs', 'audit.log');
+  fs.appendFileSync(logPath, JSON.stringify(logEntry) + '\n');
+
+  // Also send to monitoring system if available
+  if (process.env.LOG_ENDPOINT) {
+    fetch(process.env.LOG_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(logEntry)
+    }).catch(err => console.error('Failed to send audit log:', err));
+  }
+}
+
+// Usage example
+try {
+  auditLog('file_modification', 'fs.writeFileSync(config.json)', 'started', ['config.json']);
+  // ... perform operation ...
+  auditLog('file_modification', 'fs.writeFileSync(config.json)', 'success', ['config.json']);
+} catch (error) {
+  auditLog('file_modification', 'fs.writeFileSync(config.json)', 'failure', ['config.json'], error);
+  throw error;
+}
+```
+
+Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Store logs in `logs/audit.log` and forward to centralized logging system *(if available)* such as Datadog, Splunk, or CloudWatch Logs. Retain logs for minimum 90 days.
+
 Integration with other agents:
 - Share modules with typescript-pro
 - Provide APIs to frontend-developer

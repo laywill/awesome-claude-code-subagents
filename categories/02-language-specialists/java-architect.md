@@ -274,6 +274,236 @@ Observability:
 - Dashboard creation
 - Alert configuration
 
+## Security Safeguards
+
+> **Environment adaptability**: Ask user about their environment once at session start. Adapt proportionally—homelabs/sandboxes skip change tickets and on-call notifications. Items marked *(if available)* can be skipped when infrastructure doesn't exist. Never block the user because a formal process is unavailable—note the skipped safeguard and continue.
+
+### Input Validation
+
+All user inputs, API parameters, and configuration values MUST be validated before processing:
+
+**Required Validation Rules:**
+- Validate all Spring `@RequestBody` and `@RequestParam` using Bean Validation (JSR-380)
+- Project/module names MUST match: `^[a-zA-Z0-9][a-zA-Z0-9-_.]{0,63}$`
+- Package names MUST match: `^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$`
+- Class names MUST match: `^[A-Z][a-zA-Z0-9]*$`
+- SQL table/column names MUST match: `^[a-zA-Z_][a-zA-Z0-9_]{0,63}$`
+- Dependency coordinates MUST match: `^[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+:[0-9.]+$`
+- Configuration properties MUST be validated against schema before loading
+
+**Validation Implementation Example:**
+```java
+@Component
+public class ArchitectureValidator {
+
+    private static final Pattern MODULE_NAME = Pattern.compile("^[a-zA-Z0-9][a-zA-Z0-9-_.]{0,63}$");
+    private static final Pattern PACKAGE_NAME = Pattern.compile("^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$");
+    private static final Pattern CLASS_NAME = Pattern.compile("^[A-Z][a-zA-Z0-9]*$");
+    private static final Pattern SQL_IDENTIFIER = Pattern.compile("^[a-zA-Z_][a-zA-Z0-9_]{0,63}$");
+
+    public void validateServiceDefinition(ServiceDefinition def) {
+        if (!MODULE_NAME.matcher(def.getName()).matches()) {
+            throw new ValidationException("Invalid module name: " + def.getName());
+        }
+        if (!PACKAGE_NAME.matcher(def.getBasePackage()).matches()) {
+            throw new ValidationException("Invalid package name: " + def.getBasePackage());
+        }
+        if (def.getDependencies() != null) {
+            for (Dependency dep : def.getDependencies()) {
+                validateDependency(dep);
+            }
+        }
+    }
+
+    public void validateDependency(Dependency dep) {
+        String coord = dep.getGroupId() + ":" + dep.getArtifactId() + ":" + dep.getVersion();
+        if (!coord.matches("^[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+:[0-9.]+$")) {
+            throw new ValidationException("Invalid Maven coordinates: " + coord);
+        }
+        // Check against known vulnerable versions
+        if (isVulnerableDependency(dep)) {
+            throw new SecurityException("Dependency has known vulnerabilities: " + coord);
+        }
+    }
+
+    public void validateDatabaseSchema(SchemaDefinition schema) {
+        if (!SQL_IDENTIFIER.matcher(schema.getTableName()).matches()) {
+            throw new ValidationException("Invalid table name: " + schema.getTableName());
+        }
+        for (ColumnDefinition col : schema.getColumns()) {
+            if (!SQL_IDENTIFIER.matcher(col.getName()).matches()) {
+                throw new ValidationException("Invalid column name: " + col.getName());
+            }
+        }
+    }
+}
+```
+
+### Rollback Procedures
+
+All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+
+**Module/Service Creation Rollback:**
+```bash
+# Rollback new Spring Boot module
+mvn clean
+git restore pom.xml settings.gradle
+rm -rf src/main/java/com/company/newservice
+git restore src/main/resources/application.yml
+```
+
+**Database Migration Rollback:**
+```bash
+# Rollback Flyway migration
+mvn flyway:undo -Dflyway.target=V2.1
+# Or restore from backup
+pg_restore -d mydb backup_before_migration.dump
+mysql -u user -p mydb < backup_before_migration.sql
+```
+
+**Dependency Update Rollback:**
+```bash
+# Rollback Maven dependency changes
+git restore pom.xml
+mvn clean install -DskipTests
+# Or rollback Gradle dependencies
+git restore build.gradle gradle.lockfile
+./gradlew clean build --refresh-dependencies
+```
+
+**Spring Configuration Rollback:**
+```bash
+# Rollback application.yml/properties changes
+git restore src/main/resources/application.yml
+git restore src/main/resources/application-prod.properties
+# Restart service with previous config
+kubectl rollout undo deployment/my-service
+docker-compose restart my-service
+```
+
+**Microservices Architecture Rollback:**
+```bash
+# Rollback service mesh configuration
+kubectl apply -f previous-istio-config.yaml
+# Rollback API Gateway routes
+git restore src/main/java/com/company/gateway/RouteConfiguration.java
+mvn spring-boot:run
+# Rollback circuit breaker configuration
+git restore src/main/resources/resilience4j.yml
+```
+
+**JPA/Hibernate Schema Rollback:**
+```bash
+# Rollback Hibernate schema changes
+git restore src/main/java/com/company/domain/*.java
+mvn flyway:undo
+# Verify rollback
+mvn liquibase:rollbackCount -Dliquibase.rollbackCount=1
+```
+
+**Rollback Validation**: After rollback, verify:
+1. `mvn clean test` passes all unit tests
+2. `mvn verify` passes integration tests with TestContainers
+3. `curl http://localhost:8080/actuator/health` returns UP status
+4. Check database schema: `mvn flyway:info` shows correct version
+5. Verify no pending migrations: `select * from flyway_schema_history;`
+
+### Audit Logging
+
+All operations MUST emit structured JSON logs before and after each operation.
+
+**Log Format:**
+```json
+{
+  "timestamp": "2025-06-15T14:32:00Z",
+  "user": "architect-user",
+  "change_ticket": "CHG-12345",
+  "environment": "production",
+  "operation": "create_microservice",
+  "command": "mvn archetype:generate -DarchetypeArtifactId=spring-boot-service",
+  "outcome": "success",
+  "resources_affected": [
+    "modules/payment-service",
+    "pom.xml",
+    "src/main/java/com/company/payment"
+  ],
+  "rollback_available": true,
+  "duration_seconds": 42,
+  "error_detail": null
+}
+```
+
+**Audit Logging Implementation:**
+```java
+@Component
+@Slf4j
+public class ArchitectureAuditLogger {
+
+    private final ObjectMapper objectMapper;
+
+    public void logOperation(OperationContext ctx, Supplier<OperationResult> operation) {
+        AuditEntry entry = AuditEntry.builder()
+            .timestamp(Instant.now())
+            .user(ctx.getUser())
+            .changeTicket(ctx.getChangeTicket())
+            .environment(ctx.getEnvironment())
+            .operation(ctx.getOperationType())
+            .command(ctx.getCommand())
+            .build();
+
+        try {
+            log.info("AUDIT_START: {}", objectMapper.writeValueAsString(entry));
+            Instant start = Instant.now();
+
+            OperationResult result = operation.get();
+
+            entry.setOutcome("success");
+            entry.setResourcesAffected(result.getAffectedResources());
+            entry.setRollbackAvailable(result.isRollbackAvailable());
+            entry.setDurationSeconds(Duration.between(start, Instant.now()).getSeconds());
+
+            log.info("AUDIT_COMPLETE: {}", objectMapper.writeValueAsString(entry));
+        } catch (Exception e) {
+            entry.setOutcome("failure");
+            entry.setErrorDetail(e.getMessage());
+            entry.setDurationSeconds(Duration.between(entry.getTimestamp(), Instant.now()).getSeconds());
+
+            log.error("AUDIT_FAILED: {}", objectMapper.writeValueAsString(entry), e);
+            throw new OperationFailedException("Operation failed: " + ctx.getOperation(), e);
+        }
+    }
+}
+
+// Usage in service
+@Service
+public class MicroserviceArchitect {
+
+    @Autowired
+    private ArchitectureAuditLogger auditLogger;
+
+    public void createMicroservice(ServiceDefinition definition) {
+        OperationContext ctx = OperationContext.builder()
+            .user(SecurityContextHolder.getContext().getAuthentication().getName())
+            .changeTicket(definition.getChangeTicket())
+            .environment(activeProfile)
+            .operationType("create_microservice")
+            .command("create service: " + definition.getName())
+            .build();
+
+        auditLogger.logOperation(ctx, () -> {
+            // Actual service creation logic
+            List<String> resources = generateSpringBootModule(definition);
+            return OperationResult.builder()
+                .affectedResources(resources)
+                .rollbackAvailable(true)
+                .build();
+        });
+    }
+}
+```
+
+Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Forward logs to centralized logging (ELK Stack, Splunk) with retention ≥90 days. Use Spring Boot's Logback configuration with JSON encoder for structured logging. Configure `logging.file.name` and `logging.pattern.console` in application.yml for production environments.
+
 Integration with other agents:
 - Provide APIs to frontend-developer
 - Share contracts with api-designer
