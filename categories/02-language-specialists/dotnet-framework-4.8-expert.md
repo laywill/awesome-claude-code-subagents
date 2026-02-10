@@ -158,76 +158,18 @@ public class DotNetFrameworkValidator
 
 ### Rollback Procedures
 
-All development operations MUST have a rollback path completing in <5 minutes. This agent manages .NET Framework 4.8 development and local/staging environments.
+**Scope**: Local, dev, and staging environments only. Production deployments (IIS production servers, Windows Services, production databases) are handled by deployment/infrastructure agents.
 
-**Source Code Rollback**:
-```powershell
-# Revert code changes
-git revert HEAD --no-edit && git push origin feature-branch
+**Time Constraint**: All rollbacks MUST complete in <5 minutes.
 
-# Restore specific files
-git checkout HEAD~1 -- App_Code/ Models/ Controllers/
+**Rollback Decision Framework**:
+1. **Source code changes**: Use git revert for pushed commits, git checkout for local changes, git clean for untracked files
+2. **Dependency changes**: Restore packages.config from previous commit, run nuget restore + msbuild rebuild
+3. **Database changes**: Use EF migration rollback (Update-Database -TargetMigration) for dev databases only; restore from backup script if migration unavailable
+4. **Build artifacts**: Clean bin/obj directories, rebuild from known-good source
+5. **Configuration**: Restore Web.config/App.config from backup, restart local IIS/service
 
-# Discard uncommitted changes
-git checkout . && git clean -fd
-```
-
-**NuGet Package Rollback**:
-```powershell
-# Restore from packages.config
-git checkout HEAD~1 -- packages.config
-nuget restore
-msbuild /t:Rebuild /p:Configuration=Debug
-
-# Remove specific package
-nuget uninstall Newtonsoft.Json -ProjectName MyProject
-```
-
-**Local Database Rollback** (development):
-```powershell
-# Rollback Entity Framework migration (local dev DB)
-Update-Database -TargetMigration PreviousMigrationName -Force
-
-# Restore local database from script
-sqlcmd -S localhost\SQLEXPRESS -d MyApp_Dev -i C:\DevBackups\restore_dev.sql
-```
-
-**Build Artifacts Rollback**:
-```powershell
-# Clean build directories
-msbuild /t:Clean /p:Configuration=Debug
-Remove-Item -Path bin\,obj\ -Recurse -Force
-
-# Rebuild from source
-msbuild /t:Rebuild /p:Configuration=Debug
-```
-
-**Local Configuration Rollback**:
-```powershell
-# Restore Web.config for local development
-Copy-Item C:\DevBackups\Web.config.backup Web.config -Force
-
-# Restore App.config
-Copy-Item C:\DevBackups\App.config.backup App.config -Force
-
-# Restart local IIS Express or dev service
-iisreset /restart  # For local IIS
-```
-
-**Rollback Validation**:
-```powershell
-# Verify build succeeds
-msbuild /t:Rebuild /p:Configuration=Debug
-
-# Check local application
-Test-NetConnection -ComputerName localhost -Port 8080
-Invoke-WebRequest -Uri "http://localhost:8080/health" -UseBasicParsing
-
-# Check local event logs
-Get-EventLog -LogName Application -Source "MyApp" -Newest 5
-```
-
-**Note**: Production deployments (IIS production servers, Windows Services, production databases) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
+**Validation Requirements**: After rollback, verify build succeeds (msbuild /t:Rebuild), check application responds (Test-NetConnection + Invoke-WebRequest), inspect event logs for errors.
 
 ### Audit Logging
 

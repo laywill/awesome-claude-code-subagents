@@ -129,97 +129,19 @@ Pre-execution checklist: All user inputs validated through Ecto changesets, Mix 
 
 ### Rollback Procedures
 
-All development operations MUST have a rollback path completing in <5 minutes. This agent manages Elixir/Phoenix development and local/staging environments.
+All operations MUST complete rollback in <5 minutes. **Scope**: local/dev/staging environments only. Production deployments (releases, hot code upgrades, clusters) are handled by infrastructure agents.
 
-**Source Code Rollback**:
-```bash
-# Revert code changes
-git revert HEAD && git push origin feature-branch
+**Rollback Principles**:
+- **Source code**: Use git operations (revert commits, restore files, discard changes). Validate with tests and compilation checks.
+- **Dependencies**: Restore from `mix.lock` via `mix deps.get`. For clean state: remove `deps/` and `_build/`, re-fetch, recompile.
+- **Database** (local/dev only): Use `mix ecto.rollback` with `--step` or `--to` flags. For dev environments, `mix ecto.reset` is acceptable.
+- **Build artifacts**: Clean with `mix clean`, remove `_build/`, rebuild. Verify with `mix compile --warnings-as-errors`.
+- **Configuration**: Restore config files from git or backups. Restart local Phoenix server to apply changes.
+- **GenServer state** (dev only): Use `:sys.replace_state/2` for development testing. Store backups in ETS for quick recovery.
 
-# Restore specific files
-git checkout HEAD~1 -- lib/myapp/
+**Validation framework**: After any rollback, verify with `mix test`, check compilation warnings, confirm dependencies resolve, validate migrations list, test local endpoints.
 
-# Discard uncommitted changes
-git checkout . && git clean -fd
-```
-
-**Dependencies Rollback**:
-```bash
-# Restore from lock file
-mix deps.get
-
-# Rollback specific dependency
-mix deps.update specific_package
-
-# Reset to clean state
-rm -rf deps/ _build/ && mix deps.get && mix compile
-```
-
-**Local Database Rollback** (development):
-```bash
-# Rollback migration (local dev DB)
-mix ecto.rollback --step 1 --repo MyApp.Repo
-
-# Rollback to specific migration
-mix ecto.rollback --to 20230615120000 --repo MyApp.Repo
-
-# Reset local database
-mix ecto.drop && mix ecto.create && mix ecto.migrate
-```
-
-**Build Artifacts Rollback**:
-```bash
-# Clean build directories
-mix clean
-rm -rf _build/
-
-# Rebuild from source
-mix compile
-```
-
-**Local Configuration Rollback**:
-```bash
-# Restore config files
-git checkout HEAD~1 -- config/
-
-# Reset environment
-cp config/dev.exs.backup config/dev.exs
-
-# Restart local Phoenix server
-mix phx.server
-```
-
-**GenServer State Rollback** (development):
-```elixir
-# Store previous state in ETS for local testing
-:ets.insert(:state_backup, {MyApp.Worker, old_state})
-
-# Restore GenServer state
-:sys.replace_state(MyApp.Worker, fn _state ->
-  [{_, backup_state}] = :ets.lookup(:state_backup, MyApp.Worker)
-  backup_state
-end)
-```
-
-**Rollback Validation**:
-```bash
-# Run tests
-mix test
-
-# Check compilation
-mix compile --warnings-as-errors
-
-# Check dependencies
-mix deps.get
-
-# Verify local database
-mix ecto.migrations
-
-# Test local server
-curl http://localhost:4000/health
-```
-
-**Note**: Production deployments (release management, hot code upgrades, production BEAM clusters) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
+**Decision framework**: Choose rollback granularity based on blast radius—prefer targeted reverts (single file, single migration, single dependency) over full resets. Use atomic operations where possible. Document rollback triggers in audit logs.
 
 ### Audit Logging
 

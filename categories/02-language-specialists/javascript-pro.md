@@ -150,85 +150,19 @@ All user inputs, file paths, and external data MUST be validated before processi
 
 ### Rollback Procedures
 
-All development operations MUST have a rollback path completing in <5 minutes. This agent manages JavaScript/Node.js development and local/staging environments.
+All operations MUST have a rollback path completing in <5 minutes. **Scope**: Local/dev/staging environments only. Production deployments (PM2 production, AWS services, production databases, CDN) are handled by deployment/infrastructure agents.
 
-**Source Code Rollback**:
-```bash
-# Revert code changes
-git revert HEAD --no-edit && git push origin feature-branch
+**Rollback decision framework**:
+1. Uncommitted changes: Discard via git checkout/clean
+2. Committed changes: Git revert (preserves history) or reset (destructive, dev-only)
+3. Dependencies: Restore from lock file (`npm ci`) or backup, or pin specific version
+4. Database: Rollback migrations (dev DB only) or restore from backup
+5. Build artifacts: Clean and rebuild from source, or restore from backup
+6. Configuration: Restore from git history or backup, validate before restart
 
-# Revert specific commit
-git revert abc1234 --no-edit
+**Validation principle**: After any rollback, verify via tests, smoke tests, health checks, and logs before considering operation complete.
 
-# Discard uncommitted changes
-git checkout . && git clean -fd
-```
-
-**Dependencies Rollback**:
-```bash
-# Restore from lock file
-npm ci
-
-# Restore from backup
-cp package*.json.backup . && rm -rf node_modules && npm ci
-
-# Rollback specific package
-npm install package-name@1.2.3 --save-exact
-```
-
-**Local Database Rollback** (development):
-```bash
-# Rollback migration (local dev DB)
-npx knex migrate:rollback --env development
-
-# Restore local database
-pg_restore -d mydb_dev backup_dev.dump
-```
-
-**Build Artifacts Rollback**:
-```bash
-# Clean build directories
-rm -rf dist/ build/
-
-# Restore from backup
-cp -r dist.backup dist/
-
-# Rebuild from source
-npm run build
-```
-
-**Local Configuration Rollback**:
-```bash
-# Restore configuration
-git checkout HEAD~1 -- config/development.json
-npm run validate-config
-
-# Restore environment
-cp .env.backup .env
-
-# Restart local server
-npm run dev
-```
-
-**Rollback Validation**:
-```bash
-# Run tests
-npm test
-
-# Run smoke tests
-npm run smoke-test
-
-# Verify build
-npm run build && npm run validate-bundle
-
-# Check local service
-curl http://localhost:3000/health
-
-# Check logs
-npm run logs
-```
-
-**Note**: Production deployments (PM2 production, AWS services, production databases, CDN distributions) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
+**Time constraint**: If rollback exceeds 5 minutes, escalate to infrastructure/deployment agents.
 
 ### Audit Logging
 

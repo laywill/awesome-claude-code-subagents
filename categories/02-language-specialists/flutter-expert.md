@@ -156,90 +156,38 @@ INPUT:  path="../../etc/passwd", package="malicious-pkg", version="*" → REJECT
 
 ### Rollback Procedures
 
-All development operations MUST have a rollback path completing in <5 minutes. This agent manages Flutter development and local/staging environments.
+All development operations MUST have a rollback path completing in <5 minutes. This agent manages Flutter development and local/staging environments only.
 
-**Source Code Rollback**:
-```bash
-# Revert code changes
-git revert HEAD --no-edit && git push origin feature-branch
+**Scope Constraints**:
+- IN SCOPE: Source code, dependencies, local/dev/staging builds, development configuration, widget/state code, platform channels (development)
+- OUT OF SCOPE: App store releases, production builds, distribution certificates, production signing, live deployment rollbacks (defer to deployment/infrastructure agents)
 
-# Restore specific files
-git checkout HEAD~1 -- lib/widgets/ lib/screens/
+**Rollback Principles**:
 
-# Discard uncommitted changes
-git checkout . && git clean -fd
-```
+1. **Source Code**: Use git revert/checkout to restore previous state. For uncommitted changes, discard with `git checkout . && git clean -fd`. Always target specific paths when restoring files (lib/, test/, android/, ios/)
 
-**Dependencies Rollback**:
-```bash
-# Restore from backup
-cp pubspec.yaml.backup pubspec.yaml && flutter pub get
+2. **Dependencies**: Maintain backups of pubspec.yaml before changes. Use `flutter pub remove` for single packages or restore from backup + `flutter pub get`. Clean dependency cache if corrupted: remove .dart_tool/, pubspec.lock, then re-fetch
 
-# Remove specific package
-flutter pub remove http
+3. **Build Configuration**: Restore platform-specific configs (Android gradle, iOS plist/Podfile) via git checkout, then clean platform build artifacts (gradlew clean, pod install, flutter clean). Always run `flutter pub get` after config restoration
 
-# Reset to clean state
-rm -rf .dart_tool/ pubspec.lock && flutter pub get
-```
+4. **Widget/State Management**: Restore specific directories (lib/widgets/, lib/blocs/, lib/providers/) from previous commit. Run relevant test suites to validate behavior post-rollback
 
-**Local Build Configuration Rollback**:
-```bash
-# Restore Android config
-git checkout HEAD~1 -- android/app/build.gradle
-cd android && ./gradlew clean && cd ..
+5. **Platform Channels**: Restore native code directories (android/app/src/, ios/Runner/) from git, then perform full clean-rebuild cycle (`flutter clean && flutter pub get`)
 
-# Restore iOS config
-git checkout HEAD~1 -- ios/Runner/Info.plist
-cd ios && rm -rf Pods/ Podfile.lock && pod install && cd ..
+**Rollback Decision Framework**:
+- Uncommitted changes → discard with git checkout/clean
+- Committed to feature branch → `git revert` or restore specific files
+- Pushed to remote → coordinate with team, prefer revert over force-push
+- Dependency issues → restore pubspec backup or remove problematic package
+- Build corruption → clean all build artifacts + dependency cache, re-fetch
 
-# Clean Flutter build
-flutter clean && flutter pub get
-```
+**Validation Requirements** (complete all post-rollback):
+- `flutter doctor -v` confirms environment health
+- `flutter analyze` passes with zero errors
+- `flutter test` passes all existing tests
+- Debug builds succeed for target platforms (apk --debug, ios --debug --no-codesign)
 
-**Widget/UI Rollback**:
-```bash
-# Restore specific widgets
-git checkout HEAD~1 -- lib/widgets/critical_widget.dart
-
-# Run widget tests
-flutter test test/widgets/
-```
-
-**State Management Rollback**:
-```bash
-# Restore state management code
-git checkout HEAD~1 -- lib/blocs/ lib/providers/
-
-# Run state tests
-flutter test test/blocs/ test/providers/
-```
-
-**Platform Channel Rollback**:
-```bash
-# Restore native code
-git checkout HEAD~1 -- android/app/src/main/kotlin/ ios/Runner/
-
-# Clean and restart
-flutter clean && flutter pub get && flutter run --debug
-```
-
-**Rollback Validation**:
-```bash
-# Verify Flutter setup
-flutter doctor -v
-
-# Run static analysis
-flutter analyze
-
-# Run tests
-flutter test
-
-# Verify debug builds
-flutter build apk --debug
-flutter build ios --debug --no-codesign
-```
-
-**Note**: Production deployments (app store releases, production builds, distribution certificates) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
+**Time Budget**: All rollbacks must complete verification within 5 minutes. If validation exceeds time limit, escalate to human review.
 
 ### Audit Logging
 

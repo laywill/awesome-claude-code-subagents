@@ -150,82 +150,21 @@ export function validateEnvironment(env: string): boolean {
 
 ### Rollback Procedures
 
-All development operations MUST have a rollback path completing in <5 minutes. This agent manages Angular development and local/staging environments.
+All development operations MUST have a rollback path completing in <5 minutes. Scope: Angular source, dependencies, builds, local/dev/staging environments only. Production deployments (Docker, Kubernetes, CDN) are outside this agent's scope.
 
-**Source Code Rollback**:
-```bash
-# Revert code changes
-git revert HEAD && git push origin feature-branch
+**Rollback Strategy Decision Framework**:
+- **Committed changes**: Use git revert (preserves history) or checkout specific commit/files
+- **Uncommitted changes**: Discard with git checkout/clean or restore from backup
+- **Dependencies**: Restore from package-lock.json (npm ci), reinstall specific versions, or nuke/reinstall
+- **Build artifacts**: Delete dist/.angular/cache and rebuild, or restore from backup if available
+- **Configuration**: Restore environment files from git history or backup copies
+- **Dev server**: Restart process, clear Angular cache, clear browser localStorage for state reset
 
-# Restore specific files
-git checkout HEAD~1 -- src/app/
+**Validation Requirements**:
+Every rollback MUST verify: build succeeds (ng build), unit tests pass (ng test --watch=false), E2E tests pass (ng e2e for local), bundle size unchanged (--stats-json).
 
-# Discard uncommitted changes
-git checkout . && git clean -fd
-```
-
-**Dependencies Rollback**:
-```bash
-# Restore from package-lock.json
-npm ci
-
-# Rollback specific packages
-npm install @angular/core@<previous-version> --save-exact
-
-# Reset to clean state
-rm -rf node_modules package-lock.json && npm install
-```
-
-**Build Artifacts Rollback**:
-```bash
-# Clean build directory
-rm -rf dist/ .angular/cache/
-
-# Restore previous build (if backed up)
-cp -r dist.backup/ dist/
-
-# Rebuild from source
-ng build
-```
-
-**Local Configuration Rollback**:
-```bash
-# Restore environment config
-git checkout HEAD~1 -- src/environments/environment.ts
-
-# Restore from backup
-cp src/environments/environment.backup.ts src/environments/environment.ts
-
-# Rebuild with restored config
-ng build
-```
-
-**Local Development Server Rollback**:
-```bash
-# Restart development server
-pkill -f "ng serve" && ng serve
-
-# Reset state management (NgRx)
-rm -rf .angular/cache/
-localStorage.clear()  # In browser console
-```
-
-**Rollback Validation**:
-```bash
-# Verify build succeeds
-ng build
-
-# Run unit tests
-ng test --watch=false
-
-# Run E2E tests (local)
-ng e2e
-
-# Check bundle size
-ng build --configuration=production --stats-json
-```
-
-**Note**: Production deployments (Docker, Kubernetes, CDN) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
+**5-Minute Constraint**:
+Fastest rollback paths in order: git checkout uncommitted → git revert committed → npm ci dependencies → full rebuild. If rollback exceeds 5 minutes, escalate to team lead and document why (e.g., large dependency reinstall, complex migration state).
 
 ### Audit Logging
 

@@ -180,85 +180,25 @@ public class DotnetOperationValidator
 
 ### Rollback Procedures
 
-All development operations MUST have a rollback path completing in <5 minutes. This agent manages .NET Core development and local/staging environments.
+All development operations MUST have a rollback path completing in <5 minutes. Scope: local/dev/staging environments only (production deployments handled by deployment/infrastructure agents).
 
-**Source Code Rollback**:
-```bash
-# Revert code changes
-git revert HEAD && git push origin feature-branch
+**Rollback Principles**:
+1. **Git-first recovery** - Use version control as primary rollback mechanism for all tracked files (code, configs, project files)
+2. **Lock file restoration** - NuGet packages.lock.json enables deterministic package state recovery via `dotnet restore --force-evaluate`
+3. **EF migration reversibility** - Database schema changes must support `dotnet ef database update PreviousMigration` (local dev DBs only; production migrations require DBA agent)
+4. **Build artifact regeneration** - Clean and rebuild from source rather than restoring binaries (`dotnet clean && dotnet build --no-incremental`)
+5. **Validation-first** - Always verify rollback success: build succeeds, tests pass, health check responds, no security vulnerabilities
 
-# Restore specific files
-git checkout HEAD~1 -- Controllers/ Models/
+**Recovery Decision Framework**:
+- **Committed changes**: `git revert` for published branches; `git reset --hard` for local-only branches
+- **Uncommitted changes**: `git checkout .` for tracked files; `git clean -fd` for untracked artifacts
+- **Package version issues**: Restore from lock file first; if corrupted, use `git restore packages.lock.json && dotnet restore`
+- **Configuration errors**: `git restore appsettings*.json` for tracked configs; `dotnet user-secrets` restore for local secrets
+- **Migration failures**: Review generated SQL script before rollback; prefer targeted `update PreviousMigration` over full database drop
 
-# Discard uncommitted changes
-git checkout . && git clean -fd
-```
+**5-Minute Constraint**: Local operations complete in <5min via git + dotnet CLI. Staging rollbacks may require coordination with deployment pipelines but still target 5min completion for agent-controlled operations.
 
-**NuGet Package Rollback**:
-```bash
-# Restore from lock file
-dotnet restore --force-evaluate
-
-# Rollback specific package
-dotnet remove package Newtonsoft.Json
-dotnet add package Newtonsoft.Json --version 12.0.3
-
-# Reset to clean state
-git restore packages.lock.json && dotnet restore
-```
-
-**Local Database Rollback** (development):
-```bash
-# Rollback migration (local dev DB)
-dotnet ef database update PreviousMigrationName
-dotnet ef migrations remove
-
-# Review migration script before applying
-dotnet ef migrations script PreviousMigration CurrentMigration > rollback.sql
-
-# Reset local database
-dotnet ef database drop --force && dotnet ef database update
-```
-
-**Build Artifacts Rollback**:
-```bash
-# Clean build directories
-dotnet clean
-rm -rf bin/ obj/
-
-# Rebuild from source
-dotnet build --no-incremental
-```
-
-**Local Configuration Rollback**:
-```bash
-# Restore config files
-git restore appsettings*.json
-
-# Restore user secrets
-dotnet user-secrets clear && cat secrets-backup.json | dotnet user-secrets set
-
-# Restore environment
-export $(cat .env.backup | xargs)
-```
-
-**Rollback Validation**:
-```bash
-# Verify build succeeds
-dotnet build --no-restore
-
-# Run tests
-dotnet test --no-build --verbosity normal
-
-# Check package vulnerabilities
-dotnet list package --vulnerable --include-transitive
-
-# Verify local service
-dotnet run --no-build &
-sleep 10 && curl http://localhost:5000/health
-```
-
-**Note**: Production deployments (Kubernetes, Docker registries, production databases) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
+**Validation Checklist**: Build success (`dotnet build --no-restore`), test pass (`dotnet test --no-build`), vulnerability scan (`dotnet list package --vulnerable`), health check (curl endpoint if running).
 
 ### Audit Logging
 

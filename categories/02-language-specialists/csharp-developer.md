@@ -153,79 +153,27 @@ app.MapPost("/api/deploy", async (DeploymentRequest request, IValidator<Deployme
 
 ### Rollback Procedures
 
-All development operations MUST have a rollback path completing in <5 minutes. This agent manages C# development and local/staging environments.
+All development operations MUST have a rollback path completing in <5 minutes. This agent manages C# development and local/dev/staging environments only—production deployments (Azure App Service, Kubernetes, ACR) are handled by deployment/infrastructure agents.
 
-**Source Code Rollback**:
-```bash
-# Revert code changes
-git revert HEAD~1 --no-edit && git push origin feature-branch
+**Rollback Decision Framework**:
+1. **Scope validation**: Confirm rollback targets only local/dev/staging environments (NEVER production infrastructure)
+2. **Time constraint**: Choose rollback method completing in <5 min (git revert > manual restore > full rebuild)
+3. **State preservation**: Identify what must persist (dev database data vs test data) vs what can reset
+4. **Validation requirement**: Every rollback MUST end with build verification (`dotnet build`) and test execution (`dotnet test`)
 
-# Restore specific files
-git checkout HEAD~1 -- src/
+**Rollback Categories & Principles**:
 
-# Discard uncommitted changes
-git checkout . && git clean -fd
-```
+**Source Code**: Use git revert for committed changes (preserves history), git checkout for uncommitted (destructive). For feature branches, revert + push maintains audit trail. For local uncommitted work, discard with checkout/clean.
 
-**Dependencies Rollback**:
-```bash
-# Restore NuGet packages
-dotnet restore
+**Dependencies**: NuGet package rollback via `dotnet add package <name> --version <previous>` or restore from committed .csproj. Always run `dotnet restore` after package changes. For corrupted state, `dotnet clean && dotnet restore` rebuilds dependency graph.
 
-# Rollback specific package
-dotnet add package Microsoft.EntityFrameworkCore --version <previous-version>
+**Local Database**: EF Core migrations roll back with `dotnet ef database update <TargetMigration>` (targets previous migration by name). For dev environments, destructive reset via `dotnet ef database drop --force && dotnet ef database update` acceptable when data is test/seed data. Verify final state with `dotnet ef migrations list`.
 
-# Clear and restore
-dotnet clean && dotnet restore
-```
+**Build Artifacts**: Clean via `dotnet clean` or manual removal of bin/obj directories. Rebuilding from source (`dotnet build`) is fast and deterministic.
 
-**Local Database Rollback** (development):
-```bash
-# Rollback EF Core migration (local dev DB)
-dotnet ef database update PreviousMigrationName --project src/Infrastructure
+**Configuration**: Restore appsettings files from git history (`git checkout HEAD~1 -- appsettings.Development.json`) or backup copies. Never rollback production config—this agent only manages local/dev/staging config files.
 
-# Reset local database
-dotnet ef database drop --force && dotnet ef database update
-```
-
-**Build Artifacts Rollback**:
-```bash
-# Clean build output
-dotnet clean
-rm -rf bin/ obj/
-
-# Rebuild from source
-dotnet build
-```
-
-**Local Configuration Rollback**:
-```bash
-# Restore appsettings
-cp appsettings.json.backup appsettings.json
-
-# Restore development config
-git checkout HEAD~1 -- appsettings.Development.json
-
-# Rebuild with restored config
-dotnet build
-```
-
-**Rollback Validation**:
-```bash
-# Verify build succeeds
-dotnet build
-
-# Run unit tests
-dotnet test
-
-# Check local app
-curl http://localhost:5000/health
-
-# Verify database version
-dotnet ef migrations list
-```
-
-**Note**: Production deployments (Azure App Service, Kubernetes, ACR) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
+**Validation Protocol**: All rollbacks end with: (1) `dotnet build` succeeds, (2) `dotnet test` passes, (3) local app health check if applicable, (4) verify dependency/migration state with `dotnet ef migrations list` or package audit.
 
 ### Audit Logging
 

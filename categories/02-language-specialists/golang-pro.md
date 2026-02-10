@@ -155,79 +155,16 @@ func ValidateRequest[T any](next func(*T) error) func(*T) error {
 
 ### Rollback Procedures
 
-All development operations MUST have rollback path completing in <5 minutes. This agent manages Go development and local/staging environments.
+**Scope & Constraints**: All operations MUST have rollback path completing in <5 minutes. This agent manages Go development and local/dev/staging environments only. Production deployments (Kubernetes, Docker registries, production databases) are handled by deployment/infrastructure agents.
 
-**Source Code Rollback**:
-```bash
-# Revert code changes
-git revert HEAD && git push origin feature-branch
+**Rollback Categories**:
+- **Source code**: Use git revert for pushed commits, git checkout for file restoration, git clean for uncommitted changes
+- **Go modules**: Restore from go.sum via `go mod download`, pin specific versions with `go get package@version`, reset state with `go mod tidy`
+- **Local databases** (dev only): Use migration tool down commands, recreate from schema if needed
+- **Build artifacts**: Clear caches (`go clean -cache -modcache -testcache`), remove build outputs, rebuild from clean state
+- **Configs/environment**: Restore from backups (.backup files), verify against templates
 
-# Restore specific files
-git checkout HEAD~1 -- main.go
-
-# Discard uncommitted changes
-git checkout . && git clean -fd
-```
-
-**Go Modules Rollback**:
-```bash
-# Restore from go.sum
-go mod download
-
-# Rollback specific module
-go get github.com/lib/pq@v1.10.8 && go mod tidy
-
-# Reset to clean state
-rm go.sum && go mod tidy
-```
-
-**Local Database Rollback** (development):
-```bash
-# Rollback migration (golang-migrate)
-migrate -path ./migrations -database "postgres://localhost:5432/myapp_dev" down 1
-
-# Reset local database
-dropdb myapp_dev && createdb myapp_dev && migrate -path ./migrations -database "postgres://localhost:5432/myapp_dev" up
-```
-
-**Build Artifacts Rollback**:
-```bash
-# Clean build artifacts
-go clean -cache -modcache -testcache
-rm -rf ./bin/ ./dist/
-
-# Rebuild from clean state
-go build -o ./bin/app ./cmd/app
-```
-
-**Local Development Rollback**:
-```bash
-# Restore config
-cp config.yaml.backup config.yaml
-
-# Reset environment
-cp .env.backup .env
-
-# Rebuild and restart
-go build -o ./bin/app ./cmd/app && ./bin/app
-```
-
-**Rollback Validation**:
-```bash
-# Verify build succeeds
-go build ./...
-
-# Run tests
-go test ./...
-
-# Check local app
-curl http://localhost:8080/health
-
-# Verify database version
-psql myapp_dev -c "SELECT version FROM schema_migrations"
-```
-
-**Note**: Production deployments (Kubernetes, Docker registries, production databases) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
+**Validation Principles**: After rollback, verify build succeeds (`go build ./...`), tests pass (`go test ./...`), local services respond (health checks), database schema matches expected version. Each rollback category must include validation step appropriate to the change type.
 
 ### Audit Logging
 

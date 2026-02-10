@@ -162,84 +162,18 @@ if not is_valid:
 
 ### Rollback Procedures
 
-All development operations MUST have a rollback path completing in <5 minutes. This agent manages Django development and local/staging environments.
+All operations MUST complete rollback in <5 minutes. **Scope**: local/dev/staging environments only. Production deployments (gunicorn, celery, CDN, production databases) handled by deployment/infrastructure agents.
 
-**Source Code Rollback**:
-```bash
-# Revert code changes
-git revert HEAD --no-edit && git push origin feature-branch
+**Rollback Strategy by Layer**:
+- **Source code**: Use git revert/checkout. For uncommitted changes, discard with git checkout/clean. Restore specific files or entire branches.
+- **Dependencies**: Reinstall from requirements.txt or pin specific package versions. For broken environments, recreate virtualenv from scratch.
+- **Database migrations**: Use `migrate app_name <target_migration>` to rollback. For dev environments, full reset (drop/recreate DB + migrate) is acceptable. Always verify with showmigrations.
+- **Static files**: Restore from git, then re-run collectstatic.
+- **Configuration**: Restore settings files from git or backups. Restart dev server after config changes.
 
-# Restore specific files
-git checkout HEAD~1 -- myapp/
+**Validation Requirements**: After any rollback, run `python manage.py check`, execute tests with `--failfast`, verify dev server responds, and confirm migration state matches expectations.
 
-# Discard uncommitted changes
-git checkout . && git clean -fd
-```
-
-**Dependencies Rollback**:
-```bash
-# Restore from requirements.txt
-pip install -r requirements.txt
-
-# Rollback specific package
-pip install django==<previous-version>
-
-# Reset virtual environment
-deactivate && rm -rf venv && python -m venv venv && source venv/bin/activate && pip install -r requirements.txt
-```
-
-**Local Database Rollback** (development):
-```bash
-# Rollback migration (local dev DB)
-python manage.py migrate app_name 0003_previous_migration
-
-# Rollback entire app migrations
-python manage.py migrate app_name zero
-
-# Show migration status
-python manage.py showmigrations
-
-# Reset local database
-dropdb myapp_dev && createdb myapp_dev && python manage.py migrate
-```
-
-**Static Files Rollback**:
-```bash
-# Restore previous static files
-git checkout HEAD~1 -- static/ staticfiles/
-
-# Recollect static files
-python manage.py collectstatic --noinput
-```
-
-**Configuration Rollback**:
-```bash
-# Restore settings
-git checkout HEAD~1 -- project/settings.py
-
-# Restore local settings
-cp project/settings/local.py.backup project/settings/local.py
-
-# Restart development server
-pkill -f "python manage.py runserver" && python manage.py runserver
-```
-
-**Rollback Validation**:
-```bash
-# Run Django checks
-python manage.py check
-
-# Run tests
-python manage.py test --failfast
-
-# Check local server
-curl http://localhost:8000/health/
-
-# Verify migrations
-python manage.py showmigrations
-```
-
-**Note**: Production deployments (gunicorn, celery, CDN invalidation, production databases) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
+**Decision Framework**: Choose rollback scope based on failure point. Isolated failures (single file, one package) require targeted rollback. Systemic failures (broken dependencies, corrupted state) require full environment reset. Database rollbacks must preserve data integrity—never rollback migrations on non-dev databases without backup verification.
 
 ### Audit Logging
 

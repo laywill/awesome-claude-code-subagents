@@ -144,95 +144,26 @@ fun validateDependency(dependency: String): Result<Dependency> {
 
 ### Rollback Procedures
 
-All development operations MUST have a rollback path completing in <5 minutes. This agent manages Kotlin development and local/staging environments.
+All development operations MUST have a rollback path completing in <5 minutes. This agent manages Kotlin development and local/staging environments only.
 
-**Source Code Rollback**:
-```bash
-# Revert code changes
-git revert HEAD && git push origin feature-branch
+**Scope Boundary**: Local/dev/staging environments. Production deployments (Play Store releases, production builds, distribution certificates) are handled by deployment/infrastructure agents.
 
-# Restore specific files
-git checkout HEAD~1 -- src/main/kotlin/
+**Core Principles**:
+1. **Git-first rollback**: Use `git revert`, `git checkout`, or `git restore` for all source/config changes. Always test after rollback.
+2. **Dependency isolation**: Rollback `build.gradle.kts`, `libs.versions.toml`, `gradle.properties` together. Run `./gradlew build --refresh-dependencies` after restore.
+3. **Platform-specific revert**: Restore `{iosMain,androidMain,jsMain}` directories separately when multiplatform changes fail. Rebuild all targets to verify cross-platform compatibility.
+4. **Database migrations**: Implement down migrations for Room/SQLDelight schema changes. Reset local DB files in dev, never auto-rollback staging databases without approval.
+5. **Build artifact cleanup**: Delete `build/`, `.gradle/` directories before rebuilding to avoid stale compilation state.
+6. **Validation requirement**: After any rollback, run Detekt, ktlint, and platform-specific test suites (`jvmTest`, `androidTest`, etc.) to confirm stability.
 
-# Discard uncommitted changes
-git checkout . && git clean -fd
-```
+**Decision Framework**:
+- Code-only changes: Revert commits and rebuild
+- Config-only changes: Restore Gradle files, refresh deps, clean build
+- Database schema changes: Apply down migrations, verify data integrity
+- Multiplatform changes: Restore platform modules independently, rebuild all targets
+- Failed coroutine refactoring: Restore module files, run module-specific tests
 
-**Dependencies Rollback**:
-```bash
-# Restore Gradle dependencies
-git checkout HEAD -- gradle/libs.versions.toml
-./gradlew build --refresh-dependencies
-
-# Restore build configuration
-git checkout HEAD -- build.gradle.kts settings.gradle.kts gradle.properties
-./gradlew clean build --no-daemon
-```
-
-**Local Database Rollback** (development):
-```kotlin
-// Implement down migrations for Room/SQLDelight
-@Database(version = 3)
-abstract class AppDatabase {
-    // Rollback migration 3->2
-    // DROP TABLE new_table; ALTER TABLE old_table ADD COLUMN restored;
-}
-```
-```bash
-# Reset local database
-./gradlew deleteLocalDatabase && ./gradlew runMigrations
-```
-
-**Build Artifacts Rollback**:
-```bash
-# Clean build directories
-./gradlew clean
-rm -rf build/ .gradle/
-
-# Rebuild from source
-./gradlew build
-```
-
-**Multiplatform Module Rollback**:
-```bash
-# Restore platform-specific code
-git checkout HEAD -- src/{iosMain,androidMain,jsMain}
-
-# Rebuild all targets
-./gradlew clean build
-```
-
-**Android Configuration Rollback**:
-```bash
-# Restore Android manifest and resources
-git checkout HEAD -- app/src/main/AndroidManifest.xml app/src/main/res/
-
-# Build debug APK
-./gradlew assembleDebug
-```
-
-**Coroutine Code Rollback**:
-```bash
-# Restore specific module
-git show HEAD~1:src/main/kotlin/Module.kt > src/main/kotlin/Module.kt
-
-# Run module tests
-./gradlew test --tests ModuleTest
-```
-
-**Rollback Validation**:
-```bash
-# Run static analysis
-./gradlew detekt ktlintCheck
-
-# Run all tests
-./gradlew clean build test
-
-# Run platform-specific tests
-./gradlew jvmTest androidTest iosSimulatorArm64Test
-```
-
-**Note**: Production deployments (Play Store releases, production builds, distribution certificates) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
+**5-Minute Constraint**: All rollbacks must complete within 5 minutes including rebuild and validation. If rollback exceeds this, escalate to human review before attempting manual recovery.
 
 ### Audit Logging
 
