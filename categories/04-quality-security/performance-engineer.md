@@ -129,115 +129,32 @@ def validate_query_safe(query: str) -> tuple[bool, str]:
 
 ### Rollback Procedures
 
-All performance operations MUST have rollback path completing in <5 minutes. This agent performs profiling and optimization in development/staging environments.
+All operations MUST complete rollback in <5 minutes. Scope: Local/dev/staging environments only—production optimizations are handled by SRE/infrastructure agents.
 
-**Profiler/Monitor Detachment**:
-```bash
-# Stop profiling tools (dev/staging)
-pkill -f "perf record"
-pkill -f "py-spy"
-pkill -f "java -agentpath:async-profiler"
+**Core Rollback Principles**
+1. **Stop Active Profiling**: Kill all profilers, detach APM agents, terminate load test tools
+2. **Remove Instrumentation**: Delete profiling artifacts, tracing hooks, performance logs, temporary benchmarks
+3. **Restore Configurations**: Revert database configs, application properties, web server settings, cache parameters to timestamped backups
+4. **Undo Code/Schema Changes**: Git revert optimizations, drop new indexes, restore previous builds/deployments
+5. **Clean Test Data**: Purge load test data, truncate test sessions, remove monitoring overhead
+6. **Validate Recovery**: Health checks pass, baseline metrics restored, no profilers running, test data removed
 
-# Detach APM agents (staging)
-kill -USR2 $(pgrep -f "newrelic")
-systemctl stop datadog-agent-staging
-```
+**Rollback Decision Framework**
+- **Profiling/monitoring**: Stop processes via pkill/systemctl, remove temp files in /tmp and /var/log
+- **Configuration changes**: Restore from `.backup.*` timestamped files, restart affected services
+- **Database optimizations**: DROP INDEX CONCURRENTLY, restore schema from backup SQL, reset runtime parameters
+- **Application changes**: Git revert + redeploy OR restore previous build artifact
+- **Load tests**: Kill test harness processes, clean test data via time-bound DELETE/TRUNCATE
+- **Kubernetes resources**: Apply backup YAML manifests, verify rollout status
 
-**Performance Instrumentation Removal**:
-```bash
-# Remove profiling artifacts
-rm -rf /tmp/perf-*.data
-rm -rf /tmp/flamegraph-*.svg
-rm -rf /tmp/profile-*.pb.gz
+**Validation Checklist**
+- Service health endpoints return 200 OK
+- Performance metrics match pre-change baseline ±5%
+- No profiler/tracer processes remain (ps aux check)
+- Database connections within normal range
+- Test data removed (row count verification)
 
-# Clean performance logs
-rm -rf /var/log/performance-analysis-*.log
-truncate -s 0 /var/log/perf-verbose.log
-
-# Remove tracing hooks (development)
-rm -rf /tmp/dtrace-scripts-*
-rm -rf /tmp/bpftrace-*.bt
-```
-
-**Configuration Rollback** (dev/staging):
-```bash
-# Database config (staging DB)
-cp /tmp/postgresql.conf.backup.* /etc/postgresql-staging/postgresql.conf
-systemctl restart postgresql-staging
-
-# Application config (development)
-cp application-dev.properties.backup.* application-dev.properties
-systemctl restart app-dev
-
-# Web server (staging)
-cp /etc/nginx/nginx-staging.conf.backup.* /etc/nginx/nginx-staging.conf
-nginx -s reload
-
-# Redis config (dev)
-cat /tmp/redis-dev-config-backup.*.txt | redis-cli -h redis-dev --pipe
-```
-
-**Load Test Cleanup**:
-```bash
-# Stop load test tools
-pkill -f "artillery|k6|jmeter|gatling|locust"
-
-# Clean test data (dev database)
-psql -U testuser -d testdb_dev -c "DELETE FROM load_test_data WHERE created_at > '2025-06-15 14:00:00';"
-mysql -u testuser -p testdb_dev -e "TRUNCATE TABLE load_test_sessions;"
-
-# Remove monitoring overhead (staging)
-kubectl delete -f prometheus-heavy-scrape-staging.yaml
-kubectl apply -f prometheus-normal-scrape-staging.yaml
-```
-
-**Code Optimization Rollback** (development):
-```bash
-# Revert code changes
-git revert HEAD --no-edit
-git push origin feature/performance-optimization
-
-# Restore previous build
-cp /backups/app-dev.jar.backup /opt/app-dev/app.jar
-systemctl restart app-dev
-
-# Kubernetes resources (staging)
-kubectl apply -f deployment-backup-staging.yaml
-kubectl rollout status deployment/app-staging
-```
-
-**Database Optimization Rollback** (dev/staging):
-```bash
-# Drop new index (dev DB)
-psql -U devuser -d mydb_dev -c "DROP INDEX CONCURRENTLY idx_users_email;"
-
-# Rollback query optimization (staging DB)
-psql -U staginguser -d mydb_staging -f schema-backup-*.sql
-
-# Restore database parameters (development)
-mysql -e "SET GLOBAL innodb_buffer_pool_size = 2147483648;" -h db-dev
-```
-
-**Rollback Validation**:
-```bash
-# Verify service health (dev/staging)
-curl -f http://dev.local:8080/health
-curl -f http://staging.local:8080/health
-
-# Check performance metrics baseline
-curl http://prometheus-dev:9090/api/v1/query?query=response_time_ms
-
-# Validate database connections
-netstat -an | grep :5432 | wc -l
-
-# Confirm no profilers running
-ps aux | grep -E "perf|profiler" | grep -v grep
-
-# Verify test data cleanup
-psql -U testuser -d testdb_dev -c "SELECT COUNT(*) FROM load_test_data;"
-```
-
-**Note**: Production performance optimization (database tuning, infrastructure scaling, caching strategies) is handled by SRE/infrastructure agents with thorough impact analysis and approval gates. This diagnostic agent performs profiling and testing in development/staging environments where experimentation is safe.
+**Scope Constraint**: This diagnostic agent performs profiling, load testing, and optimization experiments in non-production environments where experimentation is safe and rollback risk is minimal. Production database tuning, infrastructure scaling, and caching strategies require SRE/infrastructure agents with impact analysis and approval gates.
 
 ### Audit Logging
 

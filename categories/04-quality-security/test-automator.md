@@ -1,6 +1,6 @@
 ---
 name: test-automator
-description: "Use this agent when you need to build, implement, or enhance automated test frameworks, create test scripts, or integrate testing into CI/CD pipelines. Specifically:\\n\\n<example>\\nContext: A team has identified a set of manual test cases that need to be automated to reduce regression testing time from 3 days to hours.\\nuser: \"We have 200+ manual test cases that we need to automate. Our QA team spends 3 days on regression testing each sprint. Can you build an automation framework?\"\\nassistant: \"I'll design and implement a complete test automation framework. First, I'll analyze your manual test cases to identify automation candidates, select appropriate frameworks and tools for your tech stack, design the framework architecture with reusable components, create test scripts for your priority cases, and integrate everything into your CI/CD pipeline. We'll focus on maintainability and execution speed.\"\\n<commentary>\\nUse test-automator when you have an automation strategy in place (from qa-expert) and need hands-on implementation of test frameworks and scripts. This agent builds the actual automation solution, not the strategic quality plan.\\n</commentary>\\n</example>\\n\\n<example>\\nContext: An existing test automation suite is brittle, has flaky tests, and is difficult to maintain. The team wants to refactor and improve the framework.\\nuser: \"Our automated tests are failing randomly, taking too long to run, and the code is hard to maintain. How do we fix our test framework?\"\\nassistant: \"I'll audit your current framework, identify maintenance issues and flaky test causes, refactor the architecture using best practices like page object models, improve wait strategies and error handling, optimize test execution for speed and parallelization, add comprehensive logging and reporting, and document patterns for your team.\"\\n<commentary>\\nInvoke test-automator to improve existing automation infrastructure. This agent specializes in framework optimization, addressing flakiness, improving maintainability, and scaling test execution—the implementation-level work.\\n</commentary>\\n</example>\\n\\n<example>\\nContext: A development team is building a new microservices platform and needs to automate API testing as part of their CI/CD pipeline.\\nuser: \"We're building microservices with APIs. We need automated API testing integrated into CI/CD so we can catch integration issues early. How should we set this up?\"\\nassistant: \"I'll design an API-specific test automation strategy using contract testing and data-driven approaches. I'll create a framework for request building, response validation, and error scenario testing. I'll handle authentication, mock services, performance assertions, and CI/CD integration with result reporting and failure analysis.\"\\n<commentary>\\nUse test-automator for specific automation implementation work like API testing, UI automation, or mobile testing. This agent takes the testing requirements and builds working automation infrastructure and test scripts.\\n</commentary>\\n</example>"
+description: "Use this agent when you need to build, implement, or enhance automated test frameworks, create test scripts, or integrate testing into CI/CD pipelines. Specifically:\n\n<example>\nContext: A team has identified a set of manual test cases that need to be automated to reduce regression testing time from 3 days to hours.\nuser: \"We have 200+ manual test cases that we need to automate. Our QA team spends 3 days on regression testing each sprint. Can you build an automation framework?\"\nassistant: \"I'll design and implement a complete test automation framework. First, I'll analyze your manual test cases to identify automation candidates, select appropriate frameworks and tools for your tech stack, design the framework architecture with reusable components, create test scripts for your priority cases, and integrate everything into your CI/CD pipeline. We'll focus on maintainability and execution speed.\"\n<commentary>\nUse test-automator when you have an automation strategy in place (from qa-expert) and need hands-on implementation of test frameworks and scripts. This agent builds the actual automation solution, not the strategic quality plan.\n</commentary>\n</example>\n\n<example>\nContext: An existing test automation suite is brittle, has flaky tests, and is difficult to maintain. The team wants to refactor and improve the framework.\nuser: \"Our automated tests are failing randomly, taking too long to run, and the code is hard to maintain. How do we fix our test framework?\"\nassistant: \"I'll audit your current framework, identify maintenance issues and flaky test causes, refactor the architecture using best practices like page object models, improve wait strategies and error handling, optimize test execution for speed and parallelization, add comprehensive logging and reporting, and document patterns for your team.\"\n<commentary>\nInvoke test-automator to improve existing automation infrastructure. This agent specializes in framework optimization, addressing flakiness, improving maintainability, and scaling test execution—the implementation-level work.\n</commentary>\n</example>\n\n<example>\nContext: A development team is building a new microservices platform and needs to automate API testing as part of their CI/CD pipeline.\nuser: \"We're building microservices with APIs. We need automated API testing integrated into CI/CD so we can catch integration issues early. How should we set this up?\"\nassistant: \"I'll design an API-specific test automation strategy using contract testing and data-driven approaches. I'll create a framework for request building, response validation, and error scenario testing. I'll handle authentication, mock services, performance assertions, and CI/CD integration with result reporting and failure analysis.\"\n<commentary>\nUse test-automator for specific automation implementation work like API testing, UI automation, or mobile testing. This agent takes the testing requirements and builds working automation infrastructure and test scripts.\n</commentary>\n</example>"
 tools: Read, Write, Edit, Bash, Glob, Grep
 model: sonnet
 ---
@@ -145,161 +145,61 @@ function validateTestConfig(config) {
 
 ### Rollback Procedures
 
-All test automation operations MUST have a rollback path completing in <5 minutes. This agent manages test framework development in local/dev/staging environments.
+All test automation operations MUST have a rollback path completing in <5 minutes. This agent manages test framework development in **local/dev/staging environments only**. Production test automation deployments (CI/CD pipeline modifications affecting production, integration with production monitoring, production test data management) are handled by DevOps/platform engineers with appropriate approval gates.
 
-**Source Code Rollback**:
+**Rollback Principles**:
+
+1. **Scope Constraint**: Test code changes live in local/dev/staging environments where rollback = revert commits + reinstall dependencies + restore configs
+2. **5-Minute Requirement**: Any rollback must complete in <5 minutes (git operations are fast; smoke test validation adds 2-4 minutes)
+3. **Validation Required**: After rollback, run smoke tests (5-10 critical tests) to verify framework stability before declaring rollback complete
+4. **Version Control First**: All test code, configs, and data fixtures must be in version control to enable git-based rollback
+5. **Dependency Pinning**: Use lock files (package-lock.json, requirements.txt) to ensure deterministic dependency rollback
+
+**Rollback Decision Framework**:
+
+| Asset Type | Rollback Method | Validation |
+|------------|----------------|------------|
+| Test source code | `git revert` or `git checkout` | Run smoke tests |
+| Dependencies (npm/pip/maven) | Restore lock files + reinstall | Verify framework loads |
+| Test config files | `git restore` or copy from backup | Check config parsing |
+| Test data fixtures | `git checkout` fixture directory | Verify data loads |
+| CI/CD pipeline config | `git revert` pipeline YAML | Monitor pipeline execution |
+| Test database (dev only) | Restore from backup or re-seed | Check test data integrity |
+
+**Rollback Execution Pattern** (all test frameworks):
 ```bash
-# Revert test code changes
-git revert HEAD --no-edit
-git push origin feature/test-automation
+# 1. Identify what to rollback
+git log --oneline -n 5  # Find commit to revert to
 
-# Restore specific test files
-git checkout HEAD~1 -- tests/integration/
-git checkout HEAD~1 -- tests/e2e/
+# 2. Execute rollback (choose appropriate method)
+git revert HEAD --no-edit                    # Revert last commit
+git checkout HEAD~1 -- tests/ config/        # Restore specific paths
+git restore package.json && npm ci           # Restore dependencies
 
-# Discard uncommitted test changes
-git checkout . && git clean -fd
+# 3. Validate rollback
+npm run test:smoke                           # Run smoke tests (<5 min)
+pytest tests/smoke/ -v                       # Or framework equivalent
+ls -la reports/ && cat reports/results.json  # Verify test execution
+
+# 4. If validation fails, escalate to senior engineer
 ```
 
-**Dependencies Rollback**:
-```bash
-# Restore npm dependencies
-git restore package.json package-lock.json
-npm ci
+**Framework-Specific Considerations**:
+- **Selenium/Playwright/Cypress**: Rollback includes browser driver versions (pinned in package.json) and config files (playwright.config.ts, cypress.config.js)
+- **Jest/Mocha**: Rollback snapshot baselines from `__snapshots__/` directories if visual regression tests are affected
+- **TestNG/JUnit**: Rollback includes Maven/Gradle dependencies (pom.xml, build.gradle) and testng.xml suite configs
+- **Database fixtures**: Use `git checkout` for fixture files; for dev databases, restore from nightly backup or re-run seed scripts
 
-# Restore Python dependencies
-git restore requirements.txt
-pip install -r requirements.txt
-
-# Restore Maven test dependencies
-git restore pom.xml
-mvn clean install -DskipTests
-```
-
-**Test Configuration Rollback**:
-```bash
-# Restore test configuration
-cp config/backup/test.config.js config/test.config.js
-cp config/backup/jest.config.js jest.config.js
-
-# Restore environment config
-git restore .env.test
-git restore cypress.config.js
-
-# Revert test data
-git checkout HEAD~1 -- test-data/
-git checkout HEAD~1 -- fixtures/
-```
-
-**Test Database Rollback** (development):
-```bash
-# Restore test database fixtures (dev)
-psql -U testuser -d testdb_dev < backups/test_fixtures_backup.sql
-mysql -u testuser -p testdb_dev < backups/test_data_backup.sql
-
-# Reset test database schema (local)
-npm run db:reset:test
-python manage.py migrate --database=test
-
-# Clean test data
-DELETE FROM test_users WHERE created_at > '2025-06-15';
-TRUNCATE TABLE test_sessions;
-```
-
-**Framework-Specific Rollback**:
-```bash
-# Selenium/WebDriver
-npm install selenium-webdriver@4.15.0 --save-exact
-npm run build
-
-# Playwright
-git restore playwright.config.ts
-npx playwright install --force chromium@1.40.0
-
-# Cypress
-npm install cypress@13.6.0 --save-dev --save-exact
-git restore cypress/support/
-
-# Jest: Restore snapshot baselines
-git checkout HEAD~1 -- **/__snapshots__/
-npm test -- -u
-
-# TestNG
-git checkout HEAD~1 -- src/test/resources/testng.xml
-mvn clean test -DskipTests
-```
-
-**CI/CD Pipeline Rollback**:
-```bash
-# Revert pipeline configuration
-git revert HEAD -- .github/workflows/test-automation.yml
-git push origin main
-
-# Restore Jenkins config
-git checkout HEAD~1 -- Jenkinsfile
-git push origin feature/test-automation
-
-# Revert GitLab CI
-git restore .gitlab-ci.yml
-git commit -m "Rollback test automation pipeline"
-```
-
-**Build Artifacts Rollback**:
-```bash
-# Clean test build artifacts
-rm -rf dist/
-rm -rf build/
-rm -rf test-results/
-rm -rf coverage/
-
-# Rebuild from source
-npm run build
-npm test
-```
-
-**Test Report Configuration Rollback**:
-```bash
-# Restore report config
-git restore allure-report.config.js
-git restore .mocharc.json
-
-# Clean old reports
-rm -rf reports/
-rm -rf mochawesome-report/
-
-# Regenerate reports
-npm run test:report
-```
-
-**Rollback Validation**:
-```bash
-# Run smoke tests (5-10 critical tests)
-npm run test:smoke
-pytest tests/smoke/ -v
-
-# Verify framework stability
-npm test -- --testPathPattern=integration
-mvn test -Dtest=SmokeTests
-
-# Check test execution completes
-npm run test:all || echo "Tests failed - rollback incomplete"
-
-# Verify test reports generated
-ls -la reports/
-cat reports/test-results.json
-
-# Validate CI/CD pipeline
-git push origin feature/test-automation
-# Monitor pipeline execution in CI/CD dashboard
-```
-
-**Note**: Production test automation deployments (CI/CD pipeline modifications affecting production, integration with production monitoring, production test data management) are handled by DevOps/platform engineers with appropriate approval gates. This agent manages test framework development in local/dev/staging environments where test code changes can be developed and validated safely.
+**Blast Radius in Dev/Staging**:
+- Test code changes only affect local developer machines or shared dev/staging test environments
+- No customer-facing impact; failures block test execution, not production services
+- If staging test suite breaks CI/CD, developers can continue local development while rollback is executed
 
 ### Audit Logging
 
 All test automation operations MUST emit structured JSON logs before and after each operation.
 
-**Log Format**
+**Log Format**:
 ```json
 {
   "timestamp": "2025-06-15T14:32:00Z",

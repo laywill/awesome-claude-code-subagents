@@ -81,78 +81,27 @@ def validate_debug_input(debug_config):
 
 ### Rollback Procedures
 
-All debugging operations MUST have rollback path completing in <5 minutes. This agent performs diagnostic operations in development/staging environments.
+All debugging operations MUST have rollback path completing in <5 minutes. This agent performs diagnostic operations in **development/staging environments only**. Production debugging is handled by SRE/infrastructure agents.
 
-**Debugger/Profiler Detachment**:
-```bash
-# Detach GDB from process (dev/staging)
-gdb -batch -ex "detach" -p <PID>
+**Rollback Principles:**
+1. **Detach cleanly**: Detach all debuggers/profilers from target processes without leaving instrumentation
+2. **Remove artifacts**: Delete temporary files (core dumps, profiling data, logs, breakpoint scripts, debug probes)
+3. **Restore state**: Revert process snapshots or binary patches if applied; restart services if needed
+4. **Validate cleanup**: Confirm no debuggers attached, process running normally, no zombie processes, resource usage normal
 
-# Detach LLDB from process
-lldb --batch -o "process detach" -p <PID>
+**Scope Constraints:**
+- Local/dev: Full instrumentation and process manipulation permitted
+- Staging: Snapshot/restore permitted with service restart validation required
+- Production: Prohibited for this agent (escalate to SRE/on-call)
 
-# Kill orphaned debugger sessions
-pkill -f "gdb.*<PID>"
-pkill -f "lldb.*<PID>"
-```
+**Rollback Decision Framework:**
+- <1 min session: Detach debugger, remove temp files
+- 1-5 min session: Above + validate process health (memory, CPU, responsiveness)
+- Modified process memory: Restart service from clean state
+- Binary patching used: Restore original binary + restart
 
-**Instrumentation Removal**:
-```bash
-# Remove breakpoints and continue
-gdb -batch -ex "delete breakpoints" -ex "continue" -p <PID>
-
-# Remove debug probes (development)
-rm -rf /tmp/debug-probes-*
-rm -rf /var/tmp/debug-session-*
-
-# Clean debug symbols (local dev)
-rm -rf /usr/lib/debug/.build-id/
-strip --strip-debug ./myapp.debug
-```
-
-**Process State Restoration** (dev/staging):
-```bash
-# Restore process from snapshot (staging only)
-systemctl stop myapp-staging && cp /backups/myapp.snapshot /var/run/myapp-staging/state && systemctl start myapp-staging
-
-# Revert binary patch (development)
-cp /backups/myapp.original /usr/local/dev/myapp && systemctl restart myapp-dev
-
-# Restore memory dump
-mv /debug/core.dump.backup /debug/core.dump
-```
-
-**Monitoring Artifacts Cleanup**:
-```bash
-# Remove profiling data
-rm -rf /tmp/perf-*.data
-rm -rf /tmp/flamegraph-*
-
-# Clean debug logs
-rm -rf /var/log/debug-session-*.log
-truncate -s 0 /var/log/debug-verbose.log
-
-# Remove temporary breakpoints file
-rm -f /tmp/gdb-commands-*.txt
-```
-
-**Rollback Validation**:
-```bash
-# Verify no debuggers attached
-lsof -i | grep -E "gdb|lldb" && echo "WARNING: Debuggers still attached"
-
-# Check process state (dev/staging)
-ps aux | grep myapp-dev
-curl http://localhost:8080/health
-
-# Verify no zombie processes
-ps aux | grep defunct
-
-# Confirm normal resource usage
-top -bn1 | grep myapp-dev
-```
-
-**Note**: Production debugging/profiling is handled by SRE/infrastructure agents with appropriate safeguards. This diagnostic agent operates in development/staging environments only where process manipulation is safe and expected.
+**Validation Checks** (dev/staging):
+Confirm no debuggers attached (`lsof`, `ps`), process responsive (health endpoint check), normal resource usage (top/ps), no zombie processes.
 
 ### Audit Logging
 
