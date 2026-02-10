@@ -139,44 +139,51 @@ function validateResolverInput(args: any, schema: GraphQLFieldConfig) {
 
 ### Rollback Procedures
 
-All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+All GraphQL architecture operations MUST have a rollback path completing in <5 minutes for design artifacts. This agent designs GraphQL schemas and federation architecture, not production deployments.
 
-**Schema Deployment Rollback**:
+**Schema Definition Rollback** (Version Control):
 ```bash
-# Rollback schema deployment to previous version
-rover subgraph publish my-graph@prod \
-  --schema schema-v1.2.3.graphql \
-  --name products \
-  --routing-url https://products.api.example.com/graphql
+# Revert GraphQL schema changes
+git revert <commit-hash> --no-edit && git push
 
-# Rollback gateway configuration
-kubectl rollout undo deployment/apollo-gateway -n graphql-prod
+# Restore schema from backup
+cp schema.backup.graphql schema.graphql
 
-# Rollback to previous npm package version
-npm install @company/graphql-schema@1.2.3 --save-exact
+# Restore federation configuration
+git checkout HEAD~1 federation-config.yaml
+
+# Revert subgraph schema definitions
+git checkout <previous-commit> subgraphs/*/schema.graphql
 ```
 
-**Subgraph Service Rollback**:
+**Schema Validation After Rollback**:
 ```bash
-# Kubernetes deployment rollback
-kubectl rollout undo deployment/users-subgraph -n graphql-prod
-kubectl rollout status deployment/users-subgraph -n graphql-prod
+# Validate GraphQL schema syntax
+npx graphql-schema-linter schema.graphql
 
-# Docker container rollback
-docker service update --image company/orders-graphql:v1.4.2 orders-service
-docker service ps orders-service --filter "desired-state=running"
+# Check federation composition locally
+rover subgraph check my-graph@dev --schema schema.graphql --name products
+
+# Verify no breaking changes
+graphql-inspector diff schema.old.graphql schema.graphql
+
+# Test schema loads in local Apollo Server
+node -e "const { buildSubgraphSchema } = require('@apollo/subgraph'); buildSubgraphSchema(require('./schema'));"
 ```
 
-**Database Schema Migration Rollback** (for resolver data sources):
+**Local Development Rollback** (if testing schema locally):
 ```bash
-# Node.js/Prisma migration rollback
-npx prisma migrate resolve --rolled-back 20250615_add_user_fields
+# Reset local GraphQL server with rolled-back schema
+docker rm -f graphql-dev && docker run -d --name graphql-dev -p 4000:4000 -v $(pwd)/schema.graphql:/app/schema.graphql apollo/server
 
-# TypeORM migration rollback
-npm run typeorm migration:revert
+# Rollback local npm package for schema testing
+npm install @company/graphql-schema@<previous-version> --save-exact
 
-# Manual SQL rollback
-psql -d graphql_db -f migrations/down/20250615_rollback.sql
+# Clear GraphQL codegen artifacts
+rm -rf generated/ && npm run graphql:codegen
+```
+
+**Note**: Production subgraph deployments (Kubernetes, Docker services, database migrations) are handled by deployment/infrastructure agents. This architecture agent only manages schema definitions and federation design.
 ```
 
 **Federation Composition Rollback**:

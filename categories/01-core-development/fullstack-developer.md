@@ -158,17 +158,63 @@ function RegistrationForm() {
 
 ### Rollback Procedures
 
-All operations MUST have a rollback path completing in <5 minutes. Test rollback scripts before executing operations.
+All development operations MUST have a rollback path completing in <5 minutes. This agent works in development/staging environments.
 
-**Database Rollback:** `npm run migrate:rollback` or `npx prisma migrate resolve --rolled-back [migration_name]` (latest migration), `psql -U user -d database -f backups/pre_change_backup.sql` (SQL backup), `mongorestore --db production --archive=backups/2025-02-09_pre_deploy.archive` (MongoDB), or `ALTER TABLE users DROP COLUMN new_field;` (targeted fix).
+**Database Rollback** (development/staging):
+```bash
+# Rollback latest migration
+npm run migrate:rollback
+npx prisma migrate resolve --rolled-back <migration_name>
 
-**API/Backend Rollback:** `git revert HEAD && npm install && pm2 restart api` (Node.js), `kubectl rollout undo deployment/api-server -n production` (Kubernetes), `docker service update --rollback api-service` (Docker Swarm), or `cf rollback app-name` (Cloud Foundry).
+# Restore from backup (local/staging only)
+psql -U user -d myapp_dev -f backups/dev_backup.sql
+mongorestore --db myapp_dev --archive=backups/dev_snapshot.archive
 
-**Frontend Rollback:** `git revert HEAD && npm run build && aws s3 sync build/ s3://prod-frontend-bucket/` (S3), `vercel rollback production` (Vercel), `cf rollback frontend-app` or `kubectl rollout undo deployment/frontend` (CF/K8s), or `npm run deploy:previous` (artifact storage).
+# Reset local database
+dropdb myapp_dev && createdb myapp_dev && npm run migrate:up
+```
 
-**Coordination:** Execute rollbacks in reverse order (frontend → API → database) to prevent API/frontend calling non-existent database structures. Tag deployments with same release version and keep 3 previous artifacts available.
+**Backend Rollback** (development):
+```bash
+# Revert code and dependencies
+git revert HEAD && npm ci && npm run dev
 
-**Validation:** Run health checks (`curl https://api.example.com/health`), verify schema version, check logs (`pm2 logs api --lines 50`), test critical flows (login, data fetch, form submission), confirm <5 minutes via monitoring dashboards.
+# Reset local services
+docker-compose down && docker-compose up -d --build
+
+# Restart development server
+pm2 restart api-dev
+```
+
+**Frontend Rollback** (development):
+```bash
+# Revert frontend changes
+git revert HEAD && npm ci && npm run dev
+
+# Rebuild local assets
+rm -rf dist/ build/ && npm run build
+
+# Reset local state/cache
+rm -rf node_modules/.cache .next/cache
+```
+
+**Coordinated Rollback**: Execute in reverse order (frontend → API → database) to prevent broken dependencies. Keep development environment in sync with feature branch state.
+
+**Validation**:
+```bash
+# Check local services
+curl http://localhost:3000/health
+curl http://localhost:4000/api/health
+
+# Verify database version
+npm run migrate:status
+
+# Test critical flows locally
+npm test
+npm run test:e2e
+```
+
+**Note**: Production deployments (Kubernetes, Cloud Foundry, production S3/Vercel) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments.
 
 ### Audit Logging
 

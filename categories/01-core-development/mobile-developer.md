@@ -204,54 +204,89 @@ class InputValidator {
 
 ### Rollback Procedures
 
-All mobile deployments, native module changes, and database migrations MUST have a rollback path completing in <5 minutes. Test rollback on staging before production deployment.
+All mobile development operations MUST have a rollback path completing in <5 minutes. This agent manages mobile app development, local builds, and testing environments.
 
-**Pre-Deployment Checklist**:
-- Tag current Git commit for rapid rollback
-- Enable staged rollout (5% → 25% → 50% → 100%)
-- Prepare database migration down scripts
-- Document native module version compatibility
-- Test rollback on TestFlight/Firebase App Distribution
-
-**Rollback Commands by Scenario**:
-
-1. **React Native Bundle Rollback** (CodePush/OTA updates):
+**Source Code Rollback**:
 ```bash
-# Roll back to previous CodePush deployment
-appcenter codepush rollback -a YourOrg/YourApp-iOS production
-appcenter codepush rollback -a YourOrg/YourApp-Android production
+# Revert code changes
+git revert HEAD && git push origin feature-branch
 
-# Verify rollback status
-appcenter codepush deployment list -a YourOrg/YourApp-iOS
-```
-
-2. **App Store/Play Store Version Rollback**:
-```bash
-# iOS: Halt phased release and submit previous build
-fastlane deliver --app_version "2.3.1" --skip_screenshots --skip_metadata --force
-
-# Android: Halt staged rollout and promote previous version
-fastlane supply --track production --rollout 0.0 --version_name "2.3.1"
-```
-
-3. **Native Module Rollback** (React Native):
-```bash
-# Revert native dependency changes
+# Restore specific native files
 git checkout HEAD~1 ios/Podfile android/build.gradle
+
+# Discard local changes
+git checkout . && git clean -fd
+```
+
+**Dependencies Rollback**:
+```bash
+# React Native: Restore dependencies
+npm ci
 cd ios && pod install && cd ..
+
+# Flutter: Restore dependencies
+flutter pub get
+
+# Remove problematic package
+npm uninstall <package> && npm install <package>@<previous-version>
+
+# Clear caches
 npm run android -- --reset-cache
 npm run ios -- --reset-cache
+rm -rf node_modules/ ios/Pods/
 ```
 
-4. **Database Migration Rollback** (WatermelonDB/SQLite):
-```typescript
-// migrations/rollback.ts
-import { schemaMigrations } from '@nozbe/watermelondb/Schema/migrations';
+**Native Module Rollback**:
+```bash
+# Revert native dependency changes
+git checkout HEAD~1 ios/Podfile ios/Podfile.lock
+git checkout HEAD~1 android/app/build.gradle
 
-export const rollbackMigration = async (database: Database) => {
+# Reinstall native dependencies
+cd ios && pod install && cd ..
+npm run android
+```
+
+**Local Database Rollback** (development/testing):
+```typescript
+// Rollback local database migration (dev only)
+import { Database } from '@nozbe/watermelondb';
+
+export const rollbackDevDatabase = async (database: Database) => {
   await database.write(async () => {
-    await database.unsafeResetDatabase(); // Nuclear option
-    // OR targeted rollback:
+    await database.unsafeResetDatabase(); // Development only
+  });
+};
+
+// Or for SQLite
+adb shell run-as com.yourapp rm /data/data/com.yourapp/databases/app.db
+```
+
+**Build Artifacts Rollback**:
+```bash
+# Clean build directories
+rm -rf ios/build/ android/app/build/ android/.gradle/
+
+# Clean derived data (iOS)
+rm -rf ~/Library/Developer/Xcode/DerivedData/
+
+# Rebuild from clean state
+cd ios && xcodebuild clean && cd ..
+cd android && ./gradlew clean && cd ..
+```
+
+**Local Testing Rollback**:
+```bash
+# Uninstall app from simulators/emulators
+xcrun simctl uninstall booted com.yourapp
+adb uninstall com.yourapp
+
+# Reset simulator/emulator state
+xcrun simctl erase all
+adb shell pm clear com.yourapp
+```
+
+**Note**: Production app releases (App Store, Play Store, CodePush production deployments) are handled by deployment/release agents. This development agent manages source code, local builds, and development/testing environments only.
     await database.adapter.execute('DROP TABLE new_feature_table');
     await database.adapter.execute('ALTER TABLE users DROP COLUMN new_field');
   });

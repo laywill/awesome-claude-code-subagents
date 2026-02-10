@@ -150,49 +150,91 @@ async def create_user(user: UserCreate):
 
 ### Rollback Procedures
 
-All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+All development operations MUST have a rollback path completing in <5 minutes. This agent works in development/staging environments.
 
-**API Deployment Rollback**:
-- `git revert <commit-hash> && git push origin main` - Revert code changes (30 seconds)
-- `npm run deploy:rollback --version=<previous-version>` - Rollback Node.js deployment (2 minutes)
-- `docker tag myservice:previous myservice:latest && docker service update myservice` - Rollback container (1 minute)
-- `kubectl rollout undo deployment/backend-service -n production` - Kubernetes rollback (90 seconds)
+**Code Changes Rollback**:
+```bash
+# Revert code changes via Git
+git revert <commit-hash> && git push origin feature-branch
 
-**Database Migration Rollback**:
-- `npm run migrate:down` or `python manage.py migrate <app> <previous-migration>` - Revert schema changes (2 minutes)
-- `pg_restore -d production_db -t users /backups/users_pre_migration.dump` - PostgreSQL table restore (3 minutes)
-- `mysql -u root -p production_db < /backups/pre_migration_backup.sql` - MySQL restore (3 minutes)
-- Always create migrations with `up()` and `down()` functions
+# Discard uncommitted changes
+git checkout . && git clean -fd
 
-**Configuration Rollback**:
-- `git checkout HEAD~1 config/production.yml && kubectl apply -f config/` - Revert config files (1 minute)
-- `aws ssm put-parameter --name /app/config --value "$(cat backup.json)" --overwrite` - Restore SSM parameters (30 seconds)
-- `redis-cli SET config:version "v1.2.3" && pm2 restart all` - Revert feature flags (20 seconds)
+# Reset to previous commit (local only)
+git reset --hard HEAD~1
+```
 
-**Cache Invalidation**:
-- `redis-cli FLUSHDB` - Clear Redis cache after rollback (5 seconds)
-- `curl -X PURGE https://cdn.example.com/api/*` - Purge CDN cache (30 seconds)
-- `memcached-tool localhost:11211 flush_all` - Clear Memcached (5 seconds)
+**Development Dependencies Rollback**:
+```bash
+# Node.js: Restore from package-lock.json
+npm ci
 
-**Service Restart**:
-- `pm2 restart api-service --update-env` - Node.js service restart (10 seconds)
-- `systemctl restart backend.service` - systemd service restart (15 seconds)
-- `docker-compose down && docker-compose up -d --build` - Docker Compose rollback (2 minutes)
+# Python: Restore from requirements.txt
+pip install -r requirements.txt
+
+# Go: Restore module versions
+go mod tidy
+
+# Remove problematic package
+npm uninstall <package> && npm install <package>@<previous-version>
+```
+
+**Development Database Rollback**:
+```bash
+# Revert local database migration (development DB only)
+npm run migrate:down  # Node.js/Sequelize/Knex
+python manage.py migrate <app> <previous-migration>  # Django
+npx prisma migrate resolve --rolled-back <migration>  # Prisma
+
+# Restore local database from backup (development only)
+pg_restore -d myapp_dev -C /backups/dev_backup.dump
+mysql -u root myapp_dev < /backups/dev_backup.sql
+
+# Reset local database completely
+dropdb myapp_dev && createdb myapp_dev && npm run migrate:up
+```
+
+**Local Configuration Rollback**:
+```bash
+# Revert config files
+git checkout HEAD~1 config/development.yml
+
+# Restore environment variables
+cp .env.backup .env && docker-compose restart
+
+# Reset local feature flags
+redis-cli DEL config:features && npm run seed:dev
+```
+
+**Local Services Rollback**:
+```bash
+# Restart local development server
+npm run dev  # or yarn dev, python manage.py runserver
+
+# Rebuild and restart Docker Compose (local)
+docker-compose down && docker-compose up -d --build
+
+# Reset local cache
+redis-cli FLUSHDB  # Local Redis only
+rm -rf node_modules/.cache
+```
 
 **Rollback Validation**:
 ```bash
-# Verify service health after rollback
-curl -f https://api.example.com/health || echo "Rollback failed - service unhealthy"
+# Verify local service health
+curl -f http://localhost:3000/health || echo "Service unhealthy"
 
-# Check database migration version
-npm run migrate:status | grep "Current version"
+# Check migration status
+npm run migrate:status
 
-# Verify API response correctness
-curl -X GET https://api.example.com/users/1 | jq '.version' | grep -q "1.2.3" || echo "Wrong version deployed"
+# Run tests to verify functionality
+npm test
 
-# Monitor error rates
-curl -s http://localhost:9090/api/v1/query?query='rate(http_errors_total[5m])' | jq '.data.result[0].value[1]'
+# Check local API response
+curl http://localhost:3000/api/users | jq '.version'
 ```
+
+**Note**: Production deployments (Kubernetes, production databases, AWS SSM) are handled by deployment/infrastructure agents. This development agent only manages local/dev/staging environments.
 
 ### Audit Logging
 

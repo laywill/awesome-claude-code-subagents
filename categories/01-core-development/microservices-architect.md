@@ -111,32 +111,52 @@ def validate_network_policy(policy):
 
 ### Rollback Procedures
 
-All microservices operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+All microservices architecture operations MUST have a rollback path completing in <5 minutes for design artifacts. This agent designs microservices architecture and service boundaries, not production deployments.
 
-**Kubernetes Deployment Rollback**:
+**Architecture Document Rollback** (Version Control):
 ```bash
-# Rollback to previous deployment revision
-kubectl rollout undo deployment/user-service -n production
-kubectl rollout status deployment/user-service -n production --timeout=2m
+# Revert architecture diagrams and documentation
+git revert <commit-hash> --no-edit && git push
 
-# Rollback to specific revision
-kubectl rollout undo deployment/order-service --to-revision=5 -n production
+# Restore service manifests from backup
+cp -r k8s-manifests.backup/ k8s-manifests/
 
-# Rollback Helm release
-helm rollback payment-service 3 -n production --wait --timeout 3m
+# Revert API contract definitions
+git checkout HEAD~1 api-contracts/
+
+# Restore service mesh configuration files
+git checkout <previous-commit> service-mesh/
 ```
 
-**Service Mesh Configuration Rollback**:
+**Architecture Validation After Rollback**:
 ```bash
-# Rollback Istio VirtualService to previous version
-kubectl apply -f virtualservice-user-v1.yaml -n production
+# Validate Kubernetes manifests (no deployment)
+kubeval k8s-manifests/*.yaml
+kube-score score k8s-manifests/*.yaml
 
-# Restore previous traffic split (rollback canary)
-istioctl manifest apply -f istio-operator-stable.yaml
+# Validate OpenAPI contracts
+oasdiff breaking api-contracts/v1/ api-contracts/v2/
 
-# Rollback Linkerd service profile
-kubectl apply -f linkerd-profile-backup.yaml -n production
+# Validate service mesh configs (dry-run)
+istioctl analyze service-mesh/
+
+# Check Helm chart syntax
+helm lint helm-charts/my-service/
 ```
+
+**Local Development Rollback** (if testing architecture locally):
+```bash
+# Reset local development environment
+docker-compose down && git checkout HEAD~1 docker-compose.yaml && docker-compose up -d
+
+# Rollback local service definitions
+rm -rf local-dev/ && cp -r local-dev.backup/ local-dev/
+
+# Restore local API mocks
+docker rm -f $(docker ps -aq -f name=mock-*) && docker-compose -f mocks.yaml up -d
+```
+
+**Note**: Production service deployments (Kubernetes, Helm releases, service mesh changes) are handled by deployment/infrastructure agents. This architecture agent only manages service definitions, boundaries, and design documentation.
 
 **Message Queue Rollback**:
 ```bash

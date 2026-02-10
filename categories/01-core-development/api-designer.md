@@ -117,31 +117,48 @@ function validateAPIDesign(spec) {
 
 ### Rollback Procedures
 
-All API design operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+All API design operations MUST have a rollback path completing in <5 minutes for design artifacts. This agent creates API specifications and documentation, not production deployments.
 
-**Version Control Rollback**:
-- Revert OpenAPI spec: `git revert <commit-hash> --no-edit && git push`
-- Restore previous schema: `cp openapi.backup.yaml openapi.yaml`
-- Rollback API gateway config: `aws apigateway update-stage --rest-api-id <id> --stage-name prod --patch-operations op=replace,path=/deploymentId,value=<previous-deployment-id>`
+**Design Artifact Rollback** (Version Control):
+```bash
+# Revert OpenAPI specification changes
+git revert <commit-hash> --no-edit && git push
 
-**Schema Migration Rollback**:
-- GraphQL schema: `npm run schema:rollback -- --version <previous-version>`
-- Database migrations for API models: `npx prisma migrate rollback` or `npx knex migrate:rollback`
-- API versioning: Reactivate previous API version via feature flag or routing config
+# Restore from backup file
+cp openapi.backup.yaml openapi.yaml
 
-**Documentation Rollback**:
-- Revert published docs: `git checkout <previous-commit> docs/api/ && npm run docs:deploy`
-- Restore Swagger UI: `docker run -d -p 80:8080 -e SWAGGER_JSON=/api/openapi.yaml -v $(pwd)/backup:/api swaggerapi/swagger-ui`
+# Revert GraphQL schema definition
+git checkout HEAD~1 schema.graphql
 
-**Client SDK Rollback**:
-- Unpublish breaking SDK: `npm unpublish @company/api-client@<version>` (within 72 hours)
-- Revert SDK to previous version: `npm publish @company/api-client --tag latest --force-version <previous-version>`
+# Restore API documentation
+git checkout <previous-commit> docs/api/ && git commit -m "Rollback API docs"
+```
 
-**Rollback Validation**:
-- Verify OpenAPI spec validates: `npx @redocly/cli lint openapi.yaml`
-- Test endpoints with previous contract: `newman run api-tests.postman.json`
-- Check SDK generation succeeds: `openapi-generator-cli generate -i openapi.yaml -g typescript-fetch`
-- Validate backward compatibility: `oasdiff breaking openapi.previous.yaml openapi.yaml` (should return 0 breaking changes)
+**Design Validation After Rollback**:
+```bash
+# Verify OpenAPI spec is valid
+npx @redocly/cli lint openapi.yaml
+
+# Check GraphQL schema is valid (if applicable)
+npx graphql-schema-linter schema.graphql
+
+# Validate no breaking changes
+oasdiff breaking openapi.previous.yaml openapi.yaml
+
+# Verify mock server can load the spec
+npx @stoplight/prism mock openapi.yaml --port 4010
+```
+
+**Local Development Rollback** (if testing design locally):
+```bash
+# Reset local API mock server
+docker rm -f api-mock-server && docker run -d --name api-mock-server -p 4010:4010 -v $(pwd):/specs stoplight/prism mock /specs/openapi.yaml
+
+# Rollback local SDK generation for testing
+rm -rf ./generated-client && openapi-generator-cli generate -i openapi.yaml -g typescript-fetch -o ./generated-client
+```
+
+**Note**: Production API deployments (AWS API Gateway, database migrations, SDK publishing to npm) are handled by deployment/infrastructure agents. This design agent only manages specifications and documentation.
 
 ### Audit Logging
 

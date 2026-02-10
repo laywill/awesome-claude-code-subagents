@@ -135,63 +135,74 @@ contextBridge.exposeInMainWorld('electron', {
 
 ### Rollback Procedures
 
-All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+All development operations MUST have a rollback path completing in <5 minutes. This agent manages Electron app development and local builds.
 
-**Application Update Rollback**
+**Source Code Rollback**:
 ```bash
-# Rollback to previous app version (auto-updater)
-electron-builder --publish never --config.productName="AppName" --config.version="1.2.3"
-# Restore previous installer from backup
-cp ~/app-backups/AppName-1.2.3.dmg ~/Downloads/
-```
+# Revert code changes
+git revert HEAD && git push origin feature-branch
 
-**Configuration Rollback**
-```bash
-# Restore previous electron-builder config
-git checkout HEAD~1 -- electron-builder.json
-npm run build
-
-# Restore main process configuration
+# Restore specific files
 git checkout HEAD~1 -- src/main/index.js
-npm run start
-```
-
-**IPC Channel Rollback**
-```javascript
-// Revert IPC channel changes in preload script
-git diff HEAD~1 src/preload/index.js > /tmp/ipc-rollback.patch
 git checkout HEAD~1 -- src/preload/index.js
-npm run build:preload
+
+# Discard local changes
+git checkout . && git clean -fd
 ```
 
-**Native Module Rollback**
+**Configuration Rollback**:
 ```bash
-# Rollback native module version
-npm install electron-native-module@1.2.3 --save-exact
+# Restore electron-builder config
+git checkout HEAD~1 -- electron-builder.json
+
+# Restore build configuration
+git checkout HEAD~1 -- build/entitlements.mac.plist
+git checkout HEAD~1 -- package.json
+
+# Rebuild with restored config
+npm run build
+```
+
+**Dependencies Rollback**:
+```bash
+# Restore dependencies from package-lock.json
+npm ci
+
+# Rollback specific native module
+npm install electron-native-module@<previous-version> --save-exact
 electron-rebuild
 
-# Restore previous build artifacts
-rm -rf dist/
-git checkout HEAD~1 -- dist/
+# Clear and reinstall
+rm -rf node_modules package-lock.json && npm install
 ```
 
-**Code Signing Rollback**
+**Build Artifacts Rollback**:
 ```bash
-# Restore previous signing configuration
-git checkout HEAD~1 -- build/entitlements.mac.plist
-git checkout HEAD~1 -- .env.signing
+# Clean build directory
+rm -rf dist/ out/ build/
 
-# Rebuild with previous certificates
-npm run build -- --mac --config.mac.identity="Previous Developer ID"
+# Restore previous build (if backed up locally)
+cp -r dist.backup/ dist/
+
+# Rebuild from source
+npm run build
 ```
 
-**Window Configuration Rollback**
-```javascript
-// Restore previous window state
-const fs = require('fs');
-fs.copyFileSync(
-  '~/.config/AppName/window-state.backup.json',
-  '~/.config/AppName/window-state.json'
+**Local Development Rollback**:
+```bash
+# Restart development environment
+npm run start  # or npm run dev
+
+# Reset local app state
+rm -rf ~/.config/AppName/
+rm -rf ~/Library/Application\ Support/AppName/  # macOS
+rm -rf ~/.local/share/AppName/  # Linux
+
+# Clear Electron cache
+rm -rf ~/.cache/electron/
+```
+
+**Note**: End-user application updates and distribution are handled by deployment/release agents. This development agent manages source code, local builds, and development environment only.
 );
 app.relaunch();
 ```
