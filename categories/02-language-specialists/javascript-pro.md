@@ -150,45 +150,85 @@ All user inputs, file paths, and external data MUST be validated before processi
 
 ### Rollback Procedures
 
-All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing.
+All development operations MUST have a rollback path completing in <5 minutes. This agent manages JavaScript/Node.js development and local/staging environments.
 
-**Code Changes**:
+**Source Code Rollback**:
 ```bash
-git log --oneline -5 && git revert HEAD --no-edit && npm test && git push
-git revert abc1234 --no-edit  # Specific commit
+# Revert code changes
+git revert HEAD --no-edit && git push origin feature-branch
+
+# Revert specific commit
+git revert abc1234 --no-edit
+
+# Discard uncommitted changes
+git checkout . && git clean -fd
 ```
 
-**Dependency Changes**:
+**Dependencies Rollback**:
 ```bash
+# Restore from lock file
+npm ci
+
+# Restore from backup
 cp package*.json.backup . && rm -rf node_modules && npm ci
-npm install package-name@1.2.3 --save-exact  # Specific package
+
+# Rollback specific package
+npm install package-name@1.2.3 --save-exact
 ```
 
-**Build Artifacts**:
+**Local Database Rollback** (development):
 ```bash
+# Rollback migration (local dev DB)
+npx knex migrate:rollback --env development
+
+# Restore local database
+pg_restore -d mydb_dev backup_dev.dump
+```
+
+**Build Artifacts Rollback**:
+```bash
+# Clean build directories
+rm -rf dist/ build/
+
+# Restore from backup
 cp -r dist.backup dist/
-aws s3 cp s3://builds/app-v1.2.3.tar.gz . && tar -xzf app-v1.2.3.tar.gz  # Or restore from storage
+
+# Rebuild from source
+npm run build
 ```
 
-**Configuration Changes**:
+**Local Configuration Rollback**:
 ```bash
-git checkout HEAD~1 -- config/production.json && npm run validate-config
-cp .env.backup .env && npm run restart
+# Restore configuration
+git checkout HEAD~1 -- config/development.json
+npm run validate-config
+
+# Restore environment
+cp .env.backup .env
+
+# Restart local server
+npm run dev
 ```
 
-**Database Migrations** (Node.js apps with DB):
+**Rollback Validation**:
 ```bash
-npx knex migrate:rollback --env production
-pg_restore -d mydb backup_20250609.dump  # Or restore DB backup
+# Run tests
+npm test
+
+# Run smoke tests
+npm run smoke-test
+
+# Verify build
+npm run build && npm run validate-bundle
+
+# Check local service
+curl http://localhost:3000/health
+
+# Check logs
+npm run logs
 ```
 
-**Deployment Rollback**:
-```bash
-pm2 reload ecosystem.config.js --update-env
-ln -sfn /apps/releases/v1.2.3 /apps/current && pm2 restart all  # Via symlink
-```
-
-**Rollback Validation**: Run `npm test`, execute `npm run smoke-test`, check logs with `pm2 logs --lines 100`, verify bundle integrity with `npm run build && npm run validate-bundle`, confirm health endpoint responds `curl http://localhost:3000/health`.
+**Note**: Production deployments (PM2 production, AWS services, production databases, CDN distributions) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
 
 ### Audit Logging
 

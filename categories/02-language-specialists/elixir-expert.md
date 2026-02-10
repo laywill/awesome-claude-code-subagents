@@ -129,33 +129,97 @@ Pre-execution checklist: All user inputs validated through Ecto changesets, Mix 
 
 ### Rollback Procedures
 
-All operations MUST have rollback path completing in <5 minutes. Write and test rollback scripts before executing.
+All development operations MUST have a rollback path completing in <5 minutes. This agent manages Elixir/Phoenix development and local/staging environments.
 
-Rollback strategies: **Database migrations** (always implement `down/0`, test rollback in dev: `mix ecto.rollback --step 1`), **Schema changes** (keep previous version, create adapter functions for dual-read during transition), **GenServer state changes** (store previous state in ETS backup: `:ets.insert(:state_backup, {module, old_state})`), **Release deployments** (use hot code upgrades or keep previous release: `bin/myapp stop && tar -xzf previous-release.tar.gz && bin/myapp start`), **Configuration changes** (store previous config in application env: `Application.put_env(:myapp, :rollback_config, current_config)`), **Process tree changes** (keep old supervision tree specs in module attributes, implement feature flags for gradual rollout).
-
-Command reference:
+**Source Code Rollback**:
 ```bash
-# Database rollback
+# Revert code changes
+git revert HEAD && git push origin feature-branch
+
+# Restore specific files
+git checkout HEAD~1 -- lib/myapp/
+
+# Discard uncommitted changes
+git checkout . && git clean -fd
+```
+
+**Dependencies Rollback**:
+```bash
+# Restore from lock file
+mix deps.get
+
+# Rollback specific dependency
+mix deps.update specific_package
+
+# Reset to clean state
+rm -rf deps/ _build/ && mix deps.get && mix compile
+```
+
+**Local Database Rollback** (development):
+```bash
+# Rollback migration (local dev DB)
 mix ecto.rollback --step 1 --repo MyApp.Repo
 
-# Release rollback
-_build/prod/rel/myapp/bin/myapp stop
-cp -r _build/prod/rel/myapp.backup/* _build/prod/rel/myapp/
-_build/prod/rel/myapp/bin/myapp start
+# Rollback to specific migration
+mix ecto.rollback --to 20230615120000 --repo MyApp.Repo
 
-# Hot code upgrade rollback
-:release_handler.which_releases()
-:release_handler.install_release("1.2.3")
-:release_handler.make_permanent("1.2.3")
+# Reset local database
+mix ecto.drop && mix ecto.create && mix ecto.migrate
+```
 
-# GenServer state rollback
+**Build Artifacts Rollback**:
+```bash
+# Clean build directories
+mix clean
+rm -rf _build/
+
+# Rebuild from source
+mix compile
+```
+
+**Local Configuration Rollback**:
+```bash
+# Restore config files
+git checkout HEAD~1 -- config/
+
+# Reset environment
+cp config/dev.exs.backup config/dev.exs
+
+# Restart local Phoenix server
+mix phx.server
+```
+
+**GenServer State Rollback** (development):
+```elixir
+# Store previous state in ETS for local testing
+:ets.insert(:state_backup, {MyApp.Worker, old_state})
+
+# Restore GenServer state
 :sys.replace_state(MyApp.Worker, fn _state ->
   [{_, backup_state}] = :ets.lookup(:state_backup, MyApp.Worker)
   backup_state
 end)
 ```
 
-Rollback validation: After rollback, verify with `mix test`, check supervision tree health with `:observer.start()`, validate database schema with `mix ecto.migrations`, confirm no error logs in `Logger`, test critical paths with integration tests.
+**Rollback Validation**:
+```bash
+# Run tests
+mix test
+
+# Check compilation
+mix compile --warnings-as-errors
+
+# Check dependencies
+mix deps.get
+
+# Verify local database
+mix ecto.migrations
+
+# Test local server
+curl http://localhost:4000/health
+```
+
+**Note**: Production deployments (release management, hot code upgrades, production BEAM clusters) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
 
 ### Audit Logging
 

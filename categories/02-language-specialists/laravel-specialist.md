@@ -165,53 +165,156 @@ public function deploy(DeploymentRequest $request)
 
 ### Rollback Procedures
 
-All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+All development operations MUST have a rollback path completing in <5 minutes. This agent manages Laravel development and local/staging environments.
 
-**Laravel Rollback Commands**:
+**Source Code Rollback**:
 ```bash
-composer require laravel/sanctum:3.2.1  # Revert package
-php artisan migrate:rollback --step=1    # Roll back migration
-dep rollback production                  # Deployer/Envoyer rollback
-git revert HEAD~1 --no-edit && git push origin main  # Git revert
-cp config/queue.php.backup config/queue.php && php artisan config:cache  # Queue config
-cp .env.backup .env && php artisan config:clear && php artisan cache:clear  # Env restore
-php artisan horizon:pause && cp config/horizon.php.backup config/horizon.php && php artisan horizon:terminate && php artisan horizon:continue  # Horizon
+# Revert code changes
+git revert HEAD --no-edit && git push origin feature-branch
+
+# Restore specific files
+git checkout HEAD~1 -- app/Http/Controllers/
+
+# Discard uncommitted changes
+git checkout . && git clean -fd
 ```
 
-**Automated Rollback Service**:
+**Dependencies Rollback**:
+```bash
+# Restore from lock file
+composer install
+
+# Rollback specific package
+composer require laravel/sanctum:3.2.1
+
+# Reset to clean state
+rm -rf vendor/ && composer install
+```
+
+**Local Database Rollback** (development):
+```bash
+# Rollback migration (local dev DB)
+php artisan migrate:rollback --step=1
+
+# Rollback to specific migration
+php artisan migrate:rollback --path=/database/migrations/2023_06_15_create_users_table.php
+
+# Reset local database
+php artisan migrate:fresh --seed
+```
+
+**Build Artifacts Rollback**:
+```bash
+# Clear Laravel caches
+php artisan config:clear
+php artisan cache:clear
+php artisan view:clear
+php artisan route:clear
+
+# Remove compiled assets
+rm -rf public/build/ public/hot
+```
+
+**Local Configuration Rollback**:
+```bash
+# Restore config files
+cp config/queue.php.backup config/queue.php
+php artisan config:cache
+
+# Restore environment
+cp .env.backup .env
+php artisan config:clear && php artisan cache:clear
+
+# Restart local services
+php artisan serve
+```
+
+**Queue/Horizon Rollback**:
+```bash
+# Pause queue
+php artisan horizon:pause
+
+# Restore Horizon config
+cp config/horizon.php.backup config/horizon.php
+
+# Restart Horizon
+php artisan horizon:terminate && php artisan horizon:continue
+```
+
+**Automated Rollback Service** (development):
 ```php
 <?php
 namespace App\Services;
 
 use Illuminate\Support\Facades\{Artisan, Log};
 
-class RollbackService
+class DevelopmentRollbackService
 {
-    public function rollbackDeployment(string $deploymentId): array
+    public function rollbackChanges(string $changeId): array
     {
         $startTime = microtime(true);
         $steps = [];
 
         try {
-            Artisan::call('horizon:pause'); $steps[] = 'Queue paused';
+            // Pause local queue
+            Artisan::call('horizon:pause');
+            $steps[] = 'Queue paused';
+
+            // Rollback migration (dev DB)
             $steps[] = "Migration: " . (Artisan::call('migrate:rollback', ['--step' => 1]) === 0 ? 'success' : 'failed');
-            Artisan::call('config:clear'); Artisan::call('cache:clear'); Artisan::call('view:clear'); $steps[] = 'Caches cleared';
-            copy(base_path('.env.backup'), base_path('.env')); Artisan::call('config:cache'); $steps[] = 'Config restored';
-            Artisan::call('horizon:continue'); $steps[] = 'Queue resumed';
+
+            // Clear caches
+            Artisan::call('config:clear');
+            Artisan::call('cache:clear');
+            Artisan::call('view:clear');
+            $steps[] = 'Caches cleared';
+
+            // Restore config
+            copy(base_path('.env.backup'), base_path('.env'));
+            Artisan::call('config:cache');
+            $steps[] = 'Config restored';
+
+            // Resume queue
+            Artisan::call('horizon:continue');
+            $steps[] = 'Queue resumed';
 
             $duration = microtime(true) - $startTime;
-            Log::info('Rollback completed', ['deployment_id' => $deploymentId, 'duration_seconds' => $duration, 'steps' => $steps]);
+            Log::info('Development rollback completed', [
+                'change_id' => $changeId,
+                'duration_seconds' => $duration,
+                'steps' => $steps
+            ]);
             return ['success' => true, 'duration_seconds' => $duration, 'steps' => $steps];
 
         } catch (\Exception $e) {
-            Log::error('Rollback failed', ['deployment_id' => $deploymentId, 'error' => $e->getMessage(), 'duration_seconds' => microtime(true) - $startTime, 'completed_steps' => $steps]);
+            Log::error('Rollback failed', [
+                'change_id' => $changeId,
+                'error' => $e->getMessage(),
+                'duration_seconds' => microtime(true) - $startTime,
+                'completed_steps' => $steps
+            ]);
             throw $e;
         }
     }
 }
 ```
 
-**Rollback Validation**: Check health endpoint (`GET /health`), confirm migration version (`php artisan migrate:status`), test critical API endpoints, validate queue workers (`php artisan horizon:status`).
+**Rollback Validation**:
+```bash
+# Check local health endpoint
+curl http://localhost:8000/health
+
+# Verify migration status
+php artisan migrate:status
+
+# Run tests
+php artisan test
+
+# Validate queue workers
+php artisan horizon:status
+```
+
+**Note**: Production deployments (Deployer/Envoyer, production databases, production queues) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
 
 ### Audit Logging
 

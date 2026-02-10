@@ -180,25 +180,85 @@ public class DotnetOperationValidator
 
 ### Rollback Procedures
 
-All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+All development operations MUST have a rollback path completing in <5 minutes. This agent manages .NET Core development and local/staging environments.
 
-**Before executing ANY operation**: Create snapshot `dotnet build --no-restore > pre-change-build.log`, backup critical files `git stash push -u -m "pre-dotnet-operation-$(date +%s)"`, document package versions `dotnet list package --include-transitive > packages-before.txt`.
+**Source Code Rollback**:
+```bash
+# Revert code changes
+git revert HEAD && git push origin feature-branch
 
-**Rollback Commands by Operation Type**:
+# Restore specific files
+git checkout HEAD~1 -- Controllers/ Models/
 
-1. **NuGet package rollback**: `dotnet remove package Newtonsoft.Json` or restore specific version `dotnet add package Newtonsoft.Json --version 12.0.3` or restore all `git restore packages.lock.json && dotnet restore --force-evaluate`.
+# Discard uncommitted changes
+git checkout . && git clean -fd
+```
 
-2. **Code generation rollback**: `git clean -fd Controllers/ Models/ && git restore Controllers/ Models/` or remove specific scaffold `rm Controllers/BlogController.cs`.
+**NuGet Package Rollback**:
+```bash
+# Restore from lock file
+dotnet restore --force-evaluate
 
-3. **Database migration rollback**: `dotnet ef database update PreviousMigrationName && dotnet ef migrations remove` or with verification `dotnet ef migrations script PreviousMigration CurrentMigration > rollback.sql` (review before applying).
+# Rollback specific package
+dotnet remove package Newtonsoft.Json
+dotnet add package Newtonsoft.Json --version 12.0.3
 
-4. **Configuration rollback**: `git restore appsettings*.json` and secrets `dotnet user-secrets clear && cat secrets-backup.json | dotnet user-secrets set` and environment `export $(cat .env.backup | xargs)`.
+# Reset to clean state
+git restore packages.lock.json && dotnet restore
+```
 
-5. **Build configuration rollback**: `git restore **/*.csproj *.sln && dotnet clean && dotnet restore && dotnet build --no-incremental`.
+**Local Database Rollback** (development):
+```bash
+# Rollback migration (local dev DB)
+dotnet ef database update PreviousMigrationName
+dotnet ef migrations remove
 
-6. **Deployment rollback**: Container `docker tag myapp:previous myapp:latest && docker push myapp:latest && kubectl rollout undo deployment/myapp` or direct version `kubectl set image deployment/myapp myapp=myapp:v1.2.3 && kubectl rollout status deployment/myapp --timeout=300s`.
+# Review migration script before applying
+dotnet ef migrations script PreviousMigration CurrentMigration > rollback.sql
 
-**Rollback Validation**: Verify build `dotnet build --no-restore`, verify tests `dotnet test --no-build --verbosity normal`, verify package integrity `dotnet list package --vulnerable --include-transitive`, verify application starts `timeout 30s dotnet run --no-build & sleep 10 && curl http://localhost:5000/health`.
+# Reset local database
+dotnet ef database drop --force && dotnet ef database update
+```
+
+**Build Artifacts Rollback**:
+```bash
+# Clean build directories
+dotnet clean
+rm -rf bin/ obj/
+
+# Rebuild from source
+dotnet build --no-incremental
+```
+
+**Local Configuration Rollback**:
+```bash
+# Restore config files
+git restore appsettings*.json
+
+# Restore user secrets
+dotnet user-secrets clear && cat secrets-backup.json | dotnet user-secrets set
+
+# Restore environment
+export $(cat .env.backup | xargs)
+```
+
+**Rollback Validation**:
+```bash
+# Verify build succeeds
+dotnet build --no-restore
+
+# Run tests
+dotnet test --no-build --verbosity normal
+
+# Check package vulnerabilities
+dotnet list package --vulnerable --include-transitive
+
+# Verify local service
+dotnet run --no-build &
+sleep 10 && curl http://localhost:5000/health
+```
+
+**Note**: Production deployments (Kubernetes, Docker registries, production databases) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
 
 ### Audit Logging
 

@@ -156,52 +156,90 @@ INPUT:  path="../../etc/passwd", package="malicious-pkg", version="*" → REJECT
 
 ### Rollback Procedures
 
-All Flutter operations MUST have a rollback path completing in <5 minutes. Test rollback in development before production. Maintain rollback logs with timestamps and affected files. Automate common scenarios (dependency downgrades, widget reverts, build config changes).
+All development operations MUST have a rollback path completing in <5 minutes. This agent manages Flutter development and local/staging environments.
 
-**Code Changes:**
+**Source Code Rollback**:
 ```bash
-git revert HEAD --no-edit && flutter pub get && flutter test
+# Revert code changes
+git revert HEAD --no-edit && git push origin feature-branch
+
+# Restore specific files
+git checkout HEAD~1 -- lib/widgets/ lib/screens/
+
+# Discard uncommitted changes
+git checkout . && git clean -fd
 ```
 
-**Dependency Rollback:**
+**Dependencies Rollback**:
 ```bash
-cp pubspec.yaml.backup pubspec.yaml && flutter pub get && flutter test
+# Restore from backup
+cp pubspec.yaml.backup pubspec.yaml && flutter pub get
+
+# Remove specific package
+flutter pub remove http
+
+# Reset to clean state
+rm -rf .dart_tool/ pubspec.lock && flutter pub get
 ```
 
-**Widget/UI Rollback:**
+**Local Build Configuration Rollback**:
 ```bash
-git checkout HEAD~1 -- lib/widgets/critical_widget.dart && flutter analyze && flutter test test/widgets/critical_widget_test.dart
+# Restore Android config
+git checkout HEAD~1 -- android/app/build.gradle
+cd android && ./gradlew clean && cd ..
+
+# Restore iOS config
+git checkout HEAD~1 -- ios/Runner/Info.plist
+cd ios && rm -rf Pods/ Podfile.lock && pod install && cd ..
+
+# Clean Flutter build
+flutter clean && flutter pub get
 ```
 
-**Build Configuration Rollback:**
+**Widget/UI Rollback**:
 ```bash
-# Android
-git checkout HEAD~1 -- android/app/build.gradle && cd android && ./gradlew clean && cd .. && flutter build apk --debug
+# Restore specific widgets
+git checkout HEAD~1 -- lib/widgets/critical_widget.dart
 
-# iOS
-git checkout HEAD~1 -- ios/Runner/Info.plist && cd ios && rm -rf Pods/ Podfile.lock && pod install && cd .. && flutter build ios --debug --no-codesign
+# Run widget tests
+flutter test test/widgets/
 ```
 
-**Platform Channel Rollback:**
+**State Management Rollback**:
 ```bash
-git checkout HEAD~1 -- android/app/src/main/kotlin/ ios/Runner/ && flutter clean && flutter pub get && flutter run --debug
+# Restore state management code
+git checkout HEAD~1 -- lib/blocs/ lib/providers/
+
+# Run state tests
+flutter test test/blocs/ test/providers/
 ```
 
-**State Management Rollback:**
+**Platform Channel Rollback**:
 ```bash
-git checkout HEAD~1 -- lib/blocs/ lib/providers/ && flutter pub get && flutter test test/blocs/ test/providers/
+# Restore native code
+git checkout HEAD~1 -- android/app/src/main/kotlin/ ios/Runner/
+
+# Clean and restart
+flutter clean && flutter pub get && flutter run --debug
 ```
 
-**Rollback Validation:**
+**Rollback Validation**:
 ```bash
-flutter doctor -v && flutter analyze && flutter test && flutter build apk --debug && flutter build ios --debug --no-codesign
+# Verify Flutter setup
+flutter doctor -v
+
+# Run static analysis
+flutter analyze
+
+# Run tests
+flutter test
+
+# Verify debug builds
+flutter build apk --debug
+flutter build ios --debug --no-codesign
 ```
 
-**Emergency Full Restore:**
-```bash
-git fetch --tags && git checkout tags/v1.2.3-stable && flutter clean && flutter pub get && flutter test && flutter build apk --release
-# Estimated: 3-4 minutes
-```
+**Note**: Production deployments (app store releases, production builds, distribution certificates) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
 
 ### Audit Logging
 

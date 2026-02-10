@@ -144,47 +144,95 @@ fun validateDependency(dependency: String): Result<Dependency> {
 
 ### Rollback Procedures
 
-All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+All development operations MUST have a rollback path completing in <5 minutes. This agent manages Kotlin development and local/staging environments.
 
-**Gradle Build Configuration Rollback**
+**Source Code Rollback**:
 ```bash
-git checkout HEAD -- build.gradle.kts settings.gradle.kts gradle.properties && ./gradlew clean build --no-daemon
+# Revert code changes
+git revert HEAD && git push origin feature-branch
+
+# Restore specific files
+git checkout HEAD~1 -- src/main/kotlin/
+
+# Discard uncommitted changes
+git checkout . && git clean -fd
 ```
 
-**Dependency Version Rollback**
+**Dependencies Rollback**:
 ```bash
-git diff HEAD~1 -- gradle/libs.versions.toml | git apply -R && ./gradlew build --refresh-dependencies
+# Restore Gradle dependencies
+git checkout HEAD -- gradle/libs.versions.toml
+./gradlew build --refresh-dependencies
+
+# Restore build configuration
+git checkout HEAD -- build.gradle.kts settings.gradle.kts gradle.properties
+./gradlew clean build --no-daemon
 ```
 
-**Multiplatform Module Rollback**
-```bash
-git checkout HEAD -- src/{iosMain,androidMain,jsMain} && ./gradlew clean build
-```
-
-**Coroutine Code Rollback**
-```bash
-git show HEAD~1:src/main/kotlin/Module.kt > src/main/kotlin/Module.kt && ./gradlew test --tests ModuleTest
-```
-
-**Android Manifest Rollback**
-```bash
-git checkout HEAD -- app/src/main/AndroidManifest.xml app/src/main/res/ && ./gradlew assembleDebug
-```
-
-**Database Migration Rollback** (for Room/SQLDelight changes)
+**Local Database Rollback** (development):
 ```kotlin
-// Always implement down migrations
+// Implement down migrations for Room/SQLDelight
 @Database(version = 3)
 abstract class AppDatabase {
-    // Rollback script for migration 2->3
+    // Rollback migration 3->2
     // DROP TABLE new_table; ALTER TABLE old_table ADD COLUMN restored;
 }
 ```
-
-**Rollback Validation**
 ```bash
-./gradlew clean build test detekt ktlintCheck && ./gradlew jvmTest androidTest iosSimulatorArm64Test
+# Reset local database
+./gradlew deleteLocalDatabase && ./gradlew runMigrations
 ```
+
+**Build Artifacts Rollback**:
+```bash
+# Clean build directories
+./gradlew clean
+rm -rf build/ .gradle/
+
+# Rebuild from source
+./gradlew build
+```
+
+**Multiplatform Module Rollback**:
+```bash
+# Restore platform-specific code
+git checkout HEAD -- src/{iosMain,androidMain,jsMain}
+
+# Rebuild all targets
+./gradlew clean build
+```
+
+**Android Configuration Rollback**:
+```bash
+# Restore Android manifest and resources
+git checkout HEAD -- app/src/main/AndroidManifest.xml app/src/main/res/
+
+# Build debug APK
+./gradlew assembleDebug
+```
+
+**Coroutine Code Rollback**:
+```bash
+# Restore specific module
+git show HEAD~1:src/main/kotlin/Module.kt > src/main/kotlin/Module.kt
+
+# Run module tests
+./gradlew test --tests ModuleTest
+```
+
+**Rollback Validation**:
+```bash
+# Run static analysis
+./gradlew detekt ktlintCheck
+
+# Run all tests
+./gradlew clean build test
+
+# Run platform-specific tests
+./gradlew jvmTest androidTest iosSimulatorArm64Test
+```
+
+**Note**: Production deployments (Play Store releases, production builds, distribution certificates) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
 
 ### Audit Logging
 

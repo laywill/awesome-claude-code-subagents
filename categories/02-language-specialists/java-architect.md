@@ -159,57 +159,106 @@ public class ArchitectureValidator {
 
 ### Rollback Procedures
 
-All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+All development operations MUST have a rollback path completing in <5 minutes. This agent manages Java/Spring development and local/staging environments.
 
-**Module/Service Creation Rollback:**
+**Source Code Rollback**:
 ```bash
-mvn clean
-git restore pom.xml settings.gradle
-rm -rf src/main/java/com/company/newservice
-git restore src/main/resources/application.yml
+# Revert code changes
+git revert HEAD && git push origin feature-branch
+
+# Restore specific files
+git checkout HEAD~1 -- src/main/java/com/company/
+
+# Discard uncommitted changes
+git checkout . && git clean -fd
 ```
 
-**Database Migration Rollback:**
+**Dependencies Rollback**:
 ```bash
-mvn flyway:undo -Dflyway.target=V2.1
-# Or restore from backup
-pg_restore -d mydb backup_before_migration.dump
-mysql -u user -p mydb < backup_before_migration.sql
-```
-
-**Dependency Update Rollback:**
-```bash
+# Restore Maven dependencies
 git restore pom.xml
 mvn clean install -DskipTests
-# Or Gradle
+
+# Restore Gradle dependencies
 git restore build.gradle gradle.lockfile
 ./gradlew clean build --refresh-dependencies
 ```
 
-**Spring Configuration Rollback:**
+**Local Database Rollback** (development):
 ```bash
-git restore src/main/resources/application.yml
-git restore src/main/resources/application-prod.properties
-kubectl rollout undo deployment/my-service
-docker-compose restart my-service
-```
+# Rollback Flyway migration (local dev DB)
+mvn flyway:undo -Dflyway.target=V2.1
 
-**Microservices Architecture Rollback:**
-```bash
-kubectl apply -f previous-istio-config.yaml
-git restore src/main/java/com/company/gateway/RouteConfiguration.java
-mvn spring-boot:run
-git restore src/main/resources/resilience4j.yml
-```
-
-**JPA/Hibernate Schema Rollback:**
-```bash
-git restore src/main/java/com/company/domain/*.java
-mvn flyway:undo
+# Rollback Liquibase migration
 mvn liquibase:rollbackCount -Dliquibase.rollbackCount=1
+
+# Restore local database from backup
+pg_restore -d mydb_dev backup_before_migration.dump
+mysql -u dev_user -p mydb_dev < backup_before_migration.sql
 ```
 
-**Rollback Validation**: After rollback, verify: `mvn clean test` passes, `mvn verify` passes integration tests, `curl http://localhost:8080/actuator/health` returns UP, `mvn flyway:info` shows correct version, no pending migrations in `flyway_schema_history`.
+**Build Artifacts Rollback**:
+```bash
+# Clean Maven build
+mvn clean
+rm -rf target/
+
+# Clean Gradle build
+./gradlew clean
+rm -rf build/
+
+# Rebuild from source
+mvn clean package -DskipTests
+./gradlew clean build
+```
+
+**Local Configuration Rollback**:
+```bash
+# Restore Spring configuration
+git restore src/main/resources/application.yml
+git restore src/main/resources/application-dev.properties
+
+# Restart local Spring Boot app
+mvn spring-boot:run
+./gradlew bootRun
+```
+
+**Service Module Rollback**:
+```bash
+# Remove new service module
+mvn clean
+git restore pom.xml settings.gradle
+rm -rf src/main/java/com/company/newservice
+
+# Restore configuration
+git restore src/main/resources/
+```
+
+**JPA/Hibernate Schema Rollback**:
+```bash
+# Restore domain entities
+git restore src/main/java/com/company/domain/*.java
+
+# Rollback schema migrations
+mvn flyway:undo
+mvn liquibase:rollback -Dliquibase.rollbackTag=baseline
+```
+
+**Rollback Validation**:
+```bash
+# Run tests
+mvn clean test
+mvn verify
+
+# Check local application
+curl http://localhost:8080/actuator/health
+
+# Verify database version
+mvn flyway:info
+mvn liquibase:status
+```
+
+**Note**: Production deployments (Kubernetes, Istio, production databases, Docker registries) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
 
 ### Audit Logging
 

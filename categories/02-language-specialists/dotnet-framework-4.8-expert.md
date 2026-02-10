@@ -158,54 +158,76 @@ public class DotNetFrameworkValidator
 
 ### Rollback Procedures
 
-All operations MUST have rollback path completing in <5 minutes. Write and test rollback scripts before executing.
+All development operations MUST have a rollback path completing in <5 minutes. This agent manages .NET Framework 4.8 development and local/staging environments.
 
-**Code Rollback**:
+**Source Code Rollback**:
 ```powershell
-git revert HEAD --no-edit && git push origin main
-git checkout HEAD~1 -- packages.config && nuget restore && msbuild /t:Rebuild /p:Configuration=Release
+# Revert code changes
+git revert HEAD --no-edit && git push origin feature-branch
+
+# Restore specific files
+git checkout HEAD~1 -- App_Code/ Models/ Controllers/
+
+# Discard uncommitted changes
+git checkout . && git clean -fd
 ```
 
-**Web Forms Deployment Rollback**:
+**NuGet Package Rollback**:
 ```powershell
-Stop-WebAppPool -Name "MyAppPool"
-Remove-Item C:\inetpub\wwwroot\MyApp\* -Recurse -Force
-Copy-Item C:\Backups\MyApp_Previous\* C:\inetpub\wwwroot\MyApp\ -Recurse
-Start-WebAppPool -Name "MyAppPool"
+# Restore from packages.config
+git checkout HEAD~1 -- packages.config
+nuget restore
+msbuild /t:Rebuild /p:Configuration=Debug
+
+# Remove specific package
+nuget uninstall Newtonsoft.Json -ProjectName MyProject
 ```
 
-**WCF Service Rollback**:
+**Local Database Rollback** (development):
 ```powershell
-net stop "MyWcfService"
-Copy-Item C:\Backups\MyWcfService_v1.0\* C:\Services\MyWcfService\ -Recurse -Force
-net start "MyWcfService" && sc query "MyWcfService"
-```
-
-**Entity Framework Migration Rollback**:
-```powershell
+# Rollback Entity Framework migration (local dev DB)
 Update-Database -TargetMigration PreviousMigrationName -Force
-# Or restore database: sqlcmd -S localhost -d MyDatabase -i C:\Backups\restore_script.sql
+
+# Restore local database from script
+sqlcmd -S localhost\SQLEXPRESS -d MyApp_Dev -i C:\DevBackups\restore_dev.sql
 ```
 
-**App Configuration Rollback**:
+**Build Artifacts Rollback**:
 ```powershell
-Copy-Item C:\Backups\Web.config.backup C:\inetpub\wwwroot\MyApp\Web.config -Force
-Restart-WebAppPool -Name "MyAppPool"
+# Clean build directories
+msbuild /t:Clean /p:Configuration=Debug
+Remove-Item -Path bin\,obj\ -Recurse -Force
+
+# Rebuild from source
+msbuild /t:Rebuild /p:Configuration=Debug
 ```
 
-**Windows Service Rollback**:
+**Local Configuration Rollback**:
 ```powershell
-sc stop "MyWindowsService"
-Copy-Item C:\Backups\MyService_v1.0\MyService.exe C:\Services\MyWindowsService\ -Force
-sc start "MyWindowsService" && Get-Service "MyWindowsService" | Select-Object Status, DisplayName
+# Restore Web.config for local development
+Copy-Item C:\DevBackups\Web.config.backup Web.config -Force
+
+# Restore App.config
+Copy-Item C:\DevBackups\App.config.backup App.config -Force
+
+# Restart local IIS Express or dev service
+iisreset /restart  # For local IIS
 ```
 
 **Rollback Validation**:
 ```powershell
-Test-NetConnection -ComputerName localhost -Port 443
-Invoke-WebRequest -Uri "https://localhost/MyApp/health" -UseBasicParsing
-Get-EventLog -LogName Application -Source "MyApp" -Newest 10
+# Verify build succeeds
+msbuild /t:Rebuild /p:Configuration=Debug
+
+# Check local application
+Test-NetConnection -ComputerName localhost -Port 8080
+Invoke-WebRequest -Uri "http://localhost:8080/health" -UseBasicParsing
+
+# Check local event logs
+Get-EventLog -LogName Application -Source "MyApp" -Newest 5
 ```
+
+**Note**: Production deployments (IIS production servers, Windows Services, production databases) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
 
 ### Audit Logging
 
