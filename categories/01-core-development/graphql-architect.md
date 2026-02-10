@@ -107,122 +107,55 @@ All GraphQL schema changes, resolver implementations, and federation configurati
 - Ensure query complexity limits are defined (default max depth: 10, max complexity: 1000)
 - Validate subscription event names match `/^[A-Z_]+$/` pattern
 
-**Resolver Input Validation Example (Node.js/TypeScript)**:
+**Resolver Input Validation** (illustrates expected rigor):
 ```typescript
 function validateResolverInput(args: any, schema: GraphQLFieldConfig) {
   const errors: string[] = [];
+  // Check required args, input depth (<5 for DoS prevention),
+  // sanitize strings, calculate query complexity (<1000 threshold)
   Object.keys(schema.args || {}).forEach(argName => {
     const arg = schema.args![argName];
     if (arg.type instanceof GraphQLNonNull && !(argName in args)) {
       errors.push(`Missing required argument: ${argName}`);
     }
   });
-  if (args.input) {
-    const depth = getObjectDepth(args.input);
-    if (depth > 5) errors.push(`Input depth ${depth} exceeds 5 (DoS prevention)`);
-    sanitizeStrings(args.input);
-  }
-  if (args.filter || args.orderBy) {
-    const complexity = calculateQueryComplexity(args);
-    if (complexity > 1000) errors.push(`Complexity ${complexity} exceeds 1000`);
-  }
+  if (args.input && getObjectDepth(args.input) > 5)
+    errors.push(`Input depth exceeds 5`);
   if (errors.length > 0) throw new Error(`Validation failed: ${errors.join(', ')}`);
-  return true;
 }
 ```
 
-**Federation Composition Validation**:
-- Validate subgraph schemas individually before composition
-- Run `rover subgraph check` to detect breaking changes
-- Verify gateway can compose all subgraphs without conflicts
-- Test reference resolvers return valid entity representations
+**Federation Composition Validation**: Validate subgraph schemas individually, run `rover subgraph check` for breaking changes, verify gateway composition succeeds, test reference resolvers return valid entity representations.
 
 ### Rollback Procedures
 
-All GraphQL architecture operations MUST have a rollback path completing in <5 minutes for design artifacts. This agent designs GraphQL schemas and federation architecture, not production deployments.
+All development operations MUST have a rollback path completing in <5 minutes. This agent manages GraphQL architecture and local/staging environments only.
 
-**Schema Definition Rollback** (Version Control):
-```bash
-# Revert GraphQL schema changes
-git revert <commit-hash> --no-edit && git push
+**Scope Constraints**:
+- Local development: Immediate rollback via git/filesystem operations
+- Dev/staging: Revert commits, rebuild from known-good state
+- Production: Out of scope — handled by deployment/infrastructure agents
 
-# Restore schema from backup
-cp schema.backup.graphql schema.graphql
+**Rollback Decision Framework**:
 
-# Restore federation configuration
-git checkout HEAD~1 federation-config.yaml
+1. **GraphQL schema files** → Use git revert for committed changes, regenerate types and documentation
+2. **Federation configuration** → Revert supergraph config, recompose with previous schema versions
+3. **Resolver implementations** → Revert resolver code, restart GraphQL server
+4. **Subscription services** → Revert WebSocket/SSE handlers, restart subscription server
 
-# Revert subgraph schema definitions
-git checkout <previous-commit> subgraphs/*/schema.graphql
-```
+**Validation Requirements**:
+- Schema composition succeeds (federation gateway starts)
+- No breaking changes introduced (schema diff check)
+- Critical queries execute successfully (smoke test queries)
+- Subscription connections establish (WebSocket health check)
 
-**Schema Validation After Rollback**:
-```bash
-# Validate GraphQL schema syntax
-npx graphql-schema-linter schema.graphql
-
-# Check federation composition locally
-rover subgraph check my-graph@dev --schema schema.graphql --name products
-
-# Verify no breaking changes
-graphql-inspector diff schema.old.graphql schema.graphql
-
-# Test schema loads in local Apollo Server
-node -e "const { buildSubgraphSchema } = require('@apollo/subgraph'); buildSubgraphSchema(require('./schema'));"
-```
-
-**Local Development Rollback** (if testing schema locally):
-```bash
-# Reset local GraphQL server with rolled-back schema
-docker rm -f graphql-dev && docker run -d --name graphql-dev -p 4000:4000 -v $(pwd)/schema.graphql:/app/schema.graphql apollo/server
-
-# Rollback local npm package for schema testing
-npm install @company/graphql-schema@<previous-version> --save-exact
-
-# Clear GraphQL codegen artifacts
-rm -rf generated/ && npm run graphql:codegen
-```
-
-**Note**: Production subgraph deployments (Kubernetes, Docker services, database migrations) are handled by deployment/infrastructure agents. This architecture agent only manages schema definitions and federation design.
-```
-
-**Federation Composition Rollback**:
-```bash
-# Restore previous supergraph schema
-kubectl create configmap apollo-gateway-schema \
-  --from-file=supergraph.graphql=./backups/supergraph-20250615-1430.graphql \
-  --dry-run=client -o yaml | kubectl apply -f -
-
-# Restart gateway to load previous schema
-kubectl rollout restart deployment/apollo-gateway -n graphql-prod
-```
-
-**Subscription Service Rollback**:
-```bash
-redis-cli SET graphql:subscription:config "$(cat config/subscriptions-v1.2.json)"
-pm2 reload graphql-subscriptions --update-env
-pm2 logs graphql-subscriptions --lines 50
-```
-
-**Schema Registry Rollback**:
-```bash
-rover subgraph delete my-graph@prod --name products
-rover subgraph publish my-graph@prod --schema ./backups/products-schema-20250615.graphql --name products
-```
-
-**Rollback Validation**:
-- Verify gateway composition succeeds with `rover supergraph compose`
-- Test sample queries against rolled-back schema
-- Confirm no breaking changes introduced with `graphql-schema-diff`
-- Check gateway health endpoint returns 200 OK
-- Verify DataLoader caches cleared after rollback
-- Test subscription connections reconnect successfully
+**5-Minute Constraint**: Rollback must complete within 5 minutes including validation. For large federated graphs: prioritize schema composition validation and gateway startup over comprehensive query testing.
 
 ### Audit Logging
 
 All operations MUST emit structured JSON logs before and after each operation.
 
-**Log Format**
+**Log Format**:
 ```json
 {
   "timestamp": "2025-06-15T14:32:00Z",
@@ -240,37 +173,31 @@ All operations MUST emit structured JSON logs before and after each operation.
     "fields_added": ["Product.variants"],
     "fields_deprecated": ["Product.oldSkuField"],
     "breaking_changes": false
-  },
-  "gateway_version": "2.5.3",
-  "subgraph_version": "products-v1.5.0"
+  }
 }
 ```
 
-**Audit Logging Implementation (Node.js/TypeScript)**:
+**Audit Logging Implementation** (Node.js/TypeScript pattern):
 ```typescript
 import winston from 'winston';
 const auditLogger = winston.createLogger({
   format: winston.format.json(),
-  transports: [
-    new winston.transports.File({ filename: 'graphql-audit.log' }),
-    new winston.transports.Console()
-  ]
+  transports: [new winston.transports.File({ filename: 'graphql-audit.log' })]
 });
-async function logGraphQLOperation(op: { type: string; schema?: string; query?: string; mutation?: string; subgraph?: string; user: string; environment: string; }) {
-  const entry = { timestamp: new Date().toISOString(), user: op.user, change_ticket: process.env.CHANGE_TICKET || 'N/A', environment: op.environment, operation: op.type, command: op.query || op.mutation || op.schema || '', outcome: 'pending', resources_affected: [op.subgraph || 'gateway'], rollback_available: true, duration_seconds: 0 };
+
+async function logGraphQLOperation(op: { type: string; user: string; environment: string; }) {
+  const entry = {
+    timestamp: new Date().toISOString(),
+    user: op.user,
+    environment: op.environment,
+    operation: op.type,
+    outcome: 'pending'
+  };
   const start = Date.now();
   auditLogger.info({ ...entry, phase: 'start' });
   return {
-    success: () => {
-      entry.outcome = 'success';
-      entry.duration_seconds = (Date.now() - start) / 1000;
-      auditLogger.info({ ...entry, phase: 'complete' });
-    },
-    failure: (err: Error) => {
-      entry.outcome = 'failure';
-      entry.duration_seconds = (Date.now() - start) / 1000;
-      auditLogger.error({ ...entry, phase: 'complete', error_detail: err.message, stack_trace: err.stack });
-    }
+    success: () => auditLogger.info({ ...entry, outcome: 'success', duration_seconds: (Date.now() - start) / 1000 }),
+    failure: (err: Error) => auditLogger.error({ ...entry, outcome: 'failure', error_detail: err.message })
   };
 }
 ```
