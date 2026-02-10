@@ -170,21 +170,87 @@ def redact_sensitive_data(log_line: str, patterns: Dict[str, str]) -> str:
 
 ### Rollback Procedures
 
-All operations MUST have rollback path completing in <5 minutes. Write and test rollback scripts before execution.
+All investigation operations MUST have rollback path completing in <5 minutes. This agent performs read-heavy diagnostic analysis in development/staging environments.
 
-**Restore Log Access Permissions**: Backup with `getfacl -R /var/log/app > /tmp/log_permissions_backup_$(date +%s).acl`, rollback with `setfacl --restore=/tmp/log_permissions_backup_TIMESTAMP.acl`
+**Log Access Restoration**:
+```bash
+# Restore log access permissions (dev/staging)
+setfacl --restore=/tmp/log_permissions_backup_TIMESTAMP.acl
 
-**Undo Monitoring Config**: Backup with `cp /etc/prometheus/alert_rules.yml /etc/prometheus/alert_rules.yml.backup_$(date +%s)`, rollback: restore backup and `systemctl reload prometheus`
+# Reset log directory ownership
+chown -R app:app /var/log/app-dev/
+chmod -R 750 /var/log/app-staging/
+```
 
-**Revert Log Pipeline Changes**: Snapshot with `tar -czf /backup/logstash_config_$(date +%s).tar.gz /etc/logstash/conf.d/`, rollback: extract backup and `systemctl restart logstash`
+**Monitoring Configuration Rollback** (dev/staging):
+```bash
+# Undo alert rule changes (staging)
+cp /etc/prometheus/alert_rules.yml.backup_* /etc/prometheus/alert_rules.yml
+systemctl reload prometheus
 
-**Remove Temp Files**: Run `rm -rf /tmp/error_investigation_* /tmp/log_analysis_*.json /tmp/error_correlation_*.csv`
+# Revert log pipeline changes (development)
+tar -xzf /backup/logstash_config_TIMESTAMP.tar.gz -C /
+systemctl restart logstash
 
-**Restore DB Query Performance**: Record settings `SELECT @@global.slow_query_log, @@global.long_query_time INTO @orig_log, @orig_time;`, rollback: `SET GLOBAL slow_query_log = @orig_log; SET GLOBAL long_query_time = @orig_time;`
+# Restore Grafana dashboards (dev)
+cp /backup/grafana-dashboard-*.json /var/lib/grafana/dashboards/
+systemctl restart grafana-server
+```
 
-**Revert Log Level Changes**: Backup with `kubectl get configmap app-log-config -o yaml > /tmp/log_config_backup_$(date +%s).yaml`, rollback: `kubectl apply -f /tmp/log_config_backup_TIMESTAMP.yaml && kubectl rollout restart deployment/app-service`
+**Investigation Artifacts Cleanup**:
+```bash
+# Remove temporary analysis files
+rm -rf /tmp/error_investigation_*
+rm -rf /tmp/log_analysis_*.json
+rm -rf /tmp/error_correlation_*.csv
+rm -rf /tmp/pattern_detection_*
 
-**Rollback Validation**: Verify (1) services return to baseline error rates, (2) log permissions match pre-investigation state, (3) alerts return to normal thresholds, (4) no temp files remain, (5) performance metrics return to baseline.
+# Clean investigation logs
+rm -rf /var/log/error-detective/investigation-*.log
+truncate -s 0 /var/log/error-detective/temp-analysis.log
+```
+
+**Database Query Settings Restoration** (development):
+```bash
+# Restore slow query log settings (dev DB)
+mysql -e "SET GLOBAL slow_query_log = @orig_log; SET GLOBAL long_query_time = @orig_time;"
+
+# Reset query cache (development)
+mysql -e "SET GLOBAL query_cache_size = DEFAULT;"
+```
+
+**Log Level Rollback** (dev/staging):
+```bash
+# Revert application log config (staging)
+kubectl apply -f /tmp/log_config_backup_TIMESTAMP.yaml
+kubectl rollout restart deployment/app-service-staging
+
+# Restore log verbosity (development)
+git restore config/logging-dev.yml
+systemctl restart app-dev
+```
+
+**Rollback Validation**:
+```bash
+# Verify service health (dev/staging)
+curl http://dev.local:8080/health
+curl http://staging.local:8080/health
+
+# Check log permissions
+ls -la /var/log/app-dev/
+
+# Confirm monitoring config
+systemctl status prometheus
+systemctl status logstash
+
+# Verify no temp files remain
+find /tmp -name "error_investigation_*" -o -name "log_analysis_*"
+
+# Check baseline metrics
+curl http://prometheus-dev:9090/api/v1/query?query=error_rate
+```
+
+**Note**: Production log analysis and monitoring configuration changes are handled by SRE/observability agents with appropriate approval gates. This diagnostic agent performs read-heavy analysis in development/staging environments where temporary configuration changes are safe.
 
 ### Audit Logging
 

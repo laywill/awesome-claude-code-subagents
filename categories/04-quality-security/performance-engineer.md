@@ -129,81 +129,115 @@ def validate_query_safe(query: str) -> tuple[bool, str]:
 
 ### Rollback Procedures
 
-All operations MUST have rollback path completing in <5 minutes. Write and test rollback scripts before execution.
+All performance operations MUST have rollback path completing in <5 minutes. This agent performs profiling and optimization in development/staging environments.
 
-**Configuration Rollbacks**
+**Profiler/Monitor Detachment**:
 ```bash
-# Database config
-cp /etc/postgresql/postgresql.conf /tmp/postgresql.conf.backup.$(date +%s)
-# Rollback: cp /tmp/postgresql.conf.backup.* /etc/postgresql/postgresql.conf && systemctl restart postgresql
+# Stop profiling tools (dev/staging)
+pkill -f "perf record"
+pkill -f "py-spy"
+pkill -f "java -agentpath:async-profiler"
 
-# Application config
-cp application.properties application.properties.backup.$(date +%s)
-# Rollback: cp application.properties.backup.* application.properties && systemctl restart app
-
-# Web server
-nginx -t && cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.backup.$(date +%s)
-# Rollback: cp /etc/nginx/nginx.conf.backup.* /etc/nginx/nginx.conf && nginx -s reload
-
-# Redis config
-redis-cli CONFIG GET '*' > /tmp/redis-config-backup.$(date +%s).txt
-# Rollback: cat /tmp/redis-config-backup.*.txt | redis-cli --pipe
+# Detach APM agents (staging)
+kill -USR2 $(pgrep -f "newrelic")
+systemctl stop datadog-agent-staging
 ```
 
-**Code Optimization Rollbacks**
+**Performance Instrumentation Removal**:
 ```bash
-# Git-based rollback
-git tag pre-optimization-$(date +%s)
-# Rollback: git reset --hard pre-optimization-* && git push -f origin main
+# Remove profiling artifacts
+rm -rf /tmp/perf-*.data
+rm -rf /tmp/flamegraph-*.svg
+rm -rf /tmp/profile-*.pb.gz
 
-# Kubernetes resources
-kubectl get deployment my-app -o yaml > deployment-backup.$(date +%s).yaml
-# Rollback: kubectl apply -f deployment-backup.*.yaml
+# Clean performance logs
+rm -rf /var/log/performance-analysis-*.log
+truncate -s 0 /var/log/perf-verbose.log
 
-# Docker resources
-docker inspect my-container > container-config-backup.$(date +%s).json
-# Rollback: docker update --cpus="2.0" --memory="4g" my-container
+# Remove tracing hooks (development)
+rm -rf /tmp/dtrace-scripts-*
+rm -rf /tmp/bpftrace-*.bt
 ```
 
-**Database Optimization Rollbacks**
+**Configuration Rollback** (dev/staging):
 ```bash
-# Index rollback
-echo "DROP INDEX CONCURRENTLY idx_users_email;" > rollback-index.sql
-# Rollback: psql -U postgres -d mydb -f rollback-index.sql
+# Database config (staging DB)
+cp /tmp/postgresql.conf.backup.* /etc/postgresql-staging/postgresql.conf
+systemctl restart postgresql-staging
 
-# Query plan rollback (PostgreSQL)
-pg_dump -U postgres -d mydb --schema-only > schema-backup-$(date +%s).sql
-# Rollback: psql -U postgres -d mydb -f schema-backup-*.sql
+# Application config (development)
+cp application-dev.properties.backup.* application-dev.properties
+systemctl restart app-dev
 
-# Database parameters
-mysqldump --no-data --routines --triggers mydb > schema-backup-$(date +%s).sql
-mysql -e "SET GLOBAL innodb_buffer_pool_size = 2147483648;"
+# Web server (staging)
+cp /etc/nginx/nginx-staging.conf.backup.* /etc/nginx/nginx-staging.conf
+nginx -s reload
+
+# Redis config (dev)
+cat /tmp/redis-dev-config-backup.*.txt | redis-cli -h redis-dev --pipe
 ```
 
-**Load Test Cleanup**
+**Load Test Cleanup**:
 ```bash
-# Stop load test
-pkill -f "artillery|k6|jmeter|gatling"
-# Or: curl -X POST http://loadtest-controller:8080/stop
+# Stop load test tools
+pkill -f "artillery|k6|jmeter|gatling|locust"
 
-# Clean test data
-psql -U postgres -d testdb -c "DELETE FROM load_test_data WHERE created_at > '2025-06-15 14:00:00';"
+# Clean test data (dev database)
+psql -U testuser -d testdb_dev -c "DELETE FROM load_test_data WHERE created_at > '2025-06-15 14:00:00';"
+mysql -u testuser -p testdb_dev -e "TRUNCATE TABLE load_test_sessions;"
 
-# Remove monitoring overhead
-kubectl delete -f prometheus-heavy-scrape.yaml && kubectl apply -f prometheus-normal-scrape.yaml
+# Remove monitoring overhead (staging)
+kubectl delete -f prometheus-heavy-scrape-staging.yaml
+kubectl apply -f prometheus-normal-scrape-staging.yaml
 ```
 
-**Rollback Validation**
+**Code Optimization Rollback** (development):
 ```bash
-# Verify health
-curl -f http://localhost:8080/health || echo "Rollback failed"
+# Revert code changes
+git revert HEAD --no-edit
+git push origin feature/performance-optimization
 
-# Check metrics
-echo "SELECT AVG(response_time_ms) FROM metrics WHERE timestamp > NOW() - INTERVAL '5 minutes';" | psql -U postgres -d monitoring
+# Restore previous build
+cp /backups/app-dev.jar.backup /opt/app-dev/app.jar
+systemctl restart app-dev
 
-# Validate connections
+# Kubernetes resources (staging)
+kubectl apply -f deployment-backup-staging.yaml
+kubectl rollout status deployment/app-staging
+```
+
+**Database Optimization Rollback** (dev/staging):
+```bash
+# Drop new index (dev DB)
+psql -U devuser -d mydb_dev -c "DROP INDEX CONCURRENTLY idx_users_email;"
+
+# Rollback query optimization (staging DB)
+psql -U staginguser -d mydb_staging -f schema-backup-*.sql
+
+# Restore database parameters (development)
+mysql -e "SET GLOBAL innodb_buffer_pool_size = 2147483648;" -h db-dev
+```
+
+**Rollback Validation**:
+```bash
+# Verify service health (dev/staging)
+curl -f http://dev.local:8080/health
+curl -f http://staging.local:8080/health
+
+# Check performance metrics baseline
+curl http://prometheus-dev:9090/api/v1/query?query=response_time_ms
+
+# Validate database connections
 netstat -an | grep :5432 | wc -l
+
+# Confirm no profilers running
+ps aux | grep -E "perf|profiler" | grep -v grep
+
+# Verify test data cleanup
+psql -U testuser -d testdb_dev -c "SELECT COUNT(*) FROM load_test_data;"
 ```
+
+**Note**: Production performance optimization (database tuning, infrastructure scaling, caching strategies) is handled by SRE/infrastructure agents with thorough impact analysis and approval gates. This diagnostic agent performs profiling and testing in development/staging environments where experimentation is safe.
 
 ### Audit Logging
 

@@ -81,37 +81,78 @@ def validate_debug_input(debug_config):
 
 ### Rollback Procedures
 
-All debugging operations MUST have rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+All debugging operations MUST have rollback path completing in <5 minutes. This agent performs diagnostic operations in development/staging environments.
 
-**Pre-execution Requirements:**
-- Create system snapshot before attaching debugger to production process
-- Backup original binary/core dump before symbol manipulation
-- Record process state before modifying memory/registers
-- Document original breakpoints before adding instrumentation
-
-**Rollback Commands:**
+**Debugger/Profiler Detachment**:
 ```bash
-# Detach debugger from process
+# Detach GDB from process (dev/staging)
 gdb -batch -ex "detach" -p <PID>
+
+# Detach LLDB from process
 lldb --batch -o "process detach" -p <PID>
 
-# Restore process from snapshot
-systemctl stop myapp && cp /backups/myapp.snapshot /var/run/myapp/state && systemctl start myapp
+# Kill orphaned debugger sessions
+pkill -f "gdb.*<PID>"
+pkill -f "lldb.*<PID>"
+```
 
-# Revert binary patch
-cp /backups/myapp.original /usr/bin/myapp && systemctl restart myapp
-
-# Remove breakpoints and resume
+**Instrumentation Removal**:
+```bash
+# Remove breakpoints and continue
 gdb -batch -ex "delete breakpoints" -ex "continue" -p <PID>
+
+# Remove debug probes (development)
+rm -rf /tmp/debug-probes-*
+rm -rf /var/tmp/debug-session-*
+
+# Clean debug symbols (local dev)
+rm -rf /usr/lib/debug/.build-id/
+strip --strip-debug ./myapp.debug
+```
+
+**Process State Restoration** (dev/staging):
+```bash
+# Restore process from snapshot (staging only)
+systemctl stop myapp-staging && cp /backups/myapp.snapshot /var/run/myapp-staging/state && systemctl start myapp-staging
+
+# Revert binary patch (development)
+cp /backups/myapp.original /usr/local/dev/myapp && systemctl restart myapp-dev
 
 # Restore memory dump
 mv /debug/core.dump.backup /debug/core.dump
-
-# Rollback symbol table changes
-objcopy --remove-section=.debug_modified myapp myapp.restored
 ```
 
-**Rollback Validation**: Verify process memory usage returns to baseline, no zombie processes (`ps aux | grep defunct`), CPU usage normalizes, health checks pass. Check orphaned debug sessions: `lsof -i | grep gdb`.
+**Monitoring Artifacts Cleanup**:
+```bash
+# Remove profiling data
+rm -rf /tmp/perf-*.data
+rm -rf /tmp/flamegraph-*
+
+# Clean debug logs
+rm -rf /var/log/debug-session-*.log
+truncate -s 0 /var/log/debug-verbose.log
+
+# Remove temporary breakpoints file
+rm -f /tmp/gdb-commands-*.txt
+```
+
+**Rollback Validation**:
+```bash
+# Verify no debuggers attached
+lsof -i | grep -E "gdb|lldb" && echo "WARNING: Debuggers still attached"
+
+# Check process state (dev/staging)
+ps aux | grep myapp-dev
+curl http://localhost:8080/health
+
+# Verify no zombie processes
+ps aux | grep defunct
+
+# Confirm normal resource usage
+top -bn1 | grep myapp-dev
+```
+
+**Note**: Production debugging/profiling is handled by SRE/infrastructure agents with appropriate safeguards. This diagnostic agent operates in development/staging environments only where process manipulation is safe and expected.
 
 ### Audit Logging
 

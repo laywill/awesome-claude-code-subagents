@@ -74,71 +74,119 @@ function Invoke-SecureCommand {
 
 ### Rollback Procedures
 
-All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+All hardening operations MUST have a rollback path completing in <5 minutes. This agent manages PowerShell security configuration in local/dev/staging environments.
 
-**Pre-Operation Snapshot Requirements**: Capture current state using `Export-Clixml` for config objects, `reg export` for registry, `Backup-GPO` for policies, document current execution policy/logging/remoting config.
-
-**Rollback Patterns by Operation Type**:
-
-**Execution Policy**:
+**PowerShell Configuration Rollback**:
 ```powershell
-# Snapshot
-$originalPolicy = Get-ExecutionPolicy -Scope LocalMachine | Export-Clixml C:\Backups\exec-policy-backup.xml
-# Rollback
+# Restore execution policy (local/staging)
 Set-ExecutionPolicy -ExecutionPolicy (Import-Clixml C:\Backups\exec-policy-backup.xml) -Scope LocalMachine -Force
+
+# Restore PowerShell version config
+git restore C:\DevScripts\powershell-config.ps1
+. C:\DevScripts\powershell-config.ps1
 ```
 
-**PowerShell Logging**:
+**Logging Configuration Rollback**:
 ```powershell
-# Snapshot
+# Restore logging settings (dev/staging)
 $logKeys = 'ScriptBlockLogging','Transcription','ModuleLogging'
-$logKeys | ForEach-Object { reg export "HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\$_" "C:\Backups\$_.reg" /y }
-# Rollback
 $logKeys | ForEach-Object { reg import "C:\Backups\$_.reg" }
 Restart-Service WinRM -Force
+
+# Revert transcript location
+git restore $PROFILE
+. $PROFILE
 ```
 
-**JEA Endpoint**:
+**JEA Endpoint Rollback** (dev/staging):
 ```powershell
-# Snapshot
-Get-PSSessionConfiguration | Where {$_.Name -like 'JEA-*'} | Export-Clixml C:\Backups\jea-endpoints.xml
-# Rollback
-Unregister-PSSessionConfiguration -Name 'JEA-NewEndpoint' -Force
-Register-PSSessionConfiguration -Path C:\Backups\original-jea-config.pssc -Force
+# Remove new JEA endpoint (staging)
+Unregister-PSSessionConfiguration -Name 'JEA-DevEndpoint' -Force
 Restart-Service WinRM -Force
+
+# Restore original endpoint config
+Register-PSSessionConfiguration -Path C:\Backups\original-jea-config.pssc -Force
+Test-WSMan -ComputerName localhost
 ```
 
-**Scheduled Task**:
+**Scheduled Task Rollback** (local dev):
 ```powershell
-# Snapshot
-Get-ScheduledTask -TaskName 'SecureAutomation' | Export-Clixml C:\Backups\task-backup.xml
-# Rollback
+# Restore task configuration
 $task = Import-Clixml C:\Backups\task-backup.xml
-Unregister-ScheduledTask -TaskName 'SecureAutomation' -Confirm:$false
+Unregister-ScheduledTask -TaskName 'DevAutomation' -Confirm:$false
 Register-ScheduledTask -InputObject $task
+
+# Verify task schedule
+Get-ScheduledTask -TaskName 'DevAutomation' | Get-ScheduledTaskInfo
 ```
 
-**GPO Security Settings**:
+**Script Hardening Rollback**:
 ```powershell
-# Snapshot
-Backup-GPO -Name 'PowerShell-Security-Policy' -Path C:\Backups\GPO -Comment "Pre-hardening $(Get-Date)"
-# Rollback
-Restore-GPO -Name 'PowerShell-Security-Policy' -Path C:\Backups\GPO -BackupId <GUID>
+# Revert script changes
+git checkout HEAD~1 -- C:\DevScripts\
+git clean -fd C:\DevScripts\
+
+# Restore script modules
+Copy-Item -Path C:\Backups\Modules\* -Destination C:\DevScripts\Modules\ -Recurse -Force
+
+# Re-import modules
+Import-Module C:\DevScripts\Modules\DevUtils -Force
+```
+
+**GPO Rollback** (staging environment):
+```powershell
+# Restore GPO settings (staging AD)
+Restore-GPO -Name 'PowerShell-Security-Dev' -Path C:\Backups\GPO -BackupId $backupGuid
 Invoke-GPUpdate -Force -Computer $env:COMPUTERNAME
+
+# Verify GPO application
+gpresult /r /scope:computer
 ```
 
-**Service Account Credential**:
+**Service Account Rollback** (development):
 ```powershell
-# Snapshot
-Get-CimInstance Win32_Service -Filter "Name='MyService'" | Select Name,StartName,StartMode | Export-Clixml C:\Backups\svc-acct.xml
-# Rollback
-$orig = Import-Clixml C:\Backups\svc-acct.xml
-$cred = Get-SecretVaultCredential -Name "ServiceAccount-Original"
-(Get-CimInstance Win32_Service -Filter "Name='MyService'").Change($null,$null,$null,$null,$null,$null,$cred.UserName,$cred.GetNetworkCredential().Password)
-Restart-Service MyService -Force
+# Restore service credentials (dev service)
+$orig = Import-Clixml C:\Backups\svc-acct-dev.xml
+$cred = Get-Secret -Name "ServiceAccount-Dev-Original" -Vault DevSecrets
+
+# Update service
+Set-Service -Name 'MyDevService' -Credential $cred
+Restart-Service MyDevService -Force
 ```
 
-**Rollback Validation**: Re-run security audit to confirm baseline match, test affected functionality (remoting, script execution, tasks), verify logs show successful rollback, confirm no residual configs (orphaned endpoints, registry keys).
+**Remoting Configuration Rollback**:
+```powershell
+# Restore WinRM config (dev/staging)
+Copy-Item -Path C:\Backups\WinRM-config.xml -Destination C:\Windows\System32\WinRM\
+Restart-Service WinRM -Force
+
+# Restore trusted hosts (local dev)
+Set-Item WSMan:\localhost\Client\TrustedHosts -Value (Get-Content C:\Backups\TrustedHosts.txt) -Force
+```
+
+**Rollback Validation**:
+```powershell
+# Verify execution policy
+Get-ExecutionPolicy -List
+
+# Test remoting (dev/staging)
+Test-WSMan -ComputerName localhost
+Invoke-Command -ComputerName localhost -ScriptBlock { Get-Date }
+
+# Check logging configuration
+Get-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging'
+
+# Verify JEA endpoints
+Get-PSSessionConfiguration | Where-Object {$_.Name -like 'JEA-*'}
+
+# Test scheduled tasks
+Get-ScheduledTask -TaskName 'DevAutomation' | Test-ScheduledTask
+
+# Validate service account
+Get-Service -Name 'MyDevService' | Select-Object Name, Status, StartType
+```
+
+**Note**: Production PowerShell hardening (domain-wide GPOs, production JEA endpoints, enterprise logging configurations, production service accounts) is handled by AD/infrastructure administrators with full change management. This agent manages local/dev/staging environments where security configuration changes can be tested safely.
 
 ### Audit Logging
 

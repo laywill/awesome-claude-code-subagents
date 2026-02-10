@@ -145,48 +145,155 @@ function validateTestConfig(config) {
 
 ### Rollback Procedures
 
-All test automation operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing framework changes or test deployments.
+All test automation operations MUST have a rollback path completing in <5 minutes. This agent manages test framework development in local/dev/staging environments.
 
-**Test Framework Rollback Commands**:
+**Source Code Rollback**:
 ```bash
-# Rollback test framework deployment
-git revert HEAD --no-edit && npm install && npm run build
+# Revert test code changes
+git revert HEAD --no-edit
+git push origin feature/test-automation
 
-# Restore previous test configuration
-cp config/backup/test.config.js config/test.config.js && npm test -- --config=config/test.config.js
+# Restore specific test files
+git checkout HEAD~1 -- tests/integration/
+git checkout HEAD~1 -- tests/e2e/
 
-# Revert test data changes
-git checkout HEAD~1 -- test-data/ && git commit -m "Rollback test data to previous version"
+# Discard uncommitted test changes
+git checkout . && git clean -fd
+```
 
-# Rollback CI/CD pipeline configuration
-git revert HEAD -- .github/workflows/test-automation.yml && git push origin main
+**Dependencies Rollback**:
+```bash
+# Restore npm dependencies
+git restore package.json package-lock.json
+npm ci
 
-# Restore previous test dependencies
-npm ci --package-lock-only && npm install
+# Restore Python dependencies
+git restore requirements.txt
+pip install -r requirements.txt
 
-# Rollback database test fixtures
-psql -U testuser -d testdb < backups/test_fixtures_backup.sql
+# Restore Maven test dependencies
+git restore pom.xml
+mvn clean install -DskipTests
+```
+
+**Test Configuration Rollback**:
+```bash
+# Restore test configuration
+cp config/backup/test.config.js config/test.config.js
+cp config/backup/jest.config.js jest.config.js
+
+# Restore environment config
+git restore .env.test
+git restore cypress.config.js
+
+# Revert test data
+git checkout HEAD~1 -- test-data/
+git checkout HEAD~1 -- fixtures/
+```
+
+**Test Database Rollback** (development):
+```bash
+# Restore test database fixtures (dev)
+psql -U testuser -d testdb_dev < backups/test_fixtures_backup.sql
+mysql -u testuser -p testdb_dev < backups/test_data_backup.sql
+
+# Reset test database schema (local)
+npm run db:reset:test
+python manage.py migrate --database=test
+
+# Clean test data
+DELETE FROM test_users WHERE created_at > '2025-06-15';
+TRUNCATE TABLE test_sessions;
 ```
 
 **Framework-Specific Rollback**:
 ```bash
 # Selenium/WebDriver
 npm install selenium-webdriver@4.15.0 --save-exact
+npm run build
 
 # Playwright
+git restore playwright.config.ts
 npx playwright install --force chromium@1.40.0
 
 # Cypress
 npm install cypress@13.6.0 --save-dev --save-exact
+git restore cypress/support/
 
 # Jest: Restore snapshot baselines
-git checkout HEAD~1 -- **/__snapshots__/ && npm test -- -u
+git checkout HEAD~1 -- **/__snapshots__/
+npm test -- -u
 
 # TestNG
 git checkout HEAD~1 -- src/test/resources/testng.xml
+mvn clean test -DskipTests
 ```
 
-**Rollback Validation**: Execute smoke test suite (5-10 critical tests) to confirm framework stability, verify test execution completes without errors, check test report generation and artifact uploads function correctly, validate CI/CD pipeline executes rollback version successfully.
+**CI/CD Pipeline Rollback**:
+```bash
+# Revert pipeline configuration
+git revert HEAD -- .github/workflows/test-automation.yml
+git push origin main
+
+# Restore Jenkins config
+git checkout HEAD~1 -- Jenkinsfile
+git push origin feature/test-automation
+
+# Revert GitLab CI
+git restore .gitlab-ci.yml
+git commit -m "Rollback test automation pipeline"
+```
+
+**Build Artifacts Rollback**:
+```bash
+# Clean test build artifacts
+rm -rf dist/
+rm -rf build/
+rm -rf test-results/
+rm -rf coverage/
+
+# Rebuild from source
+npm run build
+npm test
+```
+
+**Test Report Configuration Rollback**:
+```bash
+# Restore report config
+git restore allure-report.config.js
+git restore .mocharc.json
+
+# Clean old reports
+rm -rf reports/
+rm -rf mochawesome-report/
+
+# Regenerate reports
+npm run test:report
+```
+
+**Rollback Validation**:
+```bash
+# Run smoke tests (5-10 critical tests)
+npm run test:smoke
+pytest tests/smoke/ -v
+
+# Verify framework stability
+npm test -- --testPathPattern=integration
+mvn test -Dtest=SmokeTests
+
+# Check test execution completes
+npm run test:all || echo "Tests failed - rollback incomplete"
+
+# Verify test reports generated
+ls -la reports/
+cat reports/test-results.json
+
+# Validate CI/CD pipeline
+git push origin feature/test-automation
+# Monitor pipeline execution in CI/CD dashboard
+```
+
+**Note**: Production test automation deployments (CI/CD pipeline modifications affecting production, integration with production monitoring, production test data management) are handled by DevOps/platform engineers with appropriate approval gates. This agent manages test framework development in local/dev/staging environments where test code changes can be developed and validated safely.
 
 ### Audit Logging
 
