@@ -114,83 +114,89 @@ function checkRateLimit(connectionId) {
 
 ### Rollback Procedures
 
-All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+All development operations MUST have a rollback path completing in <5 minutes. This agent manages WebSocket development and local/staging environments.
 
-**WebSocket Server Rollback**:
+**Source Code Rollback**:
 ```bash
-# Rollback to previous Socket.IO server version
-npm install socket.io@<previous-version>
-pm2 restart websocket-server
+# Revert WebSocket server code
+git revert HEAD && git push origin feature-branch
 
-# Restore previous WebSocket server code
+# Restore previous WebSocket implementation
 git checkout HEAD~1 -- src/websocket/
-npm install
-pm2 restart websocket-server
+
+# Discard uncommitted changes
+git checkout . && git clean -fd
 ```
 
-**Configuration Rollback**:
+**Dependencies Rollback**:
 ```bash
-# Restore previous WebSocket configuration
-cp /opt/websocket/config/server.json.backup /opt/websocket/config/server.json
-pm2 reload websocket-server --update-env
+# Restore from package-lock.json
+npm ci
 
-# Rollback Redis pub/sub configuration
-redis-cli SET websocket:config "$(cat /backup/redis-config.json)"
-pm2 restart websocket-server
-```
+# Rollback to previous Socket.IO version
+npm install socket.io@<previous-version> --save-exact
 
-**Deployment Rollback**:
-```bash
-# Kubernetes rollback for WebSocket deployment
-kubectl rollout undo deployment/websocket-server -n production
-kubectl rollout status deployment/websocket-server -n production
-
-# Docker rollback to previous image
-docker stop websocket-server
-docker rm websocket-server
-docker run -d --name websocket-server \
-  -p 3000:3000 \
-  myregistry/websocket-server:v1.2.3
-```
-
-**Client Library Rollback**:
-```bash
-# Rollback client library version
+# Rollback WebSocket client library
 npm install @company/websocket-client@<previous-version>
-# Redeploy frontend with previous version
-npm run build && npm run deploy
-
-# Revert CDN-hosted client library
-aws s3 cp s3://cdn-bucket/websocket-client.v1.2.3.js \
-  s3://cdn-bucket/websocket-client.js --acl public-read
 ```
 
-**Message Broker Rollback**:
+**Local Development Server Rollback**:
 ```bash
-# Restore Redis snapshot
-redis-cli SHUTDOWN SAVE
-cp /backup/redis-dump-$(date -d yesterday +%Y%m%d).rdb /var/lib/redis/dump.rdb
-systemctl start redis
+# Restart local WebSocket server
+npm run dev
+# or pm2 restart websocket-dev
 
-# Rollback RabbitMQ configuration
-rabbitmqctl import_definitions /backup/rabbitmq-definitions.json
-rabbitmqctl restart
+# Rebuild and restart Docker Compose (local)
+docker-compose down && docker-compose up -d --build
+
+# Reset local server state
+pkill -f "node.*websocket" && npm run dev
+```
+
+**Local Configuration Rollback**:
+```bash
+# Restore development config
+git checkout HEAD~1 -- config/development.json
+cp config/development.json.backup config/development.json
+
+# Reset local environment variables
+cp .env.backup .env
+
+# Restart with restored config
+npm run dev
+```
+
+**Local Message Broker Rollback** (development):
+```bash
+# Reset local Redis (development only)
+redis-cli FLUSHDB
+
+# Restore local Redis snapshot
+redis-cli SHUTDOWN SAVE
+cp backups/redis-dev.rdb /var/lib/redis/dump.rdb
+redis-server
+
+# Reset local RabbitMQ (development)
+docker restart rabbitmq-dev
 ```
 
 **Rollback Validation**:
 ```bash
-# Verify WebSocket server is accepting connections
+# Verify local WebSocket server
 wscat -c ws://localhost:3000
-# Expected: Connection established message
+# Expected: Connection established
 
-# Check connection count and latency
-curl http://localhost:3000/health | jq '.connections, .latency_ms'
-# Expected: {"connections": N, "latency_ms": <50}
+# Check local health endpoint
+curl http://localhost:3000/health | jq '.status, .connections'
 
-# Verify Redis pub/sub is working
+# Test local pub/sub
 redis-cli PUBLISH test-channel "ping"
-# Expected: (integer) N (number of subscribers)
+
+# Run integration tests
+npm test
 ```
+
+**Note**: Production WebSocket deployments (Kubernetes, production Redis/RabbitMQ, CDN) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
 
 ### Audit Logging
 
