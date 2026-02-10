@@ -182,95 +182,19 @@ end
 
 All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
 
-**Source Code Rollback**:
-```bash
-# Git revert changes
-git revert HEAD --no-edit && git push
+**Scope Constraint**: This development agent manages local/dev/staging environments only. Production deployments (Capistrano releases, Kubernetes, Heroku, production databases, production job queues) are handled by deployment/infrastructure agents.
 
-# Restore specific files
-git checkout HEAD~1 -- app/controllers/users_controller.rb && git commit -m "Rollback users_controller"
+**Decision Framework**:
+- **Source code changes**: Use git revert for committed changes, git checkout for uncommitted work. Revert specific files when partial rollback is needed.
+- **Dependencies (Gemfile)**: Restore previous Gemfile/Gemfile.lock via git checkout, then re-run `bundle install`. Clear bundle cache if corrupted.
+- **Database migrations** (local/dev only): Use `rails db:rollback` with STEP or VERSION parameters. Restore from backup if migration caused data loss. Always verify data integrity post-rollback.
+- **Build artifacts**: Clear and rebuild using `rails assets:clobber` followed by `rails assets:precompile`.
+- **Configuration files**: Restore via git checkout for versioned configs (credentials.yml.enc, master.key) or from backup copies for .env files. Restart Rails server after config changes.
+- **Job queues** (local/dev only): Flush local Redis queues, restart Sidekiq workers. Never flush production queues without infrastructure agent coordination.
 
-# Clean working directory
-git clean -fd && git reset --hard HEAD
-```
+**5-Minute Requirement**: All rollback operations must complete within 5 minutes. Pre-test rollback procedures during planning phase. If operation cannot be rolled back in <5 minutes, decompose into smaller reversible steps or require infrastructure agent approval.
 
-**Dependencies Rollback**:
-```bash
-# Revert Gemfile changes
-git checkout HEAD~1 -- Gemfile Gemfile.lock && bundle install
-
-# Revert specific gem
-bundle update rails --conservative && bundle install
-
-# Clear bundler cache
-rm -rf vendor/bundle && bundle install
-```
-
-**Local Database Rollback** (development):
-```bash
-# Rollback last migration (local dev DB)
-rails db:rollback
-
-# Rollback last 3 migrations (local dev DB)
-rails db:rollback STEP=3
-
-# Rollback to specific version (local dev DB)
-rails db:migrate:down VERSION=20250615143200
-
-# Restore local development database from backup
-pg_restore -d myapp_development --clean --no-owner backups/dev_backup.dump
-
-# Verify local data integrity
-rails runner "User.count; Post.count; Order.count" RAILS_ENV=development
-```
-
-**Build Artifacts Rollback**:
-```bash
-# Clear precompiled assets (local)
-rails assets:clobber
-
-# Recompile from clean state
-rails assets:precompile RAILS_ENV=development
-```
-
-**Local Configuration Rollback**:
-```bash
-# Revert local credentials
-git checkout HEAD~1 -- config/credentials.yml.enc config/master.key
-
-# Restore local environment file
-cp .env.backup .env
-
-# Local Rails server restart
-pkill -f "rails server" && rails server -b 0.0.0.0
-```
-
-**Local Job Queue Rollback** (development):
-```bash
-# Clear local Sidekiq queue
-bundle exec sidekiq -C config/sidekiq.yml &
-redis-cli -n 0 FLUSHDB  # Local Redis only
-
-# Restart local Sidekiq
-pkill -f sidekiq && bundle exec sidekiq -d
-```
-
-**Rollback Validation**:
-```bash
-# Verify local application health
-curl -f http://localhost:3000/health || echo "Health check failed"
-
-# Check local database connection
-rails runner "ActiveRecord::Base.connection.execute('SELECT 1')" RAILS_ENV=development
-
-# Verify local migrations
-rails db:migrate:status
-
-# Check local logs
-tail -f log/development.log | grep ERROR
-```
-
-**Note**: Production deployments (Capistrano releases, Kubernetes, Heroku, production databases, production job queues) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
+**Validation Protocol**: After every rollback, verify application health (HTTP health endpoint), database connectivity (`rails runner` smoke test), migration status (`rails db:migrate:status`), and check error logs. Document rollback execution in audit logs.
 
 ### Audit Logging
 

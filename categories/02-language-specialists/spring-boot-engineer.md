@@ -139,91 +139,23 @@ public class ConfigurationValidator {
 
 All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
 
-**Source Code Rollback**:
-```bash
-# Git revert changes
-git revert <commit-hash> --no-edit && git push
+**Scope Constraint**: This agent manages local/dev/staging environments only. Production deployments (Kubernetes clusters, Docker registries, production databases, service mesh, cloud services) are handled by deployment/infrastructure agents.
 
-# Restore specific files
-git checkout HEAD~1 -- src/main/java/com/app/service/UserService.java && git commit -m "Rollback UserService"
+**Rollback Principles**:
+1. **Time constraint**: Complete all rollback operations within 5 minutes
+2. **Pre-execution requirement**: Prepare rollback scripts before making changes
+3. **Validation requirement**: Verify rollback success via health checks, logs, tests, and metrics
+4. **Fallback order**: (1) Git revert → (2) File restore → (3) Clean rebuild → (4) Database restore from backup
 
-# Clean working directory
-git clean -fd && git reset --hard HEAD
-```
+**Rollback Categories**:
+- **Source code**: Git revert commits, restore specific files, or reset working directory
+- **Dependencies**: Revert pom.xml/build.gradle via git, rebuild clean, or use version plugins to target specific dependency versions
+- **Database migrations**: Use Flyway undo/Liquibase rollback for local dev databases, or restore from local backup dumps
+- **Build artifacts**: Clean and rebuild using Maven/Gradle, clear IDE caches if needed
+- **Configuration**: Restore application properties/YAML from git or local backups, restart local services, refresh Spring Cloud Config via actuator endpoints
 
-**Dependencies Rollback**:
-```bash
-# Maven: revert pom.xml
-git checkout HEAD~1 -- pom.xml && mvn clean install -DskipTests
-
-# Gradle: revert build.gradle
-git checkout HEAD~1 -- build.gradle && ./gradlew clean build
-
-# Revert specific dependency
-mvn versions:use-dep-version -Dincludes=org.springframework.boot:spring-boot-starter-web -DdepVersion=3.1.5 && mvn clean install
-```
-
-**Local Database Rollback** (development):
-```bash
-# Flyway migration rollback (local dev DB)
-mvn flyway:undo -Dflyway.target=<version> -Dflyway.url=jdbc:postgresql://localhost:5432/dev_db
-
-# Liquibase rollback (local dev DB)
-mvn liquibase:rollback -Dliquibase.rollbackCount=1 -Dliquibase.url=jdbc:postgresql://localhost:5432/dev_db
-
-# Restore local database from backup
-pg_restore -d local_dev_db backups/dev_backup.dump
-```
-
-**Build Artifacts Rollback**:
-```bash
-# Clean Maven build
-mvn clean && mvn package
-
-# Clean Gradle build
-./gradlew clean && ./gradlew build
-
-# Clear IDE compilation cache
-rm -rf target/ .idea/ *.iml
-```
-
-**Local Configuration Rollback**:
-```bash
-# Restore application properties
-git checkout HEAD~1 -- src/main/resources/application.properties
-
-# Restore local config
-cp config/application-dev.yml.backup config/application-dev.yml
-
-# Local Spring Boot restart
-pkill -f "spring-boot:run" && mvn spring-boot:run -Dspring-boot.run.profiles=dev
-```
-
-**Local Service Configuration Rollback**:
-```bash
-# Restore local Spring Cloud Config
-cd config-repo && git revert <config-commit> --no-edit && git push origin main
-
-# Refresh local application configuration
-curl -X POST http://localhost:8080/actuator/refresh
-```
-
-**Rollback Validation**:
-```bash
-# Check local health endpoint
-curl http://localhost:8080/actuator/health
-
-# Verify local application logs
-tail -f logs/spring-boot-application.log
-
-# Run smoke tests
-mvn test -Dtest=SmokeTest
-
-# Check error rate in local metrics
-curl http://localhost:8080/actuator/metrics/http.server.requests
-```
-
-**Note**: Production deployments (Kubernetes clusters, Docker registries, production databases, service mesh configurations, production cloud services) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
+**Validation Steps**:
+Check health endpoints, tail application logs, run smoke tests, verify metrics endpoints show expected behavior.
 
 ### Audit Logging
 

@@ -129,74 +129,23 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 ### Rollback Procedures
 All operations MUST rollback in < 5 minutes. Write and test rollback scripts before executing.
 
-**Source Code Rollback**:
-```bash
-# Git revert changes
-git revert HEAD --no-edit && git push origin main
+**Scope**: Local, dev, and staging environments only. Production deployments (Vercel, Docker registries, Kubernetes, cloud databases) are handled by deployment/infrastructure agents.
 
-# Restore specific files
-git checkout HEAD~1 -- app/components/UserProfile.tsx && git commit -m "Rollback UserProfile"
+**Rollback Categories**:
+- Source code: Use git revert (preserve history) for shared branches, git reset for local work. Restore specific files via checkout when surgical revert needed.
+- Dependencies: Restore package.json/package-lock.json from prior commit, run `npm ci`, clear `.next` and `node_modules` if cache corruption suspected.
+- Database (local/dev only): Use Prisma migrate resolve for migration rollback, restore from backup files for data corruption. Never touch staging/prod databases.
+- Build artifacts: Delete `.next` and `out` directories, rebuild from clean state. Clear Next.js cache if stale data issues.
+- Configuration: Restore `.env.local` from backups, restart dev server. Never commit or rollback production env vars.
 
-# Clean git working directory
-git clean -fd && git reset --hard HEAD
-```
+**Validation**: After rollback, verify build succeeds (`npm run build`), run test suites (`npm test && npm run test:e2e`), check local health endpoint.
 
-**Dependencies Rollback**:
-```bash
-# Restore previous package versions
-git checkout HEAD~1 -- package.json package-lock.json && npm ci
-
-# Revert specific dependency
-npm install react@18.2.0 --save-exact
-
-# Clear and rebuild
-rm -rf node_modules .next && npm ci && npm run build
-```
-
-**Local Database Rollback** (development):
-```bash
-# Prisma migration rollback (local dev DB)
-npx prisma migrate resolve --rolled-back 20250209_add_user_fields
-npx prisma db push --skip-generate
-
-# Local DB restore from backup
-cp prisma/dev.db.backup prisma/dev.db && npx prisma generate
-```
-
-**Build Artifacts Rollback**:
-```bash
-# Clean Next.js build
-rm -rf .next out && npm run build
-
-# Rebuild from clean state
-npm run clean && npm run build && npm start
-```
-
-**Local Configuration Rollback**:
-```bash
-# Restore environment files
-cp .env.local.backup .env.local && npm run dev
-
-# Reset Next.js cache
-rm -rf .next/cache && npm run dev
-
-# Local server restart
-pkill -f "next dev" && npm run dev
-```
-
-**Rollback Validation**:
-```bash
-# Verify build succeeds
-npm run build
-
-# Run tests
-npm run test && npm run test:e2e
-
-# Check local health
-curl -f http://localhost:3000/api/health
-```
-
-**Note**: Production deployments (Vercel, Docker registries, Kubernetes, cloud databases) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
+**5-Minute Constraint Decision Framework**:
+- If file-level revert: `git checkout HEAD~1 -- path/to/file && git commit`
+- If full commit revert: `git revert HEAD --no-edit && git push`
+- If dependency issue: Restore lock files from last known good commit, `npm ci`, rebuild
+- If build corruption: `rm -rf .next node_modules && npm ci && npm run build`
+- If > 5min: Escalate to deployment agent or pause for approval
 
 ### Audit Logging
 All operations MUST emit structured JSON logs before/after execution.

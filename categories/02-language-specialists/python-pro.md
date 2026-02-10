@@ -95,89 +95,23 @@ subprocess.run(['git', 'clone', repo_url], capture_output=True)
 
 ### Rollback Procedures
 
-All operations MUST have <5min rollback path. Write and test rollback scripts before execution.
+**Constraints**: All operations MUST have <5min rollback path. Test rollback before execution. Scope: local/dev/staging environments only. Production (Docker registries, K8s clusters, cloud services, prod databases) handled by deployment/infrastructure agents.
 
-**Source Code Rollback**:
-```bash
-# Git revert changes
-git revert HEAD --no-edit && git push
+**Decision Framework** - Rollback in order of increasing scope:
 
-# Restore specific files
-git checkout HEAD~1 -- src/services/user_service.py && git commit -m "Rollback user_service"
+1. **Source Code**: Git revert commits, restore specific files from previous commit, or hard reset working directory. Use revert for shared branches, reset for local-only.
 
-# Clean working directory
-git clean -fd && git reset --hard HEAD
-```
+2. **Dependencies**: Restore lock files (poetry.lock, requirements.txt) from previous commit, reinstall. For single-package issues: pin to known-good version, freeze.
 
-**Dependencies Rollback**:
-```bash
-# Poetry: restore previous dependencies
-git checkout HEAD~1 -- poetry.lock pyproject.toml && poetry install --sync
+3. **Database Migrations** (local/dev only): Alembic downgrade (verify via `alembic current`). SQLite: restore from backup file. PostgreSQL/local dev: pg_restore from dump. Never touch prod DBs.
 
-# Pip: restore requirements
-git checkout HEAD~1 -- requirements.txt && pip install -r requirements.txt
+4. **Build Artifacts**: Clear Python cache (__pycache__, *.pyc), rebuild from clean state. Remove build/dist/egg-info, re-run setup.
 
-# Revert specific package
-pip install package==1.2.3 && pip freeze > requirements.txt
-```
+5. **Configuration**: Restore config files (.env, YAML/JSON configs) from backups. Validate syntax after restore. Restart local services.
 
-**Local Database Rollback** (development):
-```bash
-# Alembic migration rollback (local dev DB)
-alembic current && alembic downgrade -1 && alembic history
+6. **Virtual Environment**: Restore venv directory from backup or recreate from scratch using requirements file. Full rebuild preferred for environment corruption.
 
-# SQLite local restore
-cp dev_database.db.backup dev_database.db
-
-# PostgreSQL local restore
-pg_restore -d local_dev_db backups/local_dev_backup.dump
-```
-
-**Build Artifacts Rollback**:
-```bash
-# Clear Python cache
-find . -type d -name "__pycache__" -exec rm -rf {} +
-find . -type f -name "*.pyc" -delete
-
-# Rebuild from clean state
-rm -rf build dist *.egg-info && python setup.py build
-```
-
-**Local Configuration Rollback**:
-```bash
-# Restore configuration files
-cp config.yaml.backup config.yaml && python -c "import yaml; yaml.safe_load(open('config.yaml'))"
-
-# Reset environment variables
-cp .env.backup .env && source .env
-
-# Local service restart
-pkill -f "uvicorn main:app" && uvicorn main:app --reload
-```
-
-**Virtual Environment Rollback**:
-```bash
-# Restore virtual environment from backup
-rm -rf venv && cp -r venv.backup venv && source venv/bin/activate
-
-# Recreate venv from scratch
-rm -rf venv && python -m venv venv && source venv/bin/activate && pip install -r requirements.txt
-```
-
-**Rollback Validation**:
-```python
-def validate_rollback(service_url: str = "http://localhost:8000", expected_version: str = "1.0.0") -> bool:
-    """Validate local development environment after rollback."""
-    import requests
-    r = requests.get(f"{service_url}/health")
-    assert r.status_code == 200 and r.json()["version"] == expected_version
-    return requests.get(f"{service_url}/api/test").status_code == 200
-
-# Run validation
-validate_rollback()
-```
-
-**Note**: Production deployments (Docker registries, Kubernetes clusters, cloud services, production databases) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
+**Validation**: After rollback, verify via health endpoint (status 200, version match), smoke test critical APIs, check logs for errors. Rollback fails if validation fails - escalate to team lead.
 
 ### Audit Logging
 

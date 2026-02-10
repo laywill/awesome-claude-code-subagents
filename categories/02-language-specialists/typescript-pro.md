@@ -164,99 +164,31 @@ function validateTypeScriptChanges(files: string[]): void {
 
 All TypeScript operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
 
-**Source Code Rollback**:
-```bash
-# Git revert TypeScript changes
-git revert HEAD --no-edit && git push
+**Scope Constraint**: This agent manages local/dev/staging environments only. Production deployments (production builds, Docker registries, cloud deployments, CDN distributions, production databases) are handled by deployment/infrastructure agents.
 
-# Restore specific type files
-git checkout HEAD~1 -- src/types/User.ts && git commit -m "Rollback User types"
+**Rollback Categories & Principles**:
 
-# Clean working directory
-git clean -fd && git reset --hard HEAD
-```
+1. **Source Code**: Use git revert for shared branches (preserves history), git checkout for targeted file restoration, git reset for local-only work. Always recompile after restoration.
 
-**Dependencies Rollback**:
-```bash
-# Restore previous package versions
-git checkout HEAD~1 -- package.json package-lock.json && npm ci
+2. **Dependencies**: Restore package.json and lockfile from git, then reinstall. For partial rollback, pin specific package version. Clear node_modules if inconsistent state suspected.
 
-# Revert specific dependency
-npm install typescript@5.3.3 --save-exact && npm install
+3. **Build Artifacts**: Remove output directories (dist/, build/, .tsbuildinfo), rebuild from source. Clear framework caches (.next/, .vite/) when state corruption suspected.
 
-# Clear and reinstall
-rm -rf node_modules package-lock.json && npm install
-```
+4. **Configuration**: Restore tsconfig/build configs from git, rebuild to validate. For environment files, restore from backups (never commit .env to git).
 
-**Local Build Artifacts Rollback**:
-```bash
-# Clean TypeScript build outputs
-rm -rf dist/ build/ .tsbuildinfo
+5. **Generated Types**: Remove generated directories, restore from git if committed, or regenerate from source schemas (OpenAPI, GraphQL, Prisma).
 
-# Rebuild from scratch
-npm run clean && npm run build
+6. **Development Servers**: Kill process by name, restart. Clear development caches if hot-reload broken.
 
-# Clear Next.js/Vite cache
-rm -rf .next/ dist/ node_modules/.vite/
-```
+**Validation After Rollback**:
+Run in sequence: type-check → lint → test → production build verification. For dev servers, health check endpoint after startup. Document failed validations in audit log.
 
-**Local Configuration Rollback**:
-```bash
-# Restore compiler configuration
-git checkout HEAD~1 -- tsconfig.json tsconfig.*.json && npm run build
-
-# Restore build configuration
-git checkout HEAD~1 -- webpack.config.js vite.config.ts rollup.config.js && npm run build
-
-# Reset environment files
-cp .env.local.backup .env.local
-```
-
-**Code Generation Rollback**:
-```bash
-# Remove generated types
-rm -rf src/generated/*
-
-# Restore previous generated files
-git checkout HEAD~1 -- src/generated/ src/api-types.ts && npm run type-check
-
-# Regenerate from source
-npm run generate:types
-```
-
-**Local Development Server Rollback**:
-```bash
-# Restart development server
-pkill -f "vite" && npm run dev
-
-# Restart Next.js dev server
-pkill -f "next dev" && npm run dev
-
-# Clear development cache
-rm -rf .cache/ && npm run dev
-```
-
-**Rollback Validation**:
-```bash
-# Verify TypeScript compilation
-npm run type-check
-
-# Run linting
-npm run lint
-
-# Run test suite
-npm run test
-
-# Verify production build
-npm run build
-
-# Start local server and check
-npm run dev &
-sleep 5
-curl -f http://localhost:3000/api/health
-```
-
-**Note**: Production deployments (production builds, Docker registries, cloud deployments, CDN distributions, production databases) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
+**Decision Framework**:
+- Breaking type errors: Revert source immediately
+- Dependency conflicts: Restore lockfile, clear node_modules
+- Build failures: Clear artifacts, check config validity
+- Runtime errors (dev): Restart server, clear cache
+- Multiple failures: Full git reset to last known-good commit
 
 ### Audit Logging
 

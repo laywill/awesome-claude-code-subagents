@@ -143,93 +143,25 @@ func validateSwiftCode(_ code: String) -> ValidationResult {
 
 ### Rollback Procedures
 
-All operations MUST have rollback path completing in <5 minutes. Write and test rollback scripts before executing.
+**Core Requirements**: Every operation MUST have a <5-minute rollback path. Test rollback procedure before executing the forward operation. Document rollback steps in audit logs.
 
-**Source Code Rollback**:
-```bash
-# Git revert Swift changes
-git revert HEAD --no-edit && git push
+**Scope Boundary**: This agent manages local/dev/staging environments only. Production deployments (App Store releases, TestFlight builds, production servers, cloud infrastructure) are handled by deployment/infrastructure agents.
 
-# Restore specific Swift files
-git checkout HEAD~1 -- Sources/Services/UserService.swift && git commit -m "Rollback UserService"
+**Rollback Decision Framework**:
 
-# Clean working directory
-git clean -fd && git reset --hard HEAD
-```
+1. **Source Code Changes**: Use git revert for commits, git checkout for uncommitted changes, git reset for working directory cleanup. Prefer revert over reset when history matters. Always rebuild and retest after rollback.
 
-**Dependencies Rollback**:
-```bash
-# SPM: revert Package.swift
-git checkout HEAD~1 -- Package.swift Package.resolved && swift package reset && swift package resolve
+2. **Dependency Changes**: Revert dependency manifest (Package.swift, Podfile, Cartfile) and lockfile together. Re-resolve dependencies using package manager. Verify build passes with reverted dependencies before declaring rollback complete.
 
-# CocoaPods: revert Podfile
-git checkout HEAD~1 -- Podfile Podfile.lock && pod install
+3. **Build Artifacts**: Clean derived data and build directories when binary corruption suspected. Always clean before rebuild when dependency or configuration rollback occurs.
 
-# Carthage: revert Cartfile
-git checkout HEAD~1 -- Cartfile Cartfile.resolved && carthage update
-```
+4. **Configuration Changes**: Restore project settings, Info.plist, build configs from git or backups. Reset simulator state if configuration affects runtime behavior. Verify app launches successfully.
 
-**Local Build Artifacts Rollback**:
-```bash
-# Clean Xcode build
-xcodebuild clean -project MyApp.xcodeproj -scheme MyApp
+5. **Data Model Changes** (Core Data, SwiftData): Revert model files (.xcdatamodeld) via git. For local development databases, delete store to force recreation or restore from backup. Never attempt in-place model downgrades without migration strategy.
 
-# Clean SPM build
-swift package clean && rm -rf .build/
+6. **UI/View Changes** (SwiftUI, UIKit): Revert view source files. If storyboards/xibs changed, revert those too. Clean build to ensure IB artifacts regenerate. Test UI functionality post-rollback.
 
-# Clear derived data
-rm -rf ~/Library/Developer/Xcode/DerivedData/*
-```
-
-**Local Configuration Rollback**:
-```bash
-# Restore Xcode project settings
-git checkout HEAD~1 -- *.xcodeproj/project.pbxproj
-
-# Restore local configuration files
-cp Config.plist.backup Config.plist
-
-# Reset local simulator
-xcrun simctl erase all && xcrun simctl boot "iPhone 15 Pro"
-```
-
-**Local Core Data Rollback** (development):
-```bash
-# Revert Core Data model
-git checkout HEAD~1 -- MyApp.xcdatamodeld/
-
-# Restore local SQLite database
-cp ~/Library/Application\ Support/MyApp/MyApp.sqlite.backup ~/Library/Application\ Support/MyApp/MyApp.sqlite
-
-# Delete local Core Data store
-rm ~/Library/Application\ Support/MyApp/*.sqlite*
-```
-
-**Local SwiftUI Views Rollback**:
-```bash
-# Revert SwiftUI view files
-git checkout HEAD~1 -- Sources/Views/ && xcodebuild clean build -project MyApp.xcodeproj -scheme MyApp
-
-# Restore specific view
-git checkout HEAD~1 -- Sources/Views/UserProfileView.swift
-```
-
-**Rollback Validation**:
-```bash
-# Verify SPM build
-swift build && swift test
-
-# Verify Xcode build
-xcodebuild -project MyApp.xcodeproj -scheme MyApp -destination 'platform=iOS Simulator,name=iPhone 15 Pro' build test
-
-# Run app on simulator
-xcrun simctl install booted MyApp.app && xcrun simctl launch booted com.company.MyApp
-
-# Check for runtime issues
-xcodebuild test -project MyApp.xcodeproj -scheme MyApp -destination 'platform=iOS Simulator,name=iPhone 15 Pro' 2>&1 | grep -i error
-```
-
-**Note**: Production deployments (App Store releases, TestFlight builds, production servers, cloud infrastructure, production Docker containers) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
+**Validation Principles**: After any rollback, verify: build succeeds, tests pass, app launches, no runtime errors, dependencies resolve correctly. Use automated test suites where available. Manual smoke test critical paths if no automated coverage.
 
 ### Audit Logging
 

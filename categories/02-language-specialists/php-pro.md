@@ -160,87 +160,25 @@ public function rules(): array {
 
 ### Rollback Procedures
 
-All operations require <5min rollback path. Test rollback scripts before executing.
+**Scope constraint**: Local/dev/staging environments only. Production deployments (cloud services, load balancers, production databases) handled by deployment/infrastructure agents.
 
-**Source Code Rollback**:
-```bash
-# Git revert changes
-git revert HEAD --no-edit && git push
+**Time constraint**: All rollbacks must complete in <5min. Test rollback path before executing changes.
 
-# Restore specific files
-git checkout HEAD~1 -- app/Services/UserService.php && git commit -m "Rollback UserService"
+**Decision framework**:
+1. **Assess blast radius**: Code-only (git revert) vs code+dependencies (composer.lock) vs code+migrations (database rollback) vs infrastructure (caching/queues)
+2. **Choose rollback level**: File-level (specific service/controller) vs commit-level (full revert) vs environment reset (rebuild caches)
+3. **Validate state**: Run test suite, check logs, verify framework status post-rollback
 
-# Clean working directory
-git clean -fd && git reset --hard HEAD
-```
+**Rollback categories**:
+- **Source code**: Git revert/restore specific files/reset working directory
+- **Dependencies**: Restore composer.lock from previous commit, revert specific packages, regenerate autoloader
+- **Local databases**: Laravel migration rollback (step-based), restore from local backup, verify migration status
+- **Build artifacts**: Clear compiled/cached files (optimize/view/route/config), rebuild
+- **Local config**: Restore .env or config files from backup, clear framework caches, restart PHP-FPM for OPcache reset
+- **Local queues**: Flush and restart queue workers, retry failed jobs from backup
+- **Validation**: Check framework status, tail logs, run tests
 
-**Dependencies Rollback**:
-```bash
-# Restore previous Composer dependencies
-git checkout HEAD~1 -- composer.lock && composer install --no-dev --optimize-autoloader
-
-# Revert specific package
-composer require vendor/package:^2.0 --update-with-dependencies
-
-# Clear autoloader
-composer dump-autoload --optimize
-```
-
-**Local Database Rollback** (development):
-```bash
-# Laravel migration rollback (local dev DB)
-php artisan migrate:rollback --step=1
-
-# Restore local DB from backup
-mysql -u dev_user -p dev_database < backups/local_dev.sql
-
-# Verify migration status
-php artisan migrate:status
-```
-
-**Build Artifacts Rollback**:
-```bash
-# Clear compiled/cached files
-php artisan optimize:clear && php artisan view:clear
-
-# Rebuild optimizations
-php artisan optimize && php artisan config:cache
-```
-
-**Local Configuration Rollback**:
-```bash
-# Laravel: restore environment config
-cp .env.backup .env && php artisan config:clear && php artisan config:cache
-
-# Symfony: restore config files
-cp config/parameters.yaml.backup config/parameters.yaml && bin/console cache:clear --env=dev
-
-# Clear OPcache (local PHP-FPM)
-php -r "opcache_reset();" && sudo systemctl restart php8.3-fpm
-```
-
-**Local Queue Rollback** (development):
-```bash
-# Clear local queue
-php artisan queue:flush && php artisan queue:restart
-
-# Re-dispatch from failed jobs backup
-php artisan queue:retry all
-```
-
-**Rollback Validation**:
-```bash
-# Verify application status
-php artisan about
-
-# Check logs
-tail -f storage/logs/laravel.log
-
-# Run test suite
-php artisan test
-```
-
-**Note**: Production deployments (production databases, cloud services, load balancers) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
+**Principles**: Always validate before rollback (ensure backup exists, verify commit history). Prefer fine-grained rollback (single file/migration) over full environment reset. Document what was rolled back in audit log.
 
 ### Audit Logging
 

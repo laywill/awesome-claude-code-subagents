@@ -120,109 +120,22 @@ function sanitizeHtml(content: string): string {
 
 ### Rollback Procedures
 
-All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+All operations MUST have a rollback path completing in <5 minutes. Test rollback before executing operations.
 
-**Source Code Rollback**:
-```bash
-# Git revert Vue changes
-git revert HEAD --no-edit && git push
+**Scope**: Local/dev/staging environments only. Production deployments (Vercel, Netlify, Docker, Kubernetes, CDN, databases, PM2) are handled by deployment/infrastructure agents.
 
-# Restore specific component
-git checkout HEAD~1 -- src/components/UserProfile.vue && git commit -m "Rollback UserProfile"
+**Rollback Decision Framework**:
+1. **Source code changes**: Use git revert for commits, git checkout for specific files, or git reset for local working directory cleanup
+2. **Dependency changes**: Restore package.json/lock file from previous commit, then reinstall; or remove node_modules and reinstall clean
+3. **Build artifacts**: Delete build output directories (.vite/, .nuxt/, .output/, dist/, node_modules/.cache/) and rebuild
+4. **Configuration**: Restore config files (vite.config.ts, nuxt.config.ts, .env.local) from git history or backups
+5. **Running processes**: Stop local dev servers (pkill or ctrl-c), clean state directories, restart
+6. **Pinia state** (dev only): Implement checkpoint/restore pattern using state history array (limit to 10 checkpoints)
 
-# Clean working directory
-git clean -fd && git reset --hard HEAD
-```
+**Validation Requirements**:
+After rollback, verify: Application builds successfully, test suite passes, dev server starts and responds, no console errors, performance metrics within baseline.
 
-**Dependencies Rollback**:
-```bash
-# Restore previous package versions
-git checkout HEAD~1 -- package.json package-lock.json && npm ci
-
-# Revert specific dependency
-npm install vue@3.3.4 --save-exact && npm install
-
-# Clear and reinstall
-rm -rf node_modules package-lock.json && npm install
-```
-
-**Local Build Artifacts Rollback**:
-```bash
-# Clean Vite build
-rm -rf dist/ .vite/ && npm run build
-
-# Clean Nuxt build
-rm -rf .nuxt/ .output/ && npm run build
-
-# Clear development cache
-rm -rf node_modules/.cache/
-```
-
-**Local Configuration Rollback**:
-```bash
-# Restore Vite config
-git checkout HEAD~1 -- vite.config.ts && npm run build
-
-# Restore Nuxt config
-git checkout HEAD~1 -- nuxt.config.ts && npm run build
-
-# Reset environment files
-cp .env.local.backup .env.local
-```
-
-**Local Nuxt SSR Rollback**:
-```bash
-# Stop local Nuxt server
-pkill -f "nuxt dev" && npm run dev
-
-# Restore Nuxt output (local build)
-cp -r .output-backup .output && npm run preview
-
-# Reset local server state
-rm -rf .nuxt/ .output/ && npm run dev
-```
-
-**State Management Rollback** (development):
-```typescript
-// Local development state rollback helper
-export const useAppStore = defineStore('app', () => {
-  const state = ref({ /* ... */ });
-  const history = ref<Array<typeof state.value>>([]);
-
-  function saveCheckpoint() {
-    history.value.push(JSON.parse(JSON.stringify(state.value)));
-    if (history.value.length > 10) history.value.shift();
-  }
-
-  function rollback() {
-    const prev = history.value.pop();
-    if (prev) state.value = prev;
-  }
-
-  return { state, saveCheckpoint, rollback };
-});
-```
-
-**Rollback Validation**:
-```bash
-# Verify application builds
-npm run build
-
-# Run test suite
-npm run test
-
-# Start local development server
-npm run dev &
-sleep 5
-
-# Check application loads
-curl -f http://localhost:3000/ || echo "Failed to load"
-
-# Verify no console errors (manual check)
-# Check performance metrics remain within baseline
-```
-
-**Note**: Production deployments (Vercel, Netlify, Docker registries, Kubernetes, production CDN, production databases, PM2 production processes) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
+**Time Constraint**: If rollback exceeds 5 minutes, escalate to senior developer or infrastructure agent.
 
 ### Audit Logging
 

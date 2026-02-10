@@ -69,85 +69,20 @@ function Validate-ADOperationPrerequisites {
 
 All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing.
 
-**Source Code Rollback** (PowerShell scripts):
-```powershell
-# Git revert script changes
-git revert HEAD --no-edit
-git push origin main
+**Scope**: Local, development, and staging environments only. Production AD/DNS/DHCP/GPO operations handled by infrastructure agents.
 
-# Restore specific script files
-git checkout HEAD~1 -- Scripts/UserProvisioning.ps1
+**Decision Framework**:
+1. **Source code changes** (scripts, modules): Use git revert/checkout to restore previous commits. Uninstall problematic module versions and reinstall known-good versions.
+2. **Infrastructure changes** (AD objects, DNS records): Maintain pre-operation backups (Export-Csv, Export-DnsServerZone). Log all created/modified objects. Rollback via removal (Remove-*) or attribute restoration (Set-*, Import-Csv).
+3. **Configuration files**: Copy backups to original paths before changes.
 
-# Clean working directory
-git clean -fd
-git reset --hard HEAD
-```
+**Constraints**:
+- Target: <5 minutes end-to-end rollback execution
+- Log all changes during operation (created objects, modified attributes) for rollback reference
+- Validate rollback success with Get-* queries post-execution
+- Test rollback scripts in isolated environment before production-like staging deployments
 
-**Module Dependencies Rollback**:
-```powershell
-# Restore previous module versions
-git checkout HEAD~1 -- RequiredModules.psd1
-Install-Module -Name ActiveDirectory -RequiredVersion 1.0.0 -Force
-
-# Uninstall problematic module version
-Uninstall-Module -Name PSLogging -RequiredVersion 2.0.0 -Force
-```
-
-**Local Test Environment Rollback** (development/staging Active Directory):
-```powershell
-# Pre-operation backup (dev/staging only)
-$backupPath = "C:\Backups\DevAD_$(Get-Date -Format 'yyyyMMdd_HHmmss').csv"
-Get-ADUser -Filter * -Server "dev-dc.contoso.local" | Export-Csv -Path $backupPath -NoTypeInformation
-
-# Rollback dev/staging AD user changes
-Get-Content $createdUsersLog | ForEach-Object {
-    Remove-ADUser -Identity $_ -Server "dev-dc.contoso.local" -Confirm:$false -ErrorAction Continue
-    Write-Log "Rolled back dev user: $_"
-}
-
-# Restore dev/staging AD attributes
-Import-Csv $backupPath | ForEach-Object {
-    Set-ADUser -Identity $_.SamAccountName -Server "dev-dc.contoso.local" -Description $_.Description -EmailAddress $_.EmailAddress
-}
-```
-
-**Local DNS Rollback** (development/staging):
-```powershell
-# Backup dev/staging DNS zone
-Export-DnsServerZone -Name "dev.contoso.com" -ComputerName "dev-dns01" -FileName "dev.contoso.com.backup"
-
-# Rollback DNS records (dev/staging)
-Import-Csv $dnsChangesLog | ForEach-Object {
-    if ($_.Action -eq 'Add') {
-        Remove-DnsServerResourceRecord -ZoneName "dev.contoso.com" -ComputerName "dev-dns01" -Name $_.Name -RRType $_.Type -Force
-    }
-}
-```
-
-**Local Configuration Rollback**:
-```powershell
-# Restore script configuration
-Copy-Item -Path "C:\Backups\config.json.backup" -Destination "C:\Scripts\config.json" -Force
-
-# Reset PowerShell profile
-Copy-Item -Path "$PROFILE.backup" -Destination $PROFILE -Force
-```
-
-**Rollback Validation**:
-```powershell
-function Test-RollbackSuccess {
-    param([string]$ObjectType, [string]$Identifier, [string]$Server = "dev-dc.contoso.local")
-    switch ($ObjectType) {
-        'ADUser' { return ($null -eq (Get-ADUser -Filter {SamAccountName -eq $Identifier} -Server $Server -EA SilentlyContinue)) }
-        'DNSRecord' { return ($null -eq (Get-DnsServerResourceRecord -ZoneName "dev.contoso.com" -ComputerName $Server -Name $Identifier -EA SilentlyContinue)) }
-    }
-}
-
-# Verify scripts execute
-PowerShell.exe -File "Scripts\UserProvisioning.ps1" -WhatIf
-```
-
-**Note**: Production Active Directory, DNS, DHCP, and GPO operations are handled by infrastructure/operations agents. This development agent manages local development and staging environments only.
+**Validation**: Query for absence of created objects, presence of restored attributes, successful script execution with `-WhatIf`. Verify git working directory clean, modules at expected versions.
 
 ### Audit Logging
 

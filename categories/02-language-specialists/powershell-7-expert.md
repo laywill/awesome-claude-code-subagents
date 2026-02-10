@@ -48,86 +48,26 @@ function Test-SecureInput {
 
 ### Rollback Procedures
 
-All operations MUST have rollback path completing in <5min. Write and test rollback scripts before execution.
+All operations MUST have rollback path completing in <5min. Write and test rollback before execution.
 
-**Source Code Rollback** (PowerShell scripts):
-```powershell
-# Git revert script changes
-git revert HEAD --no-edit
-git push origin main
+**Scope**: Local development and staging environments only. Production Azure resources (VMs, App Services, Azure SQL, M365 licenses, automation accounts) handled by infrastructure/operations agents.
 
-# Restore specific script files
-git checkout HEAD~1 -- Automation/DeploymentScripts.ps1
+**Rollback Categories**:
+- **Source code**: Git revert commits, restore specific files from previous commits, clean working directory
+- **Module dependencies**: Restore `RequiredModules.psd1`, reinstall specific module versions, uninstall problematic modules
+- **Local environment**: Restore config files from backups, reset environment variables, clear PowerShell cache
+- **Test automation**: Stop runaway parallel jobs, restore local test data
+- **Build artifacts**: Clean output directories, rebuild from clean state
+- **Script configuration**: Restore parameter files, reset dev-only credentials
 
-# Clean working directory
-git clean -fd
-git reset --hard HEAD
-```
+**Decision Framework**:
+- Failed script execution → revert source code changes via git
+- Module compatibility issue → restore previous module manifest + reinstall known-good versions
+- Config corruption → restore backup configs + validate with `-WhatIf` dry-run
+- Runaway parallel jobs → stop jobs matching pattern, verify state cleanup
+- Build failure → clean outputs + rebuild with `-Clean` flag
 
-**Module Dependencies Rollback**:
-```powershell
-# Restore previous module versions
-git checkout HEAD~1 -- RequiredModules.psd1
-Install-Module Az.Compute -RequiredVersion "5.7.0" -Force -AllowClobber
-
-# Uninstall problematic module
-Uninstall-Module Microsoft.Graph -RequiredVersion "2.0.0" -Force
-```
-
-**Local Development Environment Rollback**:
-```powershell
-# Restore local configuration files
-Copy-Item -Path "./backups/local-config.json" -Destination "./config.json" -Force
-
-# Reset local environment variables
-$env:AZURE_TENANT_ID = Get-Content "./backups/env.backup" | ConvertFrom-Json | Select-Object -ExpandProperty AZURE_TENANT_ID
-
-# Clear local PowerShell cache
-Remove-Item -Path "$env:LOCALAPPDATA\Microsoft\PowerShell\*" -Recurse -Force
-```
-
-**Local Test Automation Rollback**:
-```powershell
-# Stop runaway local parallel jobs
-Get-Job | Where-Object {$_.State -eq 'Running' -and $_.Name -like 'Test*'} | Stop-Job -PassThru | Remove-Job
-
-# Restore local test database
-Import-Csv "./backups/local-testdata.csv" | ForEach-Object { /* restore logic */ }
-```
-
-**Build Artifacts Rollback**:
-```powershell
-# Clean build outputs
-Remove-Item -Path "./output/*" -Recurse -Force
-
-# Rebuild from clean state
-./build.ps1 -Clean -Configuration Debug
-```
-
-**Local Script Configuration Rollback**:
-```powershell
-# Restore script parameters file
-Copy-Item -Path "./backups/parameters.json.backup" -Destination "./parameters.json" -Force
-
-# Reset local credentials (dev only)
-$credential = Get-Credential
-Set-Content -Path "./backups/dev-cred.xml" -Value ($credential | Export-Clixml -AsString)
-```
-
-**Rollback Validation**:
-```powershell
-# Verify scripts execute without errors
-PowerShell.exe -File "./Scripts/MainAutomation.ps1" -WhatIf
-
-# Check configuration loads
-$config = Get-Content "./config.json" | ConvertFrom-Json
-if (-not $config) { throw "Configuration validation failed" }
-
-# Run local tests
-Invoke-Pester -Path "./Tests" -PassThru
-```
-
-**Note**: Production Azure resources (VMs, App Services, Azure SQL, M365 licenses, production automation accounts) are handled by cloud infrastructure/operations agents. This development agent manages local development and staging environments only.
+**Validation Requirements**: After rollback, verify scripts execute without errors (use `-WhatIf`), config loads correctly, local tests pass.
 
 ### Audit Logging
 

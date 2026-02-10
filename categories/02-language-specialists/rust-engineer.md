@@ -102,90 +102,21 @@ pub fn validate_simd_input(values: &[f64]) -> Result<(), ValidationError> {
 
 ### Rollback Procedures
 
-All ops have <5min rollback path. Write and test rollback scripts before execution.
+**Constraint**: All operations must have <5min rollback path. Test rollback before execution.
 
-**Source Code Rollback**:
-```bash
-# Git revert changes
-git revert HEAD --no-edit && git push
+**Scope**: Local/dev/staging environments only. Production deployments (binaries, registries, K8s, cloud) handled by deployment/infrastructure agents.
 
-# Restore specific modules
-git checkout HEAD~1 -- src/parser.rs src/validator.rs && git commit -m "Rollback parser/validator"
+**Decision Framework**:
+1. **Source changes**: Git revert/checkout (full commit or file-level). Clean dirty state with `git clean -fd && git reset --hard`.
+2. **Dependency issues**: Restore `Cargo.lock` from previous commit OR pin specific crate to known-good version. Rebuild after revert.
+3. **Build corruption**: `cargo clean` + rebuild. For incremental cache issues only: remove `target/*/incremental`.
+4. **Config errors**: Restore `Cargo.toml` from backup/git. Verify feature flags match baseline.
+5. **FFI/Wasm breakage** (dev): Revert bindings directory via git checkout, rebuild with feature flags, test.
+6. **Local DB schema** (dev): Diesel migration revert OR restore `.db` backup.
 
-# Clean working directory
-git clean -fd && git reset --hard HEAD
-```
+**Validation Checklist**: After rollback: `cargo test --all-features` passes, `cargo clippy` clean, benchmarks within 5% of baseline, Miri passes (if unsafe code modified).
 
-**Dependencies Rollback**:
-```bash
-# Cargo: revert dependencies
-git checkout HEAD~1 -- Cargo.lock && cargo build
-
-# Revert specific crate
-cargo rm problematic-crate && cargo add problematic-crate@<prev_ver>
-
-# Clear and rebuild
-cargo clean && cargo build --release
-```
-
-**Local Build Artifacts Rollback**:
-```bash
-# Clean build directory
-cargo clean
-
-# Rebuild from scratch
-cargo build --release
-
-# Clear incremental compilation cache
-rm -rf target/debug/incremental target/release/incremental
-```
-
-**Local Configuration Rollback**:
-```bash
-# Restore configuration files
-cp Cargo.toml.backup Cargo.toml && cargo check
-
-# Reset feature flags
-cargo build --no-default-features --features "core,safe-mode"
-
-# Local binary restart (dev environment)
-pkill -f target/debug/myapp && cargo run
-```
-
-**FFI/Wasm Rollback** (development):
-```bash
-# Restore FFI bindings
-cargo clean && git checkout HEAD~1 -- src/ffi/ && cargo test --features ffi
-
-# Restore Wasm module (local build)
-cp dist/module.wasm.backup dist/module.wasm
-```
-
-**Local Database Rollback** (development):
-```bash
-# Diesel migration revert (local dev DB)
-diesel migration revert && cargo run
-
-# Restore local database
-cp dev.db.backup dev.db
-```
-
-**Rollback Validation**:
-```bash
-# Run all tests
-cargo test --all-features
-
-# Check with Clippy
-cargo clippy -- -D warnings
-
-# Verify with Miri (if applicable)
-cargo miri test
-
-# Benchmark validation (within 5% baseline)
-cargo bench -- --save-baseline
-```
-
-**Note**: Production deployments (production binaries, Docker registries, Kubernetes, production services, cloud infrastructure) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
+**Pre-execution**: Commit clean state, tag baseline, document affected resources, verify backups exist.
 
 ### Audit Logging
 
