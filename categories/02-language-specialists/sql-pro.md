@@ -103,40 +103,102 @@ All SQL operations MUST validate inputs before execution to prevent SQL injectio
 ### Rollback Procedures
 All operations MUST have rollback path completing in <5 minutes. Write and test rollback scripts before executing.
 
-**Rollback Strategies:**
+**Source Code Rollback** (SQL scripts):
+```bash
+# Git revert SQL changes
+git revert HEAD --no-edit && git push
 
-1. **Schema Changes**: Create rollback DDL before executing.
-   ```sql
-   -- Save schema: pg_dump -s -t users > backup.sql
-   -- Rollback: psql -f backup.sql
-   -- Or use transaction: BEGIN; ALTER TABLE users ADD COLUMN x VARCHAR(255); ROLLBACK;
-   ```
+# Restore specific SQL files
+git checkout HEAD~1 -- migrations/V001__create_users.sql && git commit -m "Rollback migration"
 
-2. **Data Modifications**: Use transactions with savepoints.
-   ```sql
-   BEGIN TRANSACTION; SAVE TRANSACTION before_update;
-   UPDATE users SET status = 'active' WHERE last_login > '2024-01-01';
-   IF @@ROWCOUNT > 10000 ROLLBACK TRANSACTION before_update; ELSE COMMIT;
-   ```
+# Clean working directory
+git clean -fd && git reset --hard HEAD
+```
 
-3. **Index Operations**: Keep old indexes until new verified.
-   ```sql
-   CREATE INDEX idx_users_email_v2 ON users(email);
-   EXPLAIN ANALYZE SELECT * FROM users WHERE email = 'test@example.com';
-   -- Rollback: DROP INDEX idx_users_email_v2;
-   ```
+**Schema Rollback** (development/staging):
+```sql
+-- Development: Save schema before changes
+-- PostgreSQL: pg_dump -s -t users -h localhost -U dev_user -d dev_db > backups/dev_users_schema.sql
+-- MySQL: mysqldump --no-data -u dev_user -p dev_db users > backups/dev_users_schema.sql
 
-4. **Stored Procedures**: Version before modification.
-   ```sql
-   CREATE OR REPLACE FUNCTION calculate_totals_v2(...) AS $$ ... $$;
-   -- Rollback: DROP FUNCTION calculate_totals; ALTER FUNCTION calculate_totals_v2 RENAME TO calculate_totals;
-   ```
+-- Rollback schema (dev/staging)
+-- PostgreSQL: psql -h localhost -U dev_user -d dev_db -f backups/dev_users_schema.sql
+-- MySQL: mysql -u dev_user -p dev_db < backups/dev_users_schema.sql
 
-5. **Migrations**: Test migration AND rollback before production. Use `flyway undo` or `liquibase rollback-count 1`.
+-- Transaction-based rollback (dev/staging)
+BEGIN;
+ALTER TABLE users ADD COLUMN temp_column VARCHAR(255);
+-- Test changes...
+ROLLBACK; -- If issues found
+```
 
-6. **Full Restore**: Maintain point-in-time recovery. Use `pg_restore -d database -C backup.dump` or `RESTORE DATABASE mydb FROM DISK='backup.bak' WITH STOPAT='2025-06-15T14:00:00', RECOVERY;`
+**Data Modifications Rollback** (development/staging):
+```sql
+-- Development: Use savepoints for safety
+BEGIN TRANSACTION;
+SAVE TRANSACTION before_update;
+UPDATE users SET status = 'active' WHERE last_login > '2024-01-01' AND environment = 'development';
+-- Verify changes...
+ROLLBACK TRANSACTION before_update; -- If needed
+-- COMMIT; -- If successful
+```
 
-**Rollback Validation**: Compare row counts before/after, verify schema matches (`pg_dump -s | diff - original_schema.sql`), check constraints enabled, test critical queries.
+**Index Operations Rollback** (development/staging):
+```sql
+-- Development: Keep old index until verified
+CREATE INDEX idx_users_email_v2 ON users(email) WHERE environment = 'development';
+EXPLAIN ANALYZE SELECT * FROM users WHERE email = 'test@example.com' AND environment = 'development';
+-- Rollback: DROP INDEX idx_users_email_v2;
+-- Finalize: DROP INDEX idx_users_email; ALTER INDEX idx_users_email_v2 RENAME TO idx_users_email;
+```
+
+**Stored Procedures Rollback** (development/staging):
+```sql
+-- Development: Version stored procedures
+CREATE OR REPLACE FUNCTION calculate_totals_v2(...) AS $$ ... $$;
+-- Test in dev environment...
+-- Rollback: DROP FUNCTION calculate_totals_v2; -- Keep calculate_totals
+```
+
+**Migration Tool Rollback** (development/staging):
+```bash
+# Flyway rollback (local dev DB)
+mvn flyway:undo -Dflyway.target=<version> -Dflyway.url=jdbc:postgresql://localhost:5432/dev_db
+
+# Liquibase rollback (local dev DB)
+mvn liquibase:rollback -Dliquibase.rollbackCount=1 -Dliquibase.url=jdbc:postgresql://localhost:5432/dev_db
+```
+
+**Local Database Restore** (development):
+```bash
+# PostgreSQL local restore
+pg_restore -h localhost -U dev_user -d dev_db -C backups/dev_backup.dump
+
+# MySQL local restore
+mysql -u dev_user -p dev_db < backups/dev_backup.sql
+
+# SQL Server local restore
+RESTORE DATABASE dev_db FROM DISK='C:\Backups\dev_backup.bak' WITH REPLACE
+```
+
+**Rollback Validation**:
+```sql
+-- Compare row counts
+SELECT 'users' AS table_name, COUNT(*) AS row_count FROM users
+UNION ALL
+SELECT 'orders', COUNT(*) FROM orders;
+
+-- Verify schema matches expected
+-- PostgreSQL: pg_dump -s -t users | diff - backups/expected_schema.sql
+
+-- Check constraints enabled
+SELECT * FROM information_schema.table_constraints WHERE table_name IN ('users', 'orders');
+
+-- Test critical queries
+EXPLAIN ANALYZE SELECT * FROM users WHERE email = 'test@example.com';
+```
+
+**Note**: Production database operations (production schema changes, production data modifications, production backups, production point-in-time recovery) are handled by database administration/infrastructure agents. This development agent manages local development and staging database environments only.
 
 ### Audit Logging
 All operations MUST emit structured JSON logs before and after each operation.

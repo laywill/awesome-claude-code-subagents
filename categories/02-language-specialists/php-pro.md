@@ -162,19 +162,85 @@ public function rules(): array {
 
 All operations require <5min rollback path. Test rollback scripts before executing.
 
-**Code**: `php artisan migrate:rollback --step=1` OR `git checkout tags/v1.2.3 && composer install --no-dev --optimize-autoloader && php artisan optimize:clear && php artisan config:cache`
+**Source Code Rollback**:
+```bash
+# Git revert changes
+git revert HEAD --no-edit && git push
 
-**Database**: `mysql -u user -p db < backup.sql` OR create rollback migration, implement `down()`, run `php artisan migrate:rollback`
+# Restore specific files
+git checkout HEAD~1 -- app/Services/UserService.php && git commit -m "Rollback UserService"
 
-**Dependencies**: `git checkout HEAD~1 composer.lock && composer install` OR `composer require vendor/package:^2.0 --update-with-dependencies`
+# Clean working directory
+git clean -fd && git reset --hard HEAD
+```
 
-**Queue**: `php artisan queue:flush && php artisan queue:restart` then re-dispatch from failed_jobs backup
+**Dependencies Rollback**:
+```bash
+# Restore previous Composer dependencies
+git checkout HEAD~1 -- composer.lock && composer install --no-dev --optimize-autoloader
 
-**Config**: Laravel: `cp .env.backup .env && php artisan config:clear && php artisan optimize`. Symfony: `cp config/parameters.yaml.backup config/parameters.yaml && bin/console cache:clear --env=prod`
+# Revert specific package
+composer require vendor/package:^2.0 --update-with-dependencies
 
-**OPcache**: `php artisan opcache:clear` OR `php -r "opcache_reset();"` OR `sudo systemctl restart php8.3-fpm`
+# Clear autoloader
+composer dump-autoload --optimize
+```
 
-**Validation**: After rollback run `php artisan about`, check `storage/logs/laravel.log`, run tests (`php artisan test`), verify `php artisan migrate:status`.
+**Local Database Rollback** (development):
+```bash
+# Laravel migration rollback (local dev DB)
+php artisan migrate:rollback --step=1
+
+# Restore local DB from backup
+mysql -u dev_user -p dev_database < backups/local_dev.sql
+
+# Verify migration status
+php artisan migrate:status
+```
+
+**Build Artifacts Rollback**:
+```bash
+# Clear compiled/cached files
+php artisan optimize:clear && php artisan view:clear
+
+# Rebuild optimizations
+php artisan optimize && php artisan config:cache
+```
+
+**Local Configuration Rollback**:
+```bash
+# Laravel: restore environment config
+cp .env.backup .env && php artisan config:clear && php artisan config:cache
+
+# Symfony: restore config files
+cp config/parameters.yaml.backup config/parameters.yaml && bin/console cache:clear --env=dev
+
+# Clear OPcache (local PHP-FPM)
+php -r "opcache_reset();" && sudo systemctl restart php8.3-fpm
+```
+
+**Local Queue Rollback** (development):
+```bash
+# Clear local queue
+php artisan queue:flush && php artisan queue:restart
+
+# Re-dispatch from failed jobs backup
+php artisan queue:retry all
+```
+
+**Rollback Validation**:
+```bash
+# Verify application status
+php artisan about
+
+# Check logs
+tail -f storage/logs/laravel.log
+
+# Run test suite
+php artisan test
+```
+
+**Note**: Production deployments (production databases, cloud services, load balancers) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
 
 ### Audit Logging
 

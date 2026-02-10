@@ -164,56 +164,99 @@ function validateTypeScriptChanges(files: string[]): void {
 
 All TypeScript operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
 
-**Rollback Commands**:
+**Source Code Rollback**:
+```bash
+# Git revert TypeScript changes
+git revert HEAD --no-edit && git push
 
-1. **Type system changes**: Revert type definitions
-   ```bash
-   git checkout HEAD~1 -- src/types/*.ts
-   npm run type-check
-   ```
+# Restore specific type files
+git checkout HEAD~1 -- src/types/User.ts && git commit -m "Rollback User types"
 
-2. **Dependency updates**: Restore previous package versions
-   ```bash
-   git checkout HEAD~1 -- package.json package-lock.json
-   npm ci
-   npm run build
-   ```
+# Clean working directory
+git clean -fd && git reset --hard HEAD
+```
 
-3. **tsconfig.json changes**: Restore compiler configuration
-   ```bash
-   git checkout HEAD~1 -- tsconfig.json tsconfig.*.json
-   npm run build
-   ```
+**Dependencies Rollback**:
+```bash
+# Restore previous package versions
+git checkout HEAD~1 -- package.json package-lock.json && npm ci
 
-4. **Build configuration changes**: Revert webpack/vite/rollup configs
-   ```bash
-   git checkout HEAD~1 -- webpack.config.js vite.config.ts rollup.config.js
-   npm run build && npm run test
-   ```
+# Revert specific dependency
+npm install typescript@5.3.3 --save-exact && npm install
 
-5. **Code generation rollback**: Remove generated types
-   ```bash
-   rm -rf src/generated/*
-   git checkout HEAD~1 -- src/generated/ src/api-types.ts
-   npm run type-check
-   ```
+# Clear and reinstall
+rm -rf node_modules package-lock.json && npm install
+```
 
-6. **Migration rollback**: Revert TypeScript migration
-   ```bash
-   git diff HEAD~1 --name-only --diff-filter=D | xargs git checkout HEAD~1 --
-   git checkout HEAD~1 -- tsconfig.json
-   npm install
-   ```
+**Local Build Artifacts Rollback**:
+```bash
+# Clean TypeScript build outputs
+rm -rf dist/ build/ .tsbuildinfo
+
+# Rebuild from scratch
+npm run clean && npm run build
+
+# Clear Next.js/Vite cache
+rm -rf .next/ dist/ node_modules/.vite/
+```
+
+**Local Configuration Rollback**:
+```bash
+# Restore compiler configuration
+git checkout HEAD~1 -- tsconfig.json tsconfig.*.json && npm run build
+
+# Restore build configuration
+git checkout HEAD~1 -- webpack.config.js vite.config.ts rollup.config.js && npm run build
+
+# Reset environment files
+cp .env.local.backup .env.local
+```
+
+**Code Generation Rollback**:
+```bash
+# Remove generated types
+rm -rf src/generated/*
+
+# Restore previous generated files
+git checkout HEAD~1 -- src/generated/ src/api-types.ts && npm run type-check
+
+# Regenerate from source
+npm run generate:types
+```
+
+**Local Development Server Rollback**:
+```bash
+# Restart development server
+pkill -f "vite" && npm run dev
+
+# Restart Next.js dev server
+pkill -f "next dev" && npm run dev
+
+# Clear development cache
+rm -rf .cache/ && npm run dev
+```
 
 **Rollback Validation**:
 ```bash
-npm run type-check  # TypeScript compilation succeeds
-npm run lint        # Linting passes
-npm run test        # All tests pass
-npm run build       # Production build succeeds
+# Verify TypeScript compilation
+npm run type-check
+
+# Run linting
+npm run lint
+
+# Run test suite
+npm run test
+
+# Verify production build
+npm run build
+
+# Start local server and check
+npm run dev &
+sleep 5
+curl -f http://localhost:3000/api/health
 ```
 
-Test rollback on non-production branch before applying to main codebase.
+**Note**: Production deployments (production builds, Docker registries, cloud deployments, CDN distributions, production databases) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
 
 ### Audit Logging
 

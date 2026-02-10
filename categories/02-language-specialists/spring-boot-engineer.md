@@ -139,21 +139,91 @@ public class ConfigurationValidator {
 
 All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
 
-**Spring Boot Rollback Commands**:
+**Source Code Rollback**:
+```bash
+# Git revert changes
+git revert <commit-hash> --no-edit && git push
 
-1. **Revert code:** `git revert <commit-hash> --no-edit && mvn clean install -DskipTests && kubectl rollout restart deployment/spring-app`
+# Restore specific files
+git checkout HEAD~1 -- src/main/java/com/app/service/UserService.java && git commit -m "Rollback UserService"
 
-2. **Rollback dependency:** `git checkout HEAD~1 -- pom.xml && mvn clean install && docker build -t spring-app:rollback . && kubectl set image deployment/spring-app spring-app=spring-app:rollback`
+# Clean working directory
+git clean -fd && git reset --hard HEAD
+```
 
-3. **Restore config:** `kubectl rollout undo deployment/spring-app` or `kubectl apply -f configmap-backup-$(date -d yesterday +%Y%m%d).yaml && kubectl rollout restart deployment/spring-app`
+**Dependencies Rollback**:
+```bash
+# Maven: revert pom.xml
+git checkout HEAD~1 -- pom.xml && mvn clean install -DskipTests
 
-4. **Database migration:** Flyway: `mvn flyway:undo -Dflyway.target=<version>` | Liquibase: `mvn liquibase:rollback -Dliquibase.rollbackCount=1`
+# Gradle: revert build.gradle
+git checkout HEAD~1 -- build.gradle && ./gradlew clean build
 
-5. **Spring Cloud Config:** `cd config-repo && git revert <config-commit> --no-edit && git push origin main && curl -X POST http://spring-app:8080/actuator/refresh`
+# Revert specific dependency
+mvn versions:use-dep-version -Dincludes=org.springframework.boot:spring-boot-starter-web -DdepVersion=3.1.5 && mvn clean install
+```
 
-6. **Service mesh routing:** `kubectl apply -f virtualservice-spring-app-previous.yaml && kubectl get virtualservice spring-app -o yaml`
+**Local Database Rollback** (development):
+```bash
+# Flyway migration rollback (local dev DB)
+mvn flyway:undo -Dflyway.target=<version> -Dflyway.url=jdbc:postgresql://localhost:5432/dev_db
 
-**Validation:** Check health (`curl http://localhost:8080/actuator/health`), logs (`kubectl logs deployment/spring-app --tail=50`), metrics (error rate <1%), critical endpoints (`mvn test -Dtest=SmokeTest`).
+# Liquibase rollback (local dev DB)
+mvn liquibase:rollback -Dliquibase.rollbackCount=1 -Dliquibase.url=jdbc:postgresql://localhost:5432/dev_db
+
+# Restore local database from backup
+pg_restore -d local_dev_db backups/dev_backup.dump
+```
+
+**Build Artifacts Rollback**:
+```bash
+# Clean Maven build
+mvn clean && mvn package
+
+# Clean Gradle build
+./gradlew clean && ./gradlew build
+
+# Clear IDE compilation cache
+rm -rf target/ .idea/ *.iml
+```
+
+**Local Configuration Rollback**:
+```bash
+# Restore application properties
+git checkout HEAD~1 -- src/main/resources/application.properties
+
+# Restore local config
+cp config/application-dev.yml.backup config/application-dev.yml
+
+# Local Spring Boot restart
+pkill -f "spring-boot:run" && mvn spring-boot:run -Dspring-boot.run.profiles=dev
+```
+
+**Local Service Configuration Rollback**:
+```bash
+# Restore local Spring Cloud Config
+cd config-repo && git revert <config-commit> --no-edit && git push origin main
+
+# Refresh local application configuration
+curl -X POST http://localhost:8080/actuator/refresh
+```
+
+**Rollback Validation**:
+```bash
+# Check local health endpoint
+curl http://localhost:8080/actuator/health
+
+# Verify local application logs
+tail -f logs/spring-boot-application.log
+
+# Run smoke tests
+mvn test -Dtest=SmokeTest
+
+# Check error rate in local metrics
+curl http://localhost:8080/actuator/metrics/http.server.requests
+```
+
+**Note**: Production deployments (Kubernetes clusters, Docker registries, production databases, service mesh configurations, production cloud services) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
 
 ### Audit Logging
 

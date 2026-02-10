@@ -122,34 +122,107 @@ function sanitizeHtml(content: string): string {
 
 All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
 
-**Rollback Commands**:
+**Source Code Rollback**:
 ```bash
-# Deployment rollback
-git revert HEAD --no-edit && npm run build && npm run deploy
-vercel rollback <previous-deployment-url>
-netlify rollback --site <site-id>
+# Git revert Vue changes
+git revert HEAD --no-edit && git push
 
-# Component code rollback
-git checkout HEAD~1 -- src/components/CriticalComponent.vue && npm run build && npm test
+# Restore specific component
+git checkout HEAD~1 -- src/components/UserProfile.vue && git commit -m "Rollback UserProfile"
 
-# Nuxt SSR rollback
-pm2 stop nuxt-app && cp .output-backup .output -r && pm2 restart nuxt-app && pm2 logs nuxt-app --lines 50
-
-# Package rollback
-git checkout HEAD~1 -- package.json package-lock.json && npm ci && npm run build && npm test
+# Clean working directory
+git clean -fd && git reset --hard HEAD
 ```
 
-**State Management Rollback**:
+**Dependencies Rollback**:
+```bash
+# Restore previous package versions
+git checkout HEAD~1 -- package.json package-lock.json && npm ci
+
+# Revert specific dependency
+npm install vue@3.3.4 --save-exact && npm install
+
+# Clear and reinstall
+rm -rf node_modules package-lock.json && npm install
+```
+
+**Local Build Artifacts Rollback**:
+```bash
+# Clean Vite build
+rm -rf dist/ .vite/ && npm run build
+
+# Clean Nuxt build
+rm -rf .nuxt/ .output/ && npm run build
+
+# Clear development cache
+rm -rf node_modules/.cache/
+```
+
+**Local Configuration Rollback**:
+```bash
+# Restore Vite config
+git checkout HEAD~1 -- vite.config.ts && npm run build
+
+# Restore Nuxt config
+git checkout HEAD~1 -- nuxt.config.ts && npm run build
+
+# Reset environment files
+cp .env.local.backup .env.local
+```
+
+**Local Nuxt SSR Rollback**:
+```bash
+# Stop local Nuxt server
+pkill -f "nuxt dev" && npm run dev
+
+# Restore Nuxt output (local build)
+cp -r .output-backup .output && npm run preview
+
+# Reset local server state
+rm -rf .nuxt/ .output/ && npm run dev
+```
+
+**State Management Rollback** (development):
 ```typescript
+// Local development state rollback helper
 export const useAppStore = defineStore('app', () => {
-  const state = ref({ /* ... */ }), history = ref<Array<typeof state.value>>([]);
-  function saveCheckpoint() { history.value.push(JSON.parse(JSON.stringify(state.value))); if (history.value.length > 10) history.value.shift(); }
-  function rollback() { const prev = history.value.pop(); if (prev) state.value = prev; }
+  const state = ref({ /* ... */ });
+  const history = ref<Array<typeof state.value>>([]);
+
+  function saveCheckpoint() {
+    history.value.push(JSON.parse(JSON.stringify(state.value)));
+    if (history.value.length > 10) history.value.shift();
+  }
+
+  function rollback() {
+    const prev = history.value.pop();
+    if (prev) state.value = prev;
+  }
+
   return { state, saveCheckpoint, rollback };
 });
 ```
 
-**Rollback Validation**: After rollback, verify: (1) Application loads without console errors, (2) Critical user flows complete successfully, (3) API integrations respond correctly, (4) Performance metrics (LCP, FID, CLS) remain within baseline.
+**Rollback Validation**:
+```bash
+# Verify application builds
+npm run build
+
+# Run test suite
+npm run test
+
+# Start local development server
+npm run dev &
+sleep 5
+
+# Check application loads
+curl -f http://localhost:3000/ || echo "Failed to load"
+
+# Verify no console errors (manual check)
+# Check performance metrics remain within baseline
+```
+
+**Note**: Production deployments (Vercel, Netlify, Docker registries, Kubernetes, production CDN, production databases, PM2 production processes) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
 
 ### Audit Logging
 

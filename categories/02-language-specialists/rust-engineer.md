@@ -104,33 +104,88 @@ pub fn validate_simd_input(values: &[f64]) -> Result<(), ValidationError> {
 
 All ops have <5min rollback path. Write and test rollback scripts before execution.
 
-**Common patterns**:
+**Source Code Rollback**:
 ```bash
-# Cargo: revert deps
-cargo rm <crate> && cargo add <crate>@<prev_ver>
-git checkout HEAD~1 -- Cargo.lock && cargo build
+# Git revert changes
+git revert HEAD --no-edit && git push
 
-# Code: revert modules/unsafe
-git checkout HEAD~1 -- src/parser.rs src/validator.rs
-git log --grep="unsafe" --oneline | head -1 | awk '{print $1}' | xargs git revert
+# Restore specific modules
+git checkout HEAD~1 -- src/parser.rs src/validator.rs && git commit -m "Rollback parser/validator"
 
-# Binary: restore previous version
-systemctl stop myrust-service
-cp /opt/backups/myrust-service.$(date -d '1h ago' +%Y%m%d_%H) /usr/local/bin/myrust-service
-systemctl start myrust-service
-
-# Feature flags: disable problematic feature
-cargo build --no-default-features --features "core,safe-mode"
-
-# FFI/Wasm: restore bindings/modules
-cargo clean && git checkout HEAD~1 -- src/ffi/ && cargo test --features ffi
-cp dist/module.wasm.backup dist/module.wasm && npm run deploy
-
-# State: revert migrations/snapshots
-diesel migration revert && cargo run
+# Clean working directory
+git clean -fd && git reset --hard HEAD
 ```
 
-**Validation**: Run `cargo test --all-features && cargo clippy -- -D warnings && cargo miri test`. Verify benchmarks within 5% baseline: `cargo bench -- --save-baseline`.
+**Dependencies Rollback**:
+```bash
+# Cargo: revert dependencies
+git checkout HEAD~1 -- Cargo.lock && cargo build
+
+# Revert specific crate
+cargo rm problematic-crate && cargo add problematic-crate@<prev_ver>
+
+# Clear and rebuild
+cargo clean && cargo build --release
+```
+
+**Local Build Artifacts Rollback**:
+```bash
+# Clean build directory
+cargo clean
+
+# Rebuild from scratch
+cargo build --release
+
+# Clear incremental compilation cache
+rm -rf target/debug/incremental target/release/incremental
+```
+
+**Local Configuration Rollback**:
+```bash
+# Restore configuration files
+cp Cargo.toml.backup Cargo.toml && cargo check
+
+# Reset feature flags
+cargo build --no-default-features --features "core,safe-mode"
+
+# Local binary restart (dev environment)
+pkill -f target/debug/myapp && cargo run
+```
+
+**FFI/Wasm Rollback** (development):
+```bash
+# Restore FFI bindings
+cargo clean && git checkout HEAD~1 -- src/ffi/ && cargo test --features ffi
+
+# Restore Wasm module (local build)
+cp dist/module.wasm.backup dist/module.wasm
+```
+
+**Local Database Rollback** (development):
+```bash
+# Diesel migration revert (local dev DB)
+diesel migration revert && cargo run
+
+# Restore local database
+cp dev.db.backup dev.db
+```
+
+**Rollback Validation**:
+```bash
+# Run all tests
+cargo test --all-features
+
+# Check with Clippy
+cargo clippy -- -D warnings
+
+# Verify with Miri (if applicable)
+cargo miri test
+
+# Benchmark validation (within 5% baseline)
+cargo bench -- --save-baseline
+```
+
+**Note**: Production deployments (production binaries, Docker registries, Kubernetes, production services, cloud infrastructure) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
 
 ### Audit Logging
 

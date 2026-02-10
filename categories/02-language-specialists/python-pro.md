@@ -97,25 +97,87 @@ subprocess.run(['git', 'clone', repo_url], capture_output=True)
 
 All operations MUST have <5min rollback path. Write and test rollback scripts before execution.
 
-**Code:** `git revert HEAD --no-edit && git push` or `git checkout HEAD~1 -- file.py && git commit -m "Rollback file"`
+**Source Code Rollback**:
+```bash
+# Git revert changes
+git revert HEAD --no-edit && git push
 
-**DB Migration:** `alembic current && alembic downgrade -1 && alembic history` (SQLAlchemy session.rollback() auto on exception)
+# Restore specific files
+git checkout HEAD~1 -- src/services/user_service.py && git commit -m "Rollback user_service"
 
-**Packages:** Poetry: `git checkout HEAD~1 -- poetry.lock pyproject.toml && poetry install --sync` | Pip: `pip install package==1.2.3 && pip freeze > requirements.txt`
+# Clean working directory
+git clean -fd && git reset --hard HEAD
+```
 
-**Venv:** `rm -rf venv && cp -r venv.backup venv && source venv/bin/activate`
+**Dependencies Rollback**:
+```bash
+# Poetry: restore previous dependencies
+git checkout HEAD~1 -- poetry.lock pyproject.toml && poetry install --sync
 
-**Services:** Docker: `docker stop app-container && docker run -d --name app-container myapp:previous-tag` | K8s: `kubectl rollout undo deployment/python-api && kubectl rollout status deployment/python-api`
+# Pip: restore requirements
+git checkout HEAD~1 -- requirements.txt && pip install -r requirements.txt
 
-**Config:** `cp config.yaml.backup config.yaml && python -c "import yaml; yaml.safe_load(open('config.yaml'))"`
+# Revert specific package
+pip install package==1.2.3 && pip freeze > requirements.txt
+```
 
-**Validation:**
+**Local Database Rollback** (development):
+```bash
+# Alembic migration rollback (local dev DB)
+alembic current && alembic downgrade -1 && alembic history
+
+# SQLite local restore
+cp dev_database.db.backup dev_database.db
+
+# PostgreSQL local restore
+pg_restore -d local_dev_db backups/local_dev_backup.dump
+```
+
+**Build Artifacts Rollback**:
+```bash
+# Clear Python cache
+find . -type d -name "__pycache__" -exec rm -rf {} +
+find . -type f -name "*.pyc" -delete
+
+# Rebuild from clean state
+rm -rf build dist *.egg-info && python setup.py build
+```
+
+**Local Configuration Rollback**:
+```bash
+# Restore configuration files
+cp config.yaml.backup config.yaml && python -c "import yaml; yaml.safe_load(open('config.yaml'))"
+
+# Reset environment variables
+cp .env.backup .env && source .env
+
+# Local service restart
+pkill -f "uvicorn main:app" && uvicorn main:app --reload
+```
+
+**Virtual Environment Rollback**:
+```bash
+# Restore virtual environment from backup
+rm -rf venv && cp -r venv.backup venv && source venv/bin/activate
+
+# Recreate venv from scratch
+rm -rf venv && python -m venv venv && source venv/bin/activate && pip install -r requirements.txt
+```
+
+**Rollback Validation**:
 ```python
-def validate_rollback(service_url: str, expected_version: str) -> bool:
+def validate_rollback(service_url: str = "http://localhost:8000", expected_version: str = "1.0.0") -> bool:
+    """Validate local development environment after rollback."""
+    import requests
     r = requests.get(f"{service_url}/health")
     assert r.status_code == 200 and r.json()["version"] == expected_version
     return requests.get(f"{service_url}/api/test").status_code == 200
+
+# Run validation
+validate_rollback()
 ```
+
+**Note**: Production deployments (Docker registries, Kubernetes clusters, cloud services, production databases) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
 
 ### Audit Logging
 

@@ -50,35 +50,84 @@ function Test-SecureInput {
 
 All operations MUST have rollback path completing in <5min. Write and test rollback scripts before execution.
 
+**Source Code Rollback** (PowerShell scripts):
 ```powershell
-# Azure resources: VM deployment rollback
-Remove-AzVM -ResourceGroupName "rg-prod-app" -Name "vm-app-001" -Force
-$snapshot = Get-AzSnapshot -ResourceGroupName "rg-prod-app" -SnapshotName "vm-app-001-snapshot-before-change"
-$disk = New-AzDisk -ResourceGroupName "rg-prod-app" -DiskName "vm-app-001-restored-disk" -Disk (New-AzDiskConfig -Location "eastus" -SourceResourceId $snapshot.Id -CreateOption Copy)
-Set-AzVMOSDisk -VM $vm -ManagedDiskId $disk.Id
+# Git revert script changes
+git revert HEAD --no-edit
+git push origin main
 
-# M365/Graph: license/Teams rollback
-Set-MgUserLicense -UserId "user@contoso.com" -RemoveLicenses @("c7df2760-2c81-4ef7-b578-5b5392b571df")
-$backup = Get-Content "./backups/team-settings-backup.json" | ConvertFrom-Json
-Update-MgTeam -TeamId $teamId -DisplayName $backup.DisplayName -Description $backup.Description
+# Restore specific script files
+git checkout HEAD~1 -- Automation/DeploymentScripts.ps1
 
-# Script deployment: automation account rollback
-git revert HEAD --no-edit && git push origin main
-Publish-AzAutomationRunbook -ResourceGroupName "rg-automation" -AutomationAccountName "aa-prod" -Name "Provision-VM" -Published $false
+# Clean working directory
+git clean -fd
+git reset --hard HEAD
+```
+
+**Module Dependencies Rollback**:
+```powershell
+# Restore previous module versions
+git checkout HEAD~1 -- RequiredModules.psd1
 Install-Module Az.Compute -RequiredVersion "5.7.0" -Force -AllowClobber
 
-# Configuration: App Config restore
-$backup = Get-Content "./backups/appconfig-backup-$(Get-Date -Format 'yyyyMMdd').json" | ConvertFrom-Json
-$backup.Settings | ForEach-Object {Set-AzAppConfigurationKeyValue -Endpoint $configStoreEndpoint -Key $_.Key -Value $_.Value}
-
-# Parallel jobs: stop runaway operations
-Get-Job | Where-Object {$_.State -eq 'Running' -and $_.Name -like 'ProvisionUser*'} | Stop-Job -PassThru | Remove-Job
-
-# Validation
-$vm = Get-AzVM -ResourceGroupName "rg-prod-app" -Name "vm-app-001" -Status
-if($vm.Statuses[1].Code -eq 'PowerState/running'){Write-AuditLog -Operation "Rollback" -Status "Success" -Details "VM restored"}
-else{Write-AuditLog -Operation "Rollback" -Status "Failed" -Details "VM wrong state"; throw "Rollback failed"}
+# Uninstall problematic module
+Uninstall-Module Microsoft.Graph -RequiredVersion "2.0.0" -Force
 ```
+
+**Local Development Environment Rollback**:
+```powershell
+# Restore local configuration files
+Copy-Item -Path "./backups/local-config.json" -Destination "./config.json" -Force
+
+# Reset local environment variables
+$env:AZURE_TENANT_ID = Get-Content "./backups/env.backup" | ConvertFrom-Json | Select-Object -ExpandProperty AZURE_TENANT_ID
+
+# Clear local PowerShell cache
+Remove-Item -Path "$env:LOCALAPPDATA\Microsoft\PowerShell\*" -Recurse -Force
+```
+
+**Local Test Automation Rollback**:
+```powershell
+# Stop runaway local parallel jobs
+Get-Job | Where-Object {$_.State -eq 'Running' -and $_.Name -like 'Test*'} | Stop-Job -PassThru | Remove-Job
+
+# Restore local test database
+Import-Csv "./backups/local-testdata.csv" | ForEach-Object { /* restore logic */ }
+```
+
+**Build Artifacts Rollback**:
+```powershell
+# Clean build outputs
+Remove-Item -Path "./output/*" -Recurse -Force
+
+# Rebuild from clean state
+./build.ps1 -Clean -Configuration Debug
+```
+
+**Local Script Configuration Rollback**:
+```powershell
+# Restore script parameters file
+Copy-Item -Path "./backups/parameters.json.backup" -Destination "./parameters.json" -Force
+
+# Reset local credentials (dev only)
+$credential = Get-Credential
+Set-Content -Path "./backups/dev-cred.xml" -Value ($credential | Export-Clixml -AsString)
+```
+
+**Rollback Validation**:
+```powershell
+# Verify scripts execute without errors
+PowerShell.exe -File "./Scripts/MainAutomation.ps1" -WhatIf
+
+# Check configuration loads
+$config = Get-Content "./config.json" | ConvertFrom-Json
+if (-not $config) { throw "Configuration validation failed" }
+
+# Run local tests
+Invoke-Pester -Path "./Tests" -PassThru
+```
+
+**Note**: Production Azure resources (VMs, App Services, Azure SQL, M365 licenses, production automation accounts) are handled by cloud infrastructure/operations agents. This development agent manages local development and staging environments only.
 
 ### Audit Logging
 

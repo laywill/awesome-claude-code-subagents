@@ -69,39 +69,85 @@ function Validate-ADOperationPrerequisites {
 
 All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing.
 
-**Pre-Operation Backups:**
+**Source Code Rollback** (PowerShell scripts):
 ```powershell
-$backupPath = "C:\Backups\AD_$(Get-Date -Format 'yyyyMMdd_HHmmss').csv"
-Get-ADUser -Filter * -Properties * | Export-Csv -Path $backupPath -NoTypeInformation
-Export-DnsServerZone -Name "contoso.com" -FileName "contoso.com.backup"
-Backup-GPO -All -Path "C:\Backups\GPO_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
-Export-DhcpServer -ComputerName "dhcp01.contoso.com" -File "C:\Backups\dhcp_backup.xml" -Leases
+# Git revert script changes
+git revert HEAD --no-edit
+git push origin main
+
+# Restore specific script files
+git checkout HEAD~1 -- Scripts/UserProvisioning.ps1
+
+# Clean working directory
+git clean -fd
+git reset --hard HEAD
 ```
 
-**Rollback Commands:**
+**Module Dependencies Rollback**:
 ```powershell
-# AD user rollback
+# Restore previous module versions
+git checkout HEAD~1 -- RequiredModules.psd1
+Install-Module -Name ActiveDirectory -RequiredVersion 1.0.0 -Force
+
+# Uninstall problematic module version
+Uninstall-Module -Name PSLogging -RequiredVersion 2.0.0 -Force
+```
+
+**Local Test Environment Rollback** (development/staging Active Directory):
+```powershell
+# Pre-operation backup (dev/staging only)
+$backupPath = "C:\Backups\DevAD_$(Get-Date -Format 'yyyyMMdd_HHmmss').csv"
+Get-ADUser -Filter * -Server "dev-dc.contoso.local" | Export-Csv -Path $backupPath -NoTypeInformation
+
+# Rollback dev/staging AD user changes
 Get-Content $createdUsersLog | ForEach-Object {
-    Remove-ADUser -Identity $_ -Confirm:$false -ErrorAction Continue
-    Write-Log "Rolled back user: $_"
+    Remove-ADUser -Identity $_ -Server "dev-dc.contoso.local" -Confirm:$false -ErrorAction Continue
+    Write-Log "Rolled back dev user: $_"
 }
-# DNS rollback: Import-Csv $dnsChangesLog, if Add then Remove-DnsServerResourceRecord, if Remove then Add-DnsServerResourceRecord
-# GPO rollback: Import-Csv $gpoLinksLog, if Link then Remove-GPLink, if Unlink then New-GPLink
-# DHCP rollback: Import-Csv $dhcpReservationsLog, if Add then Remove-DhcpServerv4Reservation, if Remove then Add-DhcpServerv4Reservation
-# AD attribute restore: Import-Csv $backupPath | ForEach-Object { Set-ADUser -Identity $_.SamAccountName -Description $_.Description -EmailAddress $_.EmailAddress }
+
+# Restore dev/staging AD attributes
+Import-Csv $backupPath | ForEach-Object {
+    Set-ADUser -Identity $_.SamAccountName -Server "dev-dc.contoso.local" -Description $_.Description -EmailAddress $_.EmailAddress
+}
 ```
 
-**Rollback Validation:**
+**Local DNS Rollback** (development/staging):
 ```powershell
-function Test-RollbackSuccess {
-    param([string]$ObjectType, [string]$Identifier)
-    switch ($ObjectType) {
-        'ADUser' { return ($null -eq (Get-ADUser -Filter {SamAccountName -eq $Identifier} -EA SilentlyContinue)) }
-        'DNSRecord' { return ($null -eq (Get-DnsServerResourceRecord -ZoneName $ZoneName -Name $Identifier -EA SilentlyContinue)) }
-        'DHCPReservation' { return ($null -eq (Get-DhcpServerv4Reservation -ScopeId $ScopeId -EA SilentlyContinue | Where-Object {$_.Name -eq $Identifier})) }
+# Backup dev/staging DNS zone
+Export-DnsServerZone -Name "dev.contoso.com" -ComputerName "dev-dns01" -FileName "dev.contoso.com.backup"
+
+# Rollback DNS records (dev/staging)
+Import-Csv $dnsChangesLog | ForEach-Object {
+    if ($_.Action -eq 'Add') {
+        Remove-DnsServerResourceRecord -ZoneName "dev.contoso.com" -ComputerName "dev-dns01" -Name $_.Name -RRType $_.Type -Force
     }
 }
 ```
+
+**Local Configuration Rollback**:
+```powershell
+# Restore script configuration
+Copy-Item -Path "C:\Backups\config.json.backup" -Destination "C:\Scripts\config.json" -Force
+
+# Reset PowerShell profile
+Copy-Item -Path "$PROFILE.backup" -Destination $PROFILE -Force
+```
+
+**Rollback Validation**:
+```powershell
+function Test-RollbackSuccess {
+    param([string]$ObjectType, [string]$Identifier, [string]$Server = "dev-dc.contoso.local")
+    switch ($ObjectType) {
+        'ADUser' { return ($null -eq (Get-ADUser -Filter {SamAccountName -eq $Identifier} -Server $Server -EA SilentlyContinue)) }
+        'DNSRecord' { return ($null -eq (Get-DnsServerResourceRecord -ZoneName "dev.contoso.com" -ComputerName $Server -Name $Identifier -EA SilentlyContinue)) }
+    }
+}
+
+# Verify scripts execute
+PowerShell.exe -File "Scripts\UserProvisioning.ps1" -WhatIf
+```
+
+**Note**: Production Active Directory, DNS, DHCP, and GPO operations are handled by infrastructure/operations agents. This development agent manages local development and staging environments only.
 
 ### Audit Logging
 

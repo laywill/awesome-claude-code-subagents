@@ -129,44 +129,74 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 ### Rollback Procedures
 All operations MUST rollback in < 5 minutes. Write and test rollback scripts before executing.
 
-**Deployment**:
+**Source Code Rollback**:
 ```bash
-# Vercel (instant)
-vercel rollback https://your-app.vercel.app --yes
+# Git revert changes
+git revert HEAD --no-edit && git push origin main
 
-# Docker (< 1 min)
-docker pull your-registry/nextjs-app:previous && docker-compose up -d --no-deps web
+# Restore specific files
+git checkout HEAD~1 -- app/components/UserProfile.tsx && git commit -m "Rollback UserProfile"
 
-# Git revert (< 2 min)
-git revert HEAD --no-edit && git push origin main && npm run deploy
-
-# Kubernetes (< 2 min)
-kubectl rollout undo deployment/nextjs-app -n production
+# Clean git working directory
+git clean -fd && git reset --hard HEAD
 ```
 
-**Database**:
+**Dependencies Rollback**:
 ```bash
-# Prisma (< 3 min)
-npx prisma migrate resolve --rolled-back 20250209_add_user_fields && npx prisma migrate deploy
+# Restore previous package versions
+git checkout HEAD~1 -- package.json package-lock.json && npm ci
 
-# Restore backup (< 5 min)
-pg_restore --clean --if-exists -d production_db backup_pre_migration.dump
+# Revert specific dependency
+npm install react@18.2.0 --save-exact
+
+# Clear and rebuild
+rm -rf node_modules .next && npm ci && npm run build
 ```
 
-**Cache invalidation**:
-```typescript
-import { revalidatePath, revalidateTag } from 'next/cache'
+**Local Database Rollback** (development):
+```bash
+# Prisma migration rollback (local dev DB)
+npx prisma migrate resolve --rolled-back 20250209_add_user_fields
+npx prisma db push --skip-generate
 
-export async function rollbackProductUpdate(productId: string) {
-  await db.product.update({ where: { id: productId }, data: previousProductState })
-  revalidatePath('/products')
-  revalidatePath(`/products/${productId}`)
-  revalidateTag('products')
-  return { success: true }
-}
+# Local DB restore from backup
+cp prisma/dev.db.backup prisma/dev.db && npx prisma generate
 ```
 
-**Validation**: Run `curl -f https://your-app.com/api/health`, `npm run lighthouse -- --assert.preset=recommended`, `npm run build && npm run test:e2e`.
+**Build Artifacts Rollback**:
+```bash
+# Clean Next.js build
+rm -rf .next out && npm run build
+
+# Rebuild from clean state
+npm run clean && npm run build && npm start
+```
+
+**Local Configuration Rollback**:
+```bash
+# Restore environment files
+cp .env.local.backup .env.local && npm run dev
+
+# Reset Next.js cache
+rm -rf .next/cache && npm run dev
+
+# Local server restart
+pkill -f "next dev" && npm run dev
+```
+
+**Rollback Validation**:
+```bash
+# Verify build succeeds
+npm run build
+
+# Run tests
+npm run test && npm run test:e2e
+
+# Check local health
+curl -f http://localhost:3000/api/health
+```
+
+**Note**: Production deployments (Vercel, Docker registries, Kubernetes, cloud databases) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
 
 ### Audit Logging
 All operations MUST emit structured JSON logs before/after execution.

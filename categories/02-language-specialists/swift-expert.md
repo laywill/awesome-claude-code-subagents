@@ -145,28 +145,91 @@ func validateSwiftCode(_ code: String) -> ValidationResult {
 
 All operations MUST have rollback path completing in <5 minutes. Write and test rollback scripts before executing.
 
-**Swift Project Rollback Commands**:
+**Source Code Rollback**:
 ```bash
-# Revert package changes
-git checkout HEAD -- Package.swift Package.resolved && swift package reset && swift package resolve
+# Git revert Swift changes
+git revert HEAD --no-edit && git push
 
-# Rollback Xcode project
-git checkout HEAD -- *.xcodeproj/project.pbxproj && xcodebuild clean -project MyApp.xcodeproj -scheme MyApp
+# Restore specific Swift files
+git checkout HEAD~1 -- Sources/Services/UserService.swift && git commit -m "Rollback UserService"
 
-# Revert SwiftUI views
-git checkout HEAD -- Sources/Views/ && xcodebuild clean build -project MyApp.xcodeproj -scheme MyApp
-
-# Rollback server-side Swift (Vapor)
-docker rollback vapor-app-service && docker restart vapor-app-container
-
-# Revert Core Data model
-git checkout HEAD -- MyApp.xcdatamodeld/ && cp MyApp.sqlite.backup MyApp.sqlite
-
-# Rollback SPM dependencies
-git checkout HEAD -- Package.resolved && rm -rf .build/ && swift package resolve --force
+# Clean working directory
+git clean -fd && git reset --hard HEAD
 ```
 
-**Rollback Validation**: Verify with `swift build && swift test` for SPM or `xcodebuild test` for Xcode. Check app launches on device/simulator and critical features work. For server-side Swift, verify health endpoint returns 200 and logs show no actor isolation violations.
+**Dependencies Rollback**:
+```bash
+# SPM: revert Package.swift
+git checkout HEAD~1 -- Package.swift Package.resolved && swift package reset && swift package resolve
+
+# CocoaPods: revert Podfile
+git checkout HEAD~1 -- Podfile Podfile.lock && pod install
+
+# Carthage: revert Cartfile
+git checkout HEAD~1 -- Cartfile Cartfile.resolved && carthage update
+```
+
+**Local Build Artifacts Rollback**:
+```bash
+# Clean Xcode build
+xcodebuild clean -project MyApp.xcodeproj -scheme MyApp
+
+# Clean SPM build
+swift package clean && rm -rf .build/
+
+# Clear derived data
+rm -rf ~/Library/Developer/Xcode/DerivedData/*
+```
+
+**Local Configuration Rollback**:
+```bash
+# Restore Xcode project settings
+git checkout HEAD~1 -- *.xcodeproj/project.pbxproj
+
+# Restore local configuration files
+cp Config.plist.backup Config.plist
+
+# Reset local simulator
+xcrun simctl erase all && xcrun simctl boot "iPhone 15 Pro"
+```
+
+**Local Core Data Rollback** (development):
+```bash
+# Revert Core Data model
+git checkout HEAD~1 -- MyApp.xcdatamodeld/
+
+# Restore local SQLite database
+cp ~/Library/Application\ Support/MyApp/MyApp.sqlite.backup ~/Library/Application\ Support/MyApp/MyApp.sqlite
+
+# Delete local Core Data store
+rm ~/Library/Application\ Support/MyApp/*.sqlite*
+```
+
+**Local SwiftUI Views Rollback**:
+```bash
+# Revert SwiftUI view files
+git checkout HEAD~1 -- Sources/Views/ && xcodebuild clean build -project MyApp.xcodeproj -scheme MyApp
+
+# Restore specific view
+git checkout HEAD~1 -- Sources/Views/UserProfileView.swift
+```
+
+**Rollback Validation**:
+```bash
+# Verify SPM build
+swift build && swift test
+
+# Verify Xcode build
+xcodebuild -project MyApp.xcodeproj -scheme MyApp -destination 'platform=iOS Simulator,name=iPhone 15 Pro' build test
+
+# Run app on simulator
+xcrun simctl install booted MyApp.app && xcrun simctl launch booted com.company.MyApp
+
+# Check for runtime issues
+xcodebuild test -project MyApp.xcodeproj -scheme MyApp -destination 'platform=iOS Simulator,name=iPhone 15 Pro' 2>&1 | grep -i error
+```
+
+**Note**: Production deployments (App Store releases, TestFlight builds, production servers, cloud infrastructure, production Docker containers) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
 
 ### Audit Logging
 

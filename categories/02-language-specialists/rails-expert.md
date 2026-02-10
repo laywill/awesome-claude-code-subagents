@@ -182,81 +182,95 @@ end
 
 All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
 
-**Rails Deployment Rollback**:
+**Source Code Rollback**:
 ```bash
-# Rollback to previous release (Capistrano)
-cap production deploy:rollback
+# Git revert changes
+git revert HEAD --no-edit && git push
 
-# Rollback Docker container to previous version
-kubectl rollout undo deployment/rails-app -n production
+# Restore specific files
+git checkout HEAD~1 -- app/controllers/users_controller.rb && git commit -m "Rollback users_controller"
 
-# Rollback with specific revision
-kubectl rollout undo deployment/rails-app --to-revision=42 -n production
-
-# Restart app servers to previous release (Heroku)
-heroku releases:rollback v123 --app myapp-production
+# Clean working directory
+git clean -fd && git reset --hard HEAD
 ```
 
-**Database Migration Rollback**:
-```bash
-# Rollback last migration
-rails db:rollback
-
-# Rollback last 3 migrations
-rails db:rollback STEP=3
-
-# Rollback to specific version
-rails db:migrate:down VERSION=20250615143200
-
-# For production with zero-downtime requirements
-rails db:rollback RAILS_ENV=production
-
-# Restore from backup if rollback fails
-pg_restore -d myapp_production --clean --no-owner backups/myapp_20250615_143000.dump
-
-# Verify data integrity
-rails runner "User.count; Post.count; Order.count" RAILS_ENV=production
-```
-
-**Gem Dependency Rollback**:
+**Dependencies Rollback**:
 ```bash
 # Revert Gemfile changes
-git checkout HEAD~1 -- Gemfile Gemfile.lock
-bundle install
-systemctl restart rails-app
+git checkout HEAD~1 -- Gemfile Gemfile.lock && bundle install
+
+# Revert specific gem
+bundle update rails --conservative && bundle install
+
+# Clear bundler cache
+rm -rf vendor/bundle && bundle install
 ```
 
-**Configuration Rollback**:
+**Local Database Rollback** (development):
 ```bash
-# Revert credentials to previous version
+# Rollback last migration (local dev DB)
+rails db:rollback
+
+# Rollback last 3 migrations (local dev DB)
+rails db:rollback STEP=3
+
+# Rollback to specific version (local dev DB)
+rails db:migrate:down VERSION=20250615143200
+
+# Restore local development database from backup
+pg_restore -d myapp_development --clean --no-owner backups/dev_backup.dump
+
+# Verify local data integrity
+rails runner "User.count; Post.count; Order.count" RAILS_ENV=development
+```
+
+**Build Artifacts Rollback**:
+```bash
+# Clear precompiled assets (local)
+rails assets:clobber
+
+# Recompile from clean state
+rails assets:precompile RAILS_ENV=development
+```
+
+**Local Configuration Rollback**:
+```bash
+# Revert local credentials
 git checkout HEAD~1 -- config/credentials.yml.enc config/master.key
-systemctl restart rails-app
+
+# Restore local environment file
+cp .env.backup .env
+
+# Local Rails server restart
+pkill -f "rails server" && rails server -b 0.0.0.0
 ```
 
-**Redis/Sidekiq Job Queue Rollback**:
+**Local Job Queue Rollback** (development):
 ```bash
-redis-cli DEL sidekiq:dead
-systemctl stop sidekiq
-git checkout HEAD~1 -- app/jobs/
-bundle install && systemctl restart sidekiq
-```
+# Clear local Sidekiq queue
+bundle exec sidekiq -C config/sidekiq.yml &
+redis-cli -n 0 FLUSHDB  # Local Redis only
 
-**Asset Pipeline Rollback**:
-```bash
-git checkout HEAD~1 -- public/assets/
-# Or recompile from previous commit
-git checkout HEAD~1 && rails assets:precompile RAILS_ENV=production && git checkout main
+# Restart local Sidekiq
+pkill -f sidekiq && bundle exec sidekiq -d
 ```
 
 **Rollback Validation**:
 ```bash
-# Verify application health after rollback
-curl -f https://myapp.com/health || echo "Health check failed"
-rails runner "ActiveRecord::Base.connection.execute('SELECT 1')" RAILS_ENV=production
-rails runner "Sidekiq::Stats.new.processed" RAILS_ENV=production
-rails runner "puts \"Users: #{User.count}, Orders today: #{Order.where('created_at > ?', 1.day.ago).count}\"" RAILS_ENV=production
-tail -f log/production.log | grep ERROR
+# Verify local application health
+curl -f http://localhost:3000/health || echo "Health check failed"
+
+# Check local database connection
+rails runner "ActiveRecord::Base.connection.execute('SELECT 1')" RAILS_ENV=development
+
+# Verify local migrations
+rails db:migrate:status
+
+# Check local logs
+tail -f log/development.log | grep ERROR
 ```
+
+**Note**: Production deployments (Capistrano releases, Kubernetes, Heroku, production databases, production job queues) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
 
 ### Audit Logging
 
