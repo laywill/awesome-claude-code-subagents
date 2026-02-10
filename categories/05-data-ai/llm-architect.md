@@ -155,63 +155,29 @@ def validate_llm_inputs(config):
 ### Rollback Procedures
 All operations MUST have rollback path completing <5 minutes. Write and test rollback scripts before execution.
 
-**Source Code Rollback:**
-```bash
-# Revert LLM architecture code, fine-tuning scripts, and RAG implementations
-git revert HEAD --no-edit && git push origin main
-git checkout HEAD~1 src/llm/ src/finetuning/ src/rag/
-```
+**Rollback Principles**
+- Pre-execution: Snapshot current state (git commits, dependency manifests, data backups, config snapshots)
+- Atomic operations: Group related changes; rollback atomically if any step fails
+- Validation: Test rollback procedures before initial deployment; verify restoration post-rollback
+- Time constraint: Complete rollback + validation <5 minutes total
+- Scope: Local/dev/staging only—production LLM deployments handled by MLOps/infrastructure agents
 
-**Dependencies Rollback:**
-```bash
-# Restore Python LLM environment and model libraries
-pip install -r requirements.txt.backup
-conda env update --name llm-dev --file environment-backup.yml
-# Restore specific transformers/torch versions
-pip install transformers==4.35.0 torch==2.1.0
-```
+**Rollback Decision Framework**
+- Source code changes → Git revert/checkout (LLM code, fine-tuning scripts, RAG implementations, prompt templates)
+- Dependencies → Restore from versioned manifests (requirements.txt, environment.yml, lockfiles)
+- Data stores → Restore vector DB/embeddings from snapshots (ChromaDB, Pinecone, Weaviate, etc.)
+- Model artifacts → Restore checkpoints/weights from backup directories (fine-tuned models, cached embeddings, training checkpoints)
+- Configuration → Git checkout configs + restart services (LLM configs, RAG settings, inference params)
 
-**Local Database Rollback (development):**
-```bash
-# Restore local vector store and embeddings database
-docker-compose stop chromadb-dev && rm -rf ./chromadb-data/*
-docker-compose up -d chromadb-dev
-python scripts/restore_embeddings.py --snapshot dev-embeddings-20250614
-# Restore local training metadata
-pg_restore -d llm_training_dev backups/dev_snapshot_20250614.dump
-```
+**Post-Rollback Validation Checklist**
+- Inference functional: Test model loading, prediction latency, response quality
+- RAG retrieval working: Query vector store, verify relevance scores, check latency
+- Embeddings intact: Validate dimension, count, index health
+- Fine-tuning setup operational: Dry-run training script, verify dataset access
+- Services healthy: Check logs, memory usage, GPU allocation
 
-**Build Artifacts Rollback:**
-```bash
-# Clean model artifacts, fine-tuned weights, and cached embeddings
-rm -rf ./models/finetuned/* ./cache/embeddings/* ./checkpoints/current/*
-cp -r ./models/backup_20250614/* ./models/finetuned/
-# Restore fine-tuning checkpoints
-cp ./checkpoints/backup/ft-checkpoint-epoch-10.pt ./checkpoints/current/
-```
-
-**Local Configuration Rollback:**
-```bash
-# Restore LLM configs, prompt templates, and RAG settings
-git checkout HEAD~1 config/llm_config.yaml config/rag_config.json prompts/
-cp .env.backup .env
-# Restart local LLM services
-docker-compose restart llm-dev-server vllm-dev chromadb-dev
-```
-
-**Rollback Validation:**
-```bash
-# Verify local inference
-python scripts/test_inference_local.py --model-path ./models/finetuned/model.bin
-# Test RAG retrieval
-python scripts/test_rag_local.py --query "test query" --top-k 5
-# Validate embeddings
-python scripts/validate_embeddings.py --dimension 1536
-# Test fine-tuning setup
-python scripts/validate_finetuning.py --dry-run
-```
-
-**Note**: Production deployments (production LLM inference endpoints, production vector databases, production fine-tuning infrastructure, production Kubernetes LLM serving, AWS SageMaker production, Azure OpenAI production, GCP Vertex AI production) are handled by MLOps/infrastructure agents. This development agent manages local/dev/staging environments only.
+**Scope Boundaries**
+Production environments excluded: LLM inference endpoints, vector databases, fine-tuning infrastructure, Kubernetes serving, SageMaker/Azure OpenAI/Vertex AI deployments. Escalate production rollbacks to MLOps/infrastructure agents.
 
 ### Audit Logging
 All operations MUST emit structured JSON logs before and after execution.

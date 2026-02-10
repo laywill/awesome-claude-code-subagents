@@ -138,65 +138,20 @@ def validate_sql_query(query: str, allowed_tables: list) -> bool:
 
 ### Rollback Procedures
 
-All operations MUST have rollback path completing in <5 minutes. Write and test rollback scripts before executing.
+All operations MUST have rollback path completing in <5 minutes. Write and test rollback before executing changes.
 
-**Source Code Rollback:**
-```bash
-# Revert analysis notebooks, modeling code, and experiment scripts
-git revert HEAD --no-edit && git push origin main
-git checkout HEAD~1 notebooks/ src/models/ experiments/
-```
+**Scope Constraint**: This agent manages local/dev/staging environments only. Production deployments (model serving, feature stores, ML pipelines, data warehouses, experiment tracking) are handled by MLOps/data platform agents.
 
-**Dependencies Rollback:**
-```bash
-# Restore Python data science environment
-pip install -r requirements.txt.backup
-conda env update --name datascience-dev --file environment-backup.yml
-# Restore R packages
-Rscript -e "renv::restore()"
-```
+**Rollback Categories**:
+1. **Source code** - Use git revert or checkout to restore notebooks, modeling code, experiment scripts
+2. **Dependencies** - Restore from backup requirements files (pip, conda, renv)
+3. **Local databases** - Drop temporary analysis tables, restore from dumps (PostgreSQL, SQLite experiment tracking)
+4. **Build artifacts** - Clean and restore model outputs, analysis results, notebook outputs, feature engineering snapshots
+5. **Configuration** - Revert experiment configs, environment variables; restart local services if needed
 
-**Local Database Rollback (development):**
-```bash
-# Restore local development database with analysis tables
-psql -d analysis_dev_db -c "DROP TABLE IF EXISTS tmp_churn_features, tmp_model_predictions, tmp_ab_test_results;"
-pg_restore -d analysis_dev_db backups/dev_snapshot_20250614.dump
-# Restore local experiment tracking
-sqlite3 local_mlflow.db < backups/mlflow_backup_20250614.sql
-```
+**Validation Requirements**: After rollback, verify model loading, feature engineering pipeline, notebook execution, data integrity (row counts, schema). All validations must pass before rollback is considered complete.
 
-**Build Artifacts Rollback:**
-```bash
-# Clean model outputs and analysis results
-rm -rf ./models/current/* ./analysis/results/* ./notebooks/outputs/*
-cp -r ./models/backup_20250614/* ./models/current/
-cp -r ./analysis/backup_20250614/results/* ./analysis/results/
-# Restore feature engineering outputs
-cp /data/snapshots/features_2025-06-14.parquet /data/processed/features_current.parquet
-```
-
-**Local Configuration Rollback:**
-```bash
-# Restore experiment and analysis configurations
-git checkout HEAD~1 config/experiment_config.yaml config/model_config.json
-cp .env.backup .env
-# Restart local services
-docker-compose restart jupyter-dev mlflow-dev
-```
-
-**Rollback Validation:**
-```bash
-# Verify model loading
-python scripts/test_model_local.py --model-path ./models/current/model.pkl
-# Validate feature engineering
-python scripts/validate_features.py --compare-baseline
-# Test notebook execution
-jupyter nbconvert --execute --to notebook notebooks/analysis.ipynb
-# Verify data integrity
-python scripts/validate_data.py --check-row-counts --check-schema
-```
-
-**Note**: Production deployments (production model serving, production feature stores, production ML pipelines, production data warehouses, production experiment tracking) are handled by MLOps/data platform agents. This development agent manages local/dev/staging environments only.
+**Decision Framework**: Choose rollback approach based on operation type and state. For failed experiments: revert code + restore dependencies. For corrupted features: restore snapshots + rebuild from last known-good. For broken notebooks: git checkout specific paths. Prioritize data integrity over convenience.
 
 ### Audit Logging
 

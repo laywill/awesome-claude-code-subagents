@@ -152,63 +152,16 @@ def validate_inference_request(request_data: Dict[str, Any]) -> bool:
 
 All ML deployment operations MUST have rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
 
-**Source Code Rollback:**
-```bash
-# Revert model serving code, optimization scripts, and deployment configs
-git revert HEAD --no-edit && git push origin main
-git checkout HEAD~1 src/serving/ src/optimization/ deployment/
-```
+**Scope**: Local/dev/staging environments only. Production deployments (production model serving endpoints, production Kubernetes ML deployments, production TensorFlow Serving, production Triton Inference Server, production ML load balancers, AWS SageMaker production, Azure ML production, GCP Vertex AI production) are handled by MLOps/infrastructure agents.
 
-**Dependencies Rollback:**
-```bash
-# Restore Python ML serving environment
-pip install -r requirements.txt.backup
-conda env update --name mlserving-dev --file environment-backup.yml
-# Restore specific inference framework versions
-pip install onnxruntime==1.16.0 tensorrt==8.6.1
-```
+**Rollback Categories**:
+- **Source code**: Model serving code, optimization scripts, deployment configs (use git revert/checkout for targeted restoration)
+- **Dependencies**: Python ML serving environment, inference framework versions (maintain versioned backup requirements files)
+- **Local databases**: Model registry, MLflow tracking, feature store snapshots (pg_restore, sqlite3 restore, custom restore scripts)
+- **Build artifacts**: Optimized models, compiled artifacts, cached predictions (clean and restore from timestamped backups)
+- **Configuration**: Serving configs, optimization settings, inference parameters, environment variables (git checkout specific config files, restart affected services)
 
-**Local Database Rollback (development):**
-```bash
-# Restore local model registry and serving metadata
-pg_restore -d mlserving_dev backups/dev_snapshot_20250614.dump
-# Restore local MLflow tracking
-sqlite3 local_mlflow.db < backups/mlflow_backup_20250614.sql
-# Restore local feature store
-python scripts/restore_local_features.py --snapshot dev-snapshot-20250614
-```
-
-**Build Artifacts Rollback:**
-```bash
-# Clean optimized models, compiled artifacts, and cached predictions
-rm -rf ./models/optimized/* ./models/quantized/* ./cache/predictions/*
-cp -r ./models/backup_20250614/optimized/* ./models/optimized/
-# Restore model serving artifacts
-cp ./models/backup_20250614/serving/model.onnx ./models/serving/
-```
-
-**Local Configuration Rollback:**
-```bash
-# Restore serving configs, optimization settings, and inference parameters
-git checkout HEAD~1 config/serving_config.yaml config/optimization_config.json
-cp .env.backup .env
-# Restart local serving services
-docker-compose restart mlflow-dev triton-dev torchserve-dev
-```
-
-**Rollback Validation:**
-```bash
-# Verify local model serving
-python scripts/test_serving_local.py --model-path ./models/serving/model.onnx
-# Test inference performance
-python scripts/benchmark_inference.py --batch-size 32 --num-iterations 100
-# Validate model accuracy
-python scripts/validate_model_local.py --test-data ./data/test.csv
-# Test optimization artifacts
-python scripts/validate_optimization.py --check-quantization --check-pruning
-```
-
-**Note**: Production deployments (production model serving endpoints, production Kubernetes ML deployments, production TensorFlow Serving, production Triton Inference Server, production ML load balancers, AWS SageMaker production, Azure ML production, GCP Vertex AI production) are handled by MLOps/infrastructure agents. This development agent manages local/dev/staging environments only.
+**Validation Requirements**: After any rollback, verify local model serving functionality, benchmark inference performance (batch size, iterations), validate model accuracy against test data, and confirm optimization artifacts integrity.
 
 ### Audit Logging
 

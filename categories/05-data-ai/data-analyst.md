@@ -122,57 +122,18 @@ def validate_dashboard_filter(date_start: str, date_end: str, limit: int) -> dic
 
 All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
 
-**Source Code Rollback:**
-```bash
-# Revert analysis scripts, SQL queries, and dashboard code
-git revert HEAD --no-edit && git push origin main
-git checkout HEAD~1 sql/queries/ python/analysis_scripts/
-```
+**Scope**: Local/dev/staging environments only. Production deployments (production dashboards, data warehouses, BI platforms, Tableau Server, Power BI Service, Looker) are handled by data platform/BI infrastructure agents.
 
-**Dependencies Rollback:**
-```bash
-# Restore Python/R analysis environment
-pip install -r requirements.txt.backup
-conda env update --name analytics-dev --file environment-backup.yml
-```
+**Rollback Categories**:
+- **Source code**: Revert analysis scripts, SQL queries, dashboard code via git
+- **Dependencies**: Restore Python/R environment from backup manifests (requirements.txt, environment.yml)
+- **Local databases**: Restore dev database snapshots, views, materialized views
+- **Build artifacts**: Clean/restore report outputs, cached query results, dashboard exports
+- **Configuration**: Revert connection configs, environment variables, BI service settings
 
-**Local Database Rollback (development):**
-```bash
-# Restore local development database snapshots
-pg_restore -d analytics_dev_db backups/dev_snapshot_20250614.dump
-# Restore local data warehouse views
-psql -d analytics_dev_db -f sql/views_backup_20250614.sql
-```
+**Validation Requirements**: Test query execution against dev database, verify dashboard rendering locally, validate metric calculations match baseline.
 
-**Build Artifacts Rollback:**
-```bash
-# Clean report outputs and cached query results
-rm -rf ./reports/output/* ./cache/query_results/*
-cp -r ./reports/backup_20250614/* ./reports/output/
-# Restore dashboard exports
-cp ./dashboards/backup/*.twbx ./dashboards/current/
-```
-
-**Local Configuration Rollback:**
-```bash
-# Restore dashboard and connection configurations
-git checkout HEAD~1 config/connections.yaml config/dashboard_config.json
-cp .env.backup .env
-# Restart local BI services
-docker-compose restart metabase-dev superset-dev
-```
-
-**Rollback Validation:**
-```bash
-# Verify query execution
-psql -d analytics_dev_db -f sql/validation_queries.sql
-# Test dashboard rendering locally
-python scripts/test_dashboard_local.py --dashboard-id sales_dashboard
-# Validate metric calculations
-python scripts/validate_metrics.py --compare-baseline
-```
-
-**Note**: Production deployments (production dashboards, production data warehouses, production BI platforms, Tableau Server production, Power BI Service production, Looker production) are handled by data platform/BI infrastructure agents. This development agent manages local/dev/staging environments only.
+**5-Minute Constraint**: Pre-create backup snapshots before changes. Use timestamped backups. Automate restoration with scripts (avoid manual multi-step processes).
 
 ### Audit Logging
 

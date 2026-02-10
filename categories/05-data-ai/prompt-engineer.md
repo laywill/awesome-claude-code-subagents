@@ -159,61 +159,28 @@ def validate_prompt_deployment(prompt_data):
 
 All prompt deployments MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
 
-**Source Code Rollback:**
-```bash
-# Revert prompt templates, evaluation scripts, and test cases
-git revert HEAD --no-edit && git push origin main
-git checkout HEAD~1 prompts/ templates/ evaluation/
-```
+**Rollback Scope:** Local/dev/staging environments only. Production deployments (production LLM APIs, prompt registries, A/B testing infrastructure, serving endpoints) are handled by MLOps/LLM infrastructure agents.
 
-**Dependencies Rollback:**
-```bash
-# Restore Python prompt engineering environment
-pip install -r requirements.txt.backup
-conda env update --name prompts-dev --file environment-backup.yml
-# Restore specific LLM client libraries
-pip install anthropic==0.18.0 openai==1.10.0
-```
+**Core Rollback Principles:**
 
-**Local Database Rollback (development):**
-```bash
-# Restore local prompt registry and evaluation results
-pg_restore -d prompts_dev_db backups/dev_snapshot_20250614.dump
-# Restore local experiment tracking
-sqlite3 local_experiments.db < backups/experiments_backup_20250614.sql
-```
+1. **Source Control**: Revert prompt templates, evaluation scripts, test cases via git revert/checkout to last known-good commit
+2. **Dependencies**: Restore Python environment, LLM client libraries (anthropic, openai) from pinned requirements/conda backup
+3. **Data Stores**: Restore local prompt registry, evaluation results, experiment tracking from timestamped database dumps
+4. **Artifacts**: Clean evaluation outputs, cached embeddings, generated responses; restore from backup snapshots
+5. **Configuration**: Revert prompt configs, model settings, API keys; restart local services (MLflow, Jupyter)
 
-**Build Artifacts Rollback:**
-```bash
-# Clean evaluation outputs and cached embeddings
-rm -rf ./evaluation/results/* ./cache/embeddings/* ./outputs/generations/*
-cp -r ./evaluation/backup_20250614/results/* ./evaluation/results/
-# Restore prompt version snapshots
-cp ./prompts/backup_20250614/*.json ./prompts/current/
-```
+**Validation Requirements (run post-rollback):**
+- Prompt loading from restored directory
+- Evaluation against test set with baseline comparison
+- Token count validation for all restored prompts
+- Prompt rendering with test variables
 
-**Local Configuration Rollback:**
-```bash
-# Restore prompt configs, model settings, and API configurations
-git checkout HEAD~1 config/prompt_config.yaml config/model_config.json
-cp .env.backup .env
-# Restart local prompt testing services
-docker-compose restart mlflow-dev jupyter-dev
-```
-
-**Rollback Validation:**
-```bash
-# Verify prompt loading
-python scripts/test_prompts_local.py --prompt-dir ./prompts/current/
-# Test prompt evaluation locally
-python scripts/evaluate_prompts.py --test-set ./data/test_cases.json --compare-baseline
-# Validate token counts
-python scripts/validate_tokens.py --prompts ./prompts/current/*.json
-# Test prompt rendering
-python scripts/test_render_prompts.py --variables ./data/test_variables.json
-```
-
-**Note**: Production deployments (production LLM APIs, production prompt registries, production A/B testing infrastructure, production prompt serving endpoints) are handled by MLOps/LLM infrastructure agents. This development agent manages local/dev/staging environments only.
+**Decision Framework:**
+- If source code changed: revert via git
+- If dependencies changed: restore from backup requirements
+- If data/artifacts corrupted: restore from latest snapshot
+- If config drift detected: checkout previous config + restart services
+- All validations must pass before considering rollback complete
 
 ### Audit Logging
 

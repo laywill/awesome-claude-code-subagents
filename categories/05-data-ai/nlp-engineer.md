@@ -123,66 +123,18 @@ def validate_nlp_config(config):
 
 ### Rollback Procedures
 
-All operations MUST have rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+**Core Requirements**: All operations MUST have rollback path completing in <5 minutes. Write and test rollback scripts before executing operations. Scope: local/dev/staging environments only—production NLP model serving, production Kubernetes NLP services, production spaCy/transformer endpoints, cloud AI services (AWS Comprehend, Azure Cognitive, GCP Natural Language) are handled by MLOps/infrastructure agents.
 
-**Source Code Rollback:**
-```bash
-# Revert NLP pipeline code, preprocessing scripts, and model training
-git revert HEAD --no-edit && git push origin main
-git checkout HEAD~1 src/nlp/ src/preprocessing/ src/finetuning/
-```
+**Rollback Decision Framework**:
+1. **Source code changes**: Use `git revert` or `git checkout HEAD~1` for NLP pipeline code, preprocessing scripts, training logic
+2. **Dependencies**: Restore from versioned `requirements.txt.backup` or pinned package versions (transformers, spacy, torch)
+3. **Local databases**: Restore MLflow tracking, training metadata, annotation databases, embeddings caches from timestamped snapshots
+4. **Build artifacts**: Replace model checkpoints, tokenizers, processed datasets from backup directories
+5. **Configuration**: Revert NLP configs, tokenizer settings, training hyperparameters via git or `.backup` files; restart affected local services (MLflow, Jupyter, spaCy server)
 
-**Dependencies Rollback:**
-```bash
-# Restore Python NLP environment
-pip install -r requirements.txt.backup
-conda env update --name nlp-dev --file environment-backup.yml
-# Restore specific transformers/spacy versions
-pip install transformers==4.35.0 spacy==3.7.0
-```
+**Validation Requirements**: After rollback, verify model loading, run inference on validation samples (check F1/accuracy), validate tokenizer functionality, test preprocessing pipeline end-to-end. All validation must complete in <3 minutes.
 
-**Local Database Rollback (development):**
-```bash
-# Restore local NLP training metadata and annotations
-pg_restore -d nlp_training_dev backups/dev_snapshot_20250614.dump
-# Restore local MLflow tracking
-sqlite3 local_mlflow.db < backups/mlflow_backup_20250614.sql
-# Restore local embeddings cache
-python scripts/restore_embeddings_local.py --snapshot dev-embeddings-20250614
-```
-
-**Build Artifacts Rollback:**
-```bash
-# Clean model artifacts, tokenizers, and processed text data
-rm -rf ./models/finetuned/* ./tokenizers/current/* ./data/processed/*
-cp -r ./models/backup_20250614/* ./models/finetuned/
-cp -r ./tokenizers/backup_20250614/* ./tokenizers/current/
-# Restore fine-tuning checkpoints
-cp ./checkpoints/backup/ft-checkpoint-epoch-8.pt ./checkpoints/current/
-```
-
-**Local Configuration Rollback:**
-```bash
-# Restore NLP configs, tokenizer settings, and training parameters
-git checkout HEAD~1 config/nlp_config.yaml config/tokenizer_config.json
-cp .env.backup .env
-# Restart local NLP services
-docker-compose restart mlflow-dev jupyter-dev spacy-server-dev
-```
-
-**Rollback Validation:**
-```bash
-# Verify local model loading
-python scripts/test_model_local.py --model-path ./models/finetuned/model.bin
-# Test inference on validation samples
-python scripts/test_inference_local.py --samples 100 --check-f1
-# Validate tokenizer
-python scripts/validate_tokenizer.py --tokenizer-path ./tokenizers/current/
-# Test preprocessing pipeline
-python scripts/test_preprocessing.py --input ./data/raw/sample.txt
-```
-
-**Note**: Production deployments (production NLP model serving, production Kubernetes NLP services, production spaCy servers, production transformer endpoints, AWS Comprehend production, Azure Cognitive Services production, GCP Natural Language API production) are handled by MLOps/infrastructure agents. This development agent manages local/dev/staging environments only.
+**Backup Strategy**: Maintain timestamped backups of model checkpoints, tokenizer configs, training data snapshots, MLflow experiments before any operation. Retention: 7 days for dev, 30 days for staging.
 
 ### Audit Logging
 

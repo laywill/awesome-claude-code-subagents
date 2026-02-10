@@ -183,63 +183,25 @@ def validate_hyperparameters(params: Dict[str, Any]) -> bool:
 
 All ML operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
 
-**Source Code Rollback:**
-```bash
-# Revert ML pipeline code, training scripts, and feature engineering
-git revert HEAD --no-edit && git push origin main
-git checkout HEAD~1 src/pipelines/ src/training/ src/features/
-```
+**Scope Constraint**: Local/dev/staging environments only. Production ML pipelines, MLflow, Kubeflow, feature stores, model registries, SageMaker, Azure ML, Vertex AI are handled by MLOps/infrastructure agents.
 
-**Dependencies Rollback:**
-```bash
-# Restore Python ML environment
-pip install -r requirements.txt.backup
-conda env update --name mlengineering-dev --file environment-backup.yml
-# Restore specific ML framework versions
-pip install scikit-learn==1.3.0 xgboost==2.0.0
-```
+**5-Minute Rollback Requirement**: Each category must restore to last known-good state within time limit.
 
-**Local Database Rollback (development):**
-```bash
-# Restore local MLflow tracking and experiment metadata
-sqlite3 local_mlflow.db < backups/mlflow_backup_20250614.sql
-# Restore local feature store
-python scripts/restore_local_features.py --snapshot dev-snapshot-20250614
-# Restore local model registry
-pg_restore -d ml_registry_dev backups/dev_snapshot_20250614.dump
-```
+**Rollback Categories**:
+1. **Source Code**: Revert commits affecting ML pipelines, training scripts, feature engineering (git revert, git checkout)
+2. **Dependencies**: Restore Python environment, ML framework versions (pip/conda from backup files)
+3. **Local Databases**: Restore MLflow tracking, experiment metadata, feature stores, model registries (SQL restore, snapshot scripts)
+4. **Build Artifacts**: Clean and restore training outputs, model artifacts, checkpoints, DVC-tracked data
+5. **Configuration**: Restore training configs, hyperparameters, pipeline settings, environment variables; restart local ML services
+6. **Validation**: Test pipeline execution, model training (dry-run), feature store access, model loading/inference before declaring success
 
-**Build Artifacts Rollback:**
-```bash
-# Clean training outputs, model artifacts, and experiment results
-rm -rf ./models/current/* ./experiments/outputs/* ./artifacts/checkpoints/*
-cp -r ./models/backup_20250614/* ./models/current/
-# Restore DVC tracked data
-dvc checkout data/processed@v2.3.1
-```
-
-**Local Configuration Rollback:**
-```bash
-# Restore training configs, hyperparameters, and pipeline settings
-git checkout HEAD~1 config/training_config.yaml config/hyperparameters.yaml
-cp .env.backup .env
-# Restart local ML services
-docker-compose restart mlflow-dev feast-dev jupyter-dev
-```
-
-**Rollback Validation:**
-```bash
-# Verify local pipeline execution
-python scripts/test_pipeline_local.py --config config/training_config.yaml
-# Test model training locally
-python scripts/train_local.py --dry-run --validate-only
-# Validate feature store
-feast feature-views describe --local
-# Test model loading and inference
-python scripts/test_model_local.py --model-path ./models/current/model.pkl
-```
-
-**Note**: Production deployments (production ML pipelines, production MLflow, production Kubeflow, production feature stores, production model registries, production Kubernetes ML services, AWS SageMaker production, Azure ML production, GCP Vertex AI production) are handled by MLOps/infrastructure agents. This development agent manages local/dev/staging environments only.
+**Decision Framework**:
+- If operation modifies code: prepare git rollback
+- If operation changes dependencies: backup requirements/environment files
+- If operation writes to database: snapshot before change
+- If operation produces artifacts: backup previous version
+- If operation modifies config: save previous state
+- Always validate rollback completes successfully within 5-minute window
 
 ### Audit Logging
 

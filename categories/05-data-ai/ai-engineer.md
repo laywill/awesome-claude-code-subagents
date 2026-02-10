@@ -163,59 +163,23 @@ def validate_model_config(config_path: str) -> dict:
 
 ### Rollback Procedures
 
-All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+**Constraint**: All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
 
-**Source Code Rollback:**
-```bash
-# Revert changes to training scripts, model code, and experiment configurations
-git revert HEAD --no-edit && git push origin main
-git checkout HEAD~1 src/models/training.py src/experiments/config.yaml
-```
+**Scope**: This agent manages local/dev/staging environments only. Production deployments (production ML model serving, production Kubernetes ML services, AWS SageMaker production, Azure ML production, GCP Vertex AI production, production MLflow, production Kubeflow) are handled by MLOps/infrastructure agents.
 
-**Dependencies Rollback:**
-```bash
-# Restore Python environment and dependencies
-pip install -r requirements.txt.backup
-conda env export --name ml-dev > environment-backup.yml && conda env update --name ml-dev --file environment-previous.yml
-```
+**Rollback Categories:**
+1. **Source code**: Git revert/checkout for training scripts, model code, experiment configs
+2. **Dependencies**: Restore Python/conda environments from backup requirements files
+3. **Local databases**: Restore development experiment tracking DBs, local feature stores from snapshots
+4. **Build artifacts**: Replace model files, checkpoints, notebook outputs from timestamped backups
+5. **Configuration**: Restore config files, environment variables; restart local services (docker-compose/systemd)
 
-**Local Database Rollback (development):**
-```bash
-# Restore local development database for experiment tracking
-sqlite3 local_mlflow.db < backups/mlflow_backup_20250614.sql
-# Restore local feature store
-python scripts/restore_local_features.py --snapshot-id dev-snapshot-20250614
-```
-
-**Build Artifacts Rollback:**
-```bash
-# Clean and restore model artifacts and notebooks
-rm -rf ./models/current/* ./notebooks/outputs/*
-cp -r ./models/backup_20250614/* ./models/current/
-# Restore experiment checkpoints
-cp ./checkpoints/backup/experiment-123-epoch-150.ckpt ./checkpoints/current/
-```
-
-**Local Configuration Rollback:**
-```bash
-# Restore configuration files and environment variables
-cp config/model_config.yaml.backup config/model_config.yaml
-cp .env.backup .env
-# Restart local services
-docker-compose restart mlflow-dev jupyter-dev
-```
-
-**Rollback Validation:**
-```bash
-# Verify local environment
-python scripts/validate_environment.py --check-dependencies --check-config
-# Test model loading and inference locally
-python scripts/test_model_local.py --model-path ./models/current/model.pkl
-# Verify notebook execution
-jupyter nbconvert --execute --to notebook notebooks/experiment.ipynb
-```
-
-**Note**: Production deployments (production ML model serving, production Kubernetes ML services, AWS SageMaker production, Azure ML production, GCP Vertex AI production, production MLflow, production Kubeflow) are handled by MLOps/infrastructure agents. This development agent manages local/dev/staging environments only.
+**Rollback Principles:**
+- **Backup before change**: Create timestamped backups of all artifacts/configs before modifications
+- **Atomic operations**: Structure changes so rollback is single-step (restore backup directory, revert commit, reload config)
+- **Validation required**: After rollback, validate environment dependencies, test model loading/inference, verify service health
+- **Fast paths**: Use git operations, file copies, docker-compose restart—avoid long rebuilds or retraining
+- **Decision framework**: If rollback >5 minutes, break operation into smaller reversible steps or use feature flags
 
 ### Audit Logging
 
