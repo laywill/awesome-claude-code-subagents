@@ -155,52 +155,63 @@ def validate_llm_inputs(config):
 ### Rollback Procedures
 All operations MUST have rollback path completing <5 minutes. Write and test rollback scripts before execution.
 
-**Model Deployment Rollback**
+**Source Code Rollback:**
 ```bash
-kubectl rollout undo deployment/llm-inference -n ml-serving
-# Or specific revision
-kubectl rollout undo deployment/llm-inference --to-revision=3 -n ml-serving
+# Revert LLM architecture code, fine-tuning scripts, and RAG implementations
+git revert HEAD --no-edit && git push origin main
+git checkout HEAD~1 src/llm/ src/finetuning/ src/rag/
 ```
 
-**Fine-tuning Job Cancellation**
+**Dependencies Rollback:**
 ```bash
-python -m training.cancel_job --job-id ft-abc123 --checkpoint-save
-kubectl delete job fine-tune-job-abc123 -n ml-training
+# Restore Python LLM environment and model libraries
+pip install -r requirements.txt.backup
+conda env update --name llm-dev --file environment-backup.yml
+# Restore specific transformers/torch versions
+pip install transformers==4.35.0 torch==2.1.0
 ```
 
-**RAG Vector Store Restore**
+**Local Database Rollback (development):**
 ```bash
-curl -X POST https://vectordb.internal/restore -d '{"index":"docs-v2","snapshot":"snapshot-2025-06-14T12:00:00Z"}'
-# Or Pinecone
-pinecone delete_index --name docs-v2-temp && pinecone rename_index docs-v2-backup docs-v2
+# Restore local vector store and embeddings database
+docker-compose stop chromadb-dev && rm -rf ./chromadb-data/*
+docker-compose up -d chromadb-dev
+python scripts/restore_embeddings.py --snapshot dev-embeddings-20250614
+# Restore local training metadata
+pg_restore -d llm_training_dev backups/dev_snapshot_20250614.dump
 ```
 
-**Inference Endpoint Revert**
+**Build Artifacts Rollback:**
 ```bash
-gcloud compute backend-services update llm-inference --global --backend-group=llm-pool-v1 --region=us-central1
-# Or AWS
-aws elbv2 modify-target-group --target-group-arn arn:aws:elasticloadbalancing:...:previous-tg
+# Clean model artifacts, fine-tuned weights, and cached embeddings
+rm -rf ./models/finetuned/* ./cache/embeddings/* ./checkpoints/current/*
+cp -r ./models/backup_20250614/* ./models/finetuned/
+# Restore fine-tuning checkpoints
+cp ./checkpoints/backup/ft-checkpoint-epoch-10.pt ./checkpoints/current/
 ```
 
-**Configuration Rollback**
+**Local Configuration Rollback:**
 ```bash
-git revert HEAD && kubectl apply -f deployments/model-serving.yaml
-# Or helm
-helm rollback llm-platform -n ml-serving
+# Restore LLM configs, prompt templates, and RAG settings
+git checkout HEAD~1 config/llm_config.yaml config/rag_config.json prompts/
+cp .env.backup .env
+# Restart local LLM services
+docker-compose restart llm-dev-server vllm-dev chromadb-dev
 ```
 
-**Training Data Restore**
+**Rollback Validation:**
 ```bash
-aws s3 sync s3://ml-backups/training-data-2025-06-14/ /data/training/ --delete
-# Or PostgreSQL metadata
-pg_restore -d training_db /backups/training_metadata_20250614.dump
+# Verify local inference
+python scripts/test_inference_local.py --model-path ./models/finetuned/model.bin
+# Test RAG retrieval
+python scripts/test_rag_local.py --query "test query" --top-k 5
+# Validate embeddings
+python scripts/validate_embeddings.py --dimension 1536
+# Test fine-tuning setup
+python scripts/validate_finetuning.py --dry-run
 ```
 
-**Rollback Validation**
-- Model endpoint returns HTTP 200 with valid inference
-- P95 latency <200ms, throughput >100 tok/s
-- Health check: `curl -f https://inference.internal/health`
-- GPU utilization at baseline (<70%)
+**Note**: Production deployments (production LLM inference endpoints, production vector databases, production fine-tuning infrastructure, production Kubernetes LLM serving, AWS SageMaker production, Azure OpenAI production, GCP Vertex AI production) are handled by MLOps/infrastructure agents. This development agent manages local/dev/staging environments only.
 
 ### Audit Logging
 All operations MUST emit structured JSON logs before and after execution.

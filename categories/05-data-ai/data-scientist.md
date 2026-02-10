@@ -140,30 +140,63 @@ def validate_sql_query(query: str, allowed_tables: list) -> bool:
 
 All operations MUST have rollback path completing in <5 minutes. Write and test rollback scripts before executing.
 
-**Rollback Commands:**
+**Source Code Rollback:**
+```bash
+# Revert analysis notebooks, modeling code, and experiment scripts
+git revert HEAD --no-edit && git push origin main
+git checkout HEAD~1 notebooks/ src/models/ experiments/
+```
 
-1. **Model deployment**: `cp /models/customer_churn/v1.2.pkl /models/customer_churn/current.pkl && systemctl restart prediction-service`
+**Dependencies Rollback:**
+```bash
+# Restore Python data science environment
+pip install -r requirements.txt.backup
+conda env update --name datascience-dev --file environment-backup.yml
+# Restore R packages
+Rscript -e "renv::restore()"
+```
 
-2. **Feature engineering**:
-   ```python
-   df = pd.read_parquet('/data/snapshots/customers_2025-06-15_pre-feature-eng.parquet')
-   df.to_parquet('/data/processed/customers_current.parquet')
-   ```
+**Local Database Rollback (development):**
+```bash
+# Restore local development database with analysis tables
+psql -d analysis_dev_db -c "DROP TABLE IF EXISTS tmp_churn_features, tmp_model_predictions, tmp_ab_test_results;"
+pg_restore -d analysis_dev_db backups/dev_snapshot_20250614.dump
+# Restore local experiment tracking
+sqlite3 local_mlflow.db < backups/mlflow_backup_20250614.sql
+```
 
-3. **Database analysis**: `DROP TABLE IF EXISTS tmp_churn_features, tmp_model_predictions, tmp_ab_test_results;`
+**Build Artifacts Rollback:**
+```bash
+# Clean model outputs and analysis results
+rm -rf ./models/current/* ./analysis/results/* ./notebooks/outputs/*
+cp -r ./models/backup_20250614/* ./models/current/
+cp -r ./analysis/backup_20250614/results/* ./analysis/results/
+# Restore feature engineering outputs
+cp /data/snapshots/features_2025-06-14.parquet /data/processed/features_current.parquet
+```
 
-4. **Notebook/analysis**: `git checkout HEAD~1 analysis/churn_prediction.ipynb && git restore analysis/results/*.csv`
+**Local Configuration Rollback:**
+```bash
+# Restore experiment and analysis configurations
+git checkout HEAD~1 config/experiment_config.yaml config/model_config.json
+cp .env.backup .env
+# Restart local services
+docker-compose restart jupyter-dev mlflow-dev
+```
 
-5. **Data pipeline**: `aws s3 sync s3://data-lake/backups/2025-06-15/ s3://data-lake/processed/` or `gsutil -m rsync -r gs://data-lake/backups/2025-06-15/ gs://data-lake/processed/`
+**Rollback Validation:**
+```bash
+# Verify model loading
+python scripts/test_model_local.py --model-path ./models/current/model.pkl
+# Validate feature engineering
+python scripts/validate_features.py --compare-baseline
+# Test notebook execution
+jupyter nbconvert --execute --to notebook notebooks/analysis.ipynb
+# Verify data integrity
+python scripts/validate_data.py --check-row-counts --check-schema
+```
 
-6. **Experiment config**:
-   ```python
-   import mlflow
-   mlflow.set_experiment("customer_churn")
-   mlflow.log_params(mlflow.get_run("run_id_abc123").data.params)
-   ```
-
-**Validation**: Verify rollback by checking model metrics, data row counts, schema integrity, validation queries to confirm system state matches pre-change baseline.
+**Note**: Production deployments (production model serving, production feature stores, production ML pipelines, production data warehouses, production experiment tracking) are handled by MLOps/data platform agents. This development agent manages local/dev/staging environments only.
 
 ### Audit Logging
 

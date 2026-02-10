@@ -154,65 +154,61 @@ lag=$(psql -Atc "SELECT EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestam
 
 All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing.
 
-**Configuration Rollback**:
+**Source Code Rollback:**
 ```bash
-# Save current config
-pg_dump --schema-only -U postgres -d postgres > /backup/config_$(date +%Y%m%d_%H%M%S).sql
-psql -U postgres -c "COPY (SELECT name, setting, unit FROM pg_settings WHERE source != 'default') TO '/backup/pg_settings_$(date +%Y%m%d_%H%M%S).csv' CSV HEADER;"
-
-# Rollback
-psql -U postgres -c "ALTER SYSTEM SET shared_buffers = '4GB'; SELECT pg_reload_conf();"
+# Revert SQL scripts, migration files, and optimization queries
+git revert HEAD --no-edit && git push origin main
+git checkout HEAD~1 sql/ migrations/ scripts/
 ```
 
-**Schema Change Rollback**:
-```sql
-BEGIN;
-  ALTER TABLE users ADD COLUMN email_verified BOOLEAN DEFAULT FALSE;
-  CREATE INDEX idx_email_verified ON users(email_verified) WHERE email_verified = TRUE;
-COMMIT;
--- Rollback: ROLLBACK; or DROP INDEX/ALTER TABLE DROP COLUMN
-```
-
-**Index Rollback**:
-```sql
-CREATE INDEX CONCURRENTLY idx_users_email ON users(email);
--- Rollback (< 30 seconds): DROP INDEX CONCURRENTLY IF EXISTS idx_users_email;
-```
-
-**Backup Restore Rollback**:
+**Dependencies Rollback:**
 ```bash
-pg_ctl stop -D /var/lib/postgresql/14/main
-rm -rf /var/lib/postgresql/14/main/*
-pg_basebackup -h backup-server -D /var/lib/postgresql/14/main -U replication -P
-echo "recovery_target_time = '2025-06-15 14:30:00'" >> /var/lib/postgresql/14/main/postgresql.auto.conf
-pg_ctl start -D /var/lib/postgresql/14/main
+# Restore PostgreSQL client tools and extensions
+sudo apt-get install --reinstall postgresql-client-14=14.9-1
+# Restore extension versions
+psql -U postgres -d app_dev_db -c "DROP EXTENSION IF EXISTS pg_stat_statements; CREATE EXTENSION pg_stat_statements VERSION '1.9';"
 ```
 
-**Replication Failover Rollback**:
+**Local Database Rollback (development):**
 ```bash
-pg_ctl promote -D /var/lib/postgresql/14/main  # Attempt promotion
-# Rollback: restore replica mode
-pg_ctl stop -D /var/lib/postgresql/14/main
-echo "standby_mode = 'on'" >> /var/lib/postgresql/14/main/recovery.conf
-echo "primary_conninfo = 'host=primary-db port=5432'" >> /var/lib/postgresql/14/main/recovery.conf
-pg_ctl start -D /var/lib/postgresql/14/main
+# Restore local development database schema and data
+pg_dump -U postgres -d app_dev_db -F c -f /backup/app_dev_db_pre_change.dump
+pg_restore -U postgres -d app_dev_db -c /backup/app_dev_db_backup_20250614.dump
+# Restore specific tables
+pg_restore -U postgres -d app_dev_db -t users -t orders /backup/tables_backup_20250614.dump
 ```
 
-**Query Optimization Rollback**:
-```sql
-CREATE INDEX CONCURRENTLY idx_users_email_new ON users(email);
-EXPLAIN ANALYZE SELECT * FROM users WHERE email = 'test@example.com';  -- Test performance
--- If degrades: DROP INDEX CONCURRENTLY idx_users_email_new;
--- Otherwise: DROP INDEX CONCURRENTLY idx_users_email_old;
-```
-
-**Rollback Validation**:
+**Build Artifacts Rollback:**
 ```bash
-psql -U postgres -c "SELECT version();"  # Check connections
-psql -U postgres -d app_db -c "SELECT COUNT(*) FROM users;"  # Verify tables
-psql -U postgres -c "SELECT client_addr, state, sync_state FROM pg_stat_replication;"  # Check replication
-psql -U postgres -c "SELECT count(*) FROM pg_stat_activity WHERE state = 'active';"  # Validate metrics
+# Clean generated SQL artifacts and query plans
+rm -rf ./sql/generated/* ./query_plans/* ./explain_outputs/*
+cp -r ./sql/backup_20250614/generated/* ./sql/generated/
 ```
+
+**Local Configuration Rollback:**
+```bash
+# Restore PostgreSQL development configuration
+cp /etc/postgresql/14/main/postgresql.conf.backup /etc/postgresql/14/main/postgresql.conf
+cp /etc/postgresql/14/main/pg_hba.conf.backup /etc/postgresql/14/main/pg_hba.conf
+sudo systemctl reload postgresql@14-main
+# Restore pgbouncer config
+cp /etc/pgbouncer/pgbouncer.ini.backup /etc/pgbouncer/pgbouncer.ini
+sudo systemctl reload pgbouncer
+```
+
+**Rollback Validation:**
+```bash
+# Verify local database connection
+psql -U postgres -d app_dev_db -c "SELECT version();"
+# Test query performance
+psql -U postgres -d app_dev_db -c "EXPLAIN ANALYZE SELECT * FROM users LIMIT 100;"
+# Verify schema integrity
+psql -U postgres -d app_dev_db -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';"
+# Check index status
+psql -U postgres -d app_dev_db -c "SELECT indexname, indexdef FROM pg_indexes WHERE schemaname = 'public';"
+```
+
+**Note**: Production deployments (production PostgreSQL clusters, production replication setups, production backup infrastructure, AWS RDS production, Azure Database for PostgreSQL production, GCP Cloud SQL production) are handled by database/infrastructure agents. This development agent manages local/dev/staging environments only.
 
 ### Audit Logging
 

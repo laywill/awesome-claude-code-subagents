@@ -134,44 +134,65 @@ def validate_data_operation(operation_type: str, params: dict) -> tuple[bool, Op
 
 All operations MUST have a rollback path completing in <5 minutes. Test rollback scripts before executing.
 
-**Rollback Commands**
+**Source Code Rollback:**
 ```bash
-# Airflow DAG
-airflow dags delete <dag_id> && aws s3 rm s3://airflow-dags/<dag_file>.py
-
-# Spark job
-kubectl delete -f spark-job.yaml && kubectl rollout undo deployment/spark-operator
-
-# Snowflake schema
-snowsql -q "USE DATABASE analytics; DROP TABLE IF EXISTS new_table; UNDROP TABLE old_table;"
-
-# Data ingestion (restore partition)
-aws s3 sync s3://datalake-backup/sales/date=2025-06-14/ s3://datalake/sales/date=2025-06-14/ --delete
-hdfs dfs -rm -r /data/processed/sales/date=2025-06-14 && hdfs dfs -cp /data/backup/sales/date=2025-06-14 /data/processed/sales/
-
-# dbt model
-cd /opt/dbt/project && git revert HEAD && dbt run --select model_name
-
-# Kafka topic config
-kafka-configs.sh --bootstrap-server localhost:9092 --entity-type topics --entity-name sales-events --alter --delete-config retention.ms
-
-# AWS Glue job
-aws glue update-job --job-name etl-sales-data --job-update "$(aws glue get-job --job-name etl-sales-data --query 'Job.Command' --version 2)"
+# Revert pipeline code, transformation logic, and DAG definitions
+git revert HEAD --no-edit && git push origin main
+git checkout HEAD~1 dags/ transforms/ sql/
 ```
 
-**Database Rollback**
-```sql
--- PostgreSQL
-BEGIN; DROP TABLE IF EXISTS sales_summary_v2; ALTER TABLE sales_summary_v1 RENAME TO sales_summary; COMMIT;
-
--- Snowflake time travel (90-day retention)
-CREATE OR REPLACE TABLE sales_data CLONE sales_data AT(OFFSET => -3600);
-
--- BigQuery snapshot restore
-CREATE OR REPLACE TABLE `project.dataset.sales_data` AS SELECT * FROM `project.dataset.sales_data` FOR SYSTEM_TIME AS OF TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR);
+**Dependencies Rollback:**
+```bash
+# Restore Python data engineering environment
+pip install -r requirements.txt.backup
+poetry install --no-dev
+# Restore Spark dependencies
+cp spark/jars-backup/* spark/jars/
 ```
 
-**Rollback Validation**: Verify row counts, checksums, downstream consumer health. Confirm metrics return to baseline within 5 minutes.
+**Local Database Rollback (development):**
+```bash
+# Restore local development data warehouse
+pg_restore -d datawarehouse_dev backups/dev_snapshot_20250614.dump
+# Restore local Airflow metadata
+airflow db reset && airflow db init --load-default-connections
+# Restore local feature tables
+psql -d datawarehouse_dev -f sql/features_backup_20250614.sql
+```
+
+**Build Artifacts Rollback:**
+```bash
+# Clean pipeline outputs and intermediate data
+rm -rf ./data/processed/* ./data/staging/*
+cp -r ./data/backup_20250614/processed/* ./data/processed/
+# Restore dbt compiled models
+cd dbt_project && dbt clean && git checkout HEAD~1 target/
+```
+
+**Local Configuration Rollback:**
+```bash
+# Restore pipeline and connection configurations
+git checkout HEAD~1 config/airflow.cfg config/spark-defaults.conf
+cp .env.backup .env
+# Restart local data services
+docker-compose restart airflow-dev spark-dev postgres-dev
+# Restore dbt profiles
+cp ~/.dbt/profiles.yml.backup ~/.dbt/profiles.yml
+```
+
+**Rollback Validation:**
+```bash
+# Verify pipeline execution locally
+airflow dags test data_pipeline_dev 2025-06-14
+# Test data quality
+python scripts/validate_data_quality.py --env dev
+# Verify row counts and checksums
+python scripts/validate_data.py --compare-baseline
+# Test Spark job locally
+spark-submit --master local[*] jobs/transform.py --dry-run
+```
+
+**Note**: Production deployments (production data pipelines, production Airflow, production Spark clusters, production Snowflake, production BigQuery, production data lakes, production Kafka, production AWS Glue) are handled by data platform/infrastructure agents. This development agent manages local/dev/staging environments only.
 
 ### Audit Logging
 

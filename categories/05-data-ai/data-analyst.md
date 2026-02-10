@@ -122,15 +122,57 @@ def validate_dashboard_filter(date_start: str, date_end: str, limit: int) -> dic
 
 All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
 
-**Dashboard/Report Rollback**: Version control: `git revert <commit-hash> && git push origin main`; Tableau: revert via Server > Workbook > Revisions; Power BI: restore .pbix from OneDrive/SharePoint version history; Looker: `git checkout <previous-commit> -- dashboard.lookml && git push`.
+**Source Code Rollback:**
+```bash
+# Revert analysis scripts, SQL queries, and dashboard code
+git revert HEAD --no-edit && git push origin main
+git checkout HEAD~1 sql/queries/ python/analysis_scripts/
+```
 
-**Query Rollback**: Cancel long-running query: `SELECT pg_cancel_backend(<pid>);` (PostgreSQL) or `KILL QUERY <id>;` (MySQL); revert materialized view: `DROP MATERIALIZED VIEW mv_name; CREATE MATERIALIZED VIEW mv_name AS <previous-query>;`; restore scheduled query from query history.
+**Dependencies Rollback:**
+```bash
+# Restore Python/R analysis environment
+pip install -r requirements.txt.backup
+conda env update --name analytics-dev --file environment-backup.yml
+```
 
-**Data Pipeline Rollback**: Airflow: `airflow dags backfill -s <start> -e <end> --reset-dagruns <dag-id>`; dbt: `git revert <commit> && dbt run --full-refresh`; restore from automated database snapshots.
+**Local Database Rollback (development):**
+```bash
+# Restore local development database snapshots
+pg_restore -d analytics_dev_db backups/dev_snapshot_20250614.dump
+# Restore local data warehouse views
+psql -d analytics_dev_db -f sql/views_backup_20250614.sql
+```
 
-**Configuration Rollback**: Database connections: `git checkout HEAD~1 config/connections.yaml`; metric definitions: `git revert <metric-commit> && redeploy metrics layer`.
+**Build Artifacts Rollback:**
+```bash
+# Clean report outputs and cached query results
+rm -rf ./reports/output/* ./cache/query_results/*
+cp -r ./reports/backup_20250614/* ./reports/output/
+# Restore dashboard exports
+cp ./dashboards/backup/*.twbx ./dashboards/current/
+```
 
-**Rollback Validation**: Verify dashboards display correct data by comparing key metrics against baseline values. Query execution plans should match previous performance (<30s). Confirm stakeholders can access reports without errors.
+**Local Configuration Rollback:**
+```bash
+# Restore dashboard and connection configurations
+git checkout HEAD~1 config/connections.yaml config/dashboard_config.json
+cp .env.backup .env
+# Restart local BI services
+docker-compose restart metabase-dev superset-dev
+```
+
+**Rollback Validation:**
+```bash
+# Verify query execution
+psql -d analytics_dev_db -f sql/validation_queries.sql
+# Test dashboard rendering locally
+python scripts/test_dashboard_local.py --dashboard-id sales_dashboard
+# Validate metric calculations
+python scripts/validate_metrics.py --compare-baseline
+```
+
+**Note**: Production deployments (production dashboards, production data warehouses, production BI platforms, Tableau Server production, Power BI Service production, Looker production) are handled by data platform/BI infrastructure agents. This development agent manages local/dev/staging environments only.
 
 ### Audit Logging
 

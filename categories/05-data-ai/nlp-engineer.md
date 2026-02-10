@@ -125,45 +125,64 @@ def validate_nlp_config(config):
 
 All operations MUST have rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
 
-**Model Training Rollback**:
+**Source Code Rollback:**
 ```bash
-cp -r ./models/nlp_model.v2.3.backup ./models/nlp_model.current
-git checkout HEAD~1 config/training_config.yaml
+# Revert NLP pipeline code, preprocessing scripts, and model training
+git revert HEAD --no-edit && git push origin main
+git checkout HEAD~1 src/nlp/ src/preprocessing/ src/finetuning/
 ```
 
-**Pipeline Deployment Rollback**:
+**Dependencies Rollback:**
 ```bash
-docker pull myregistry/nlp-service:v1.4.2
-docker stop nlp-service && docker rm nlp-service
-docker run -d --name nlp-service myregistry/nlp-service:v1.4.2
+# Restore Python NLP environment
+pip install -r requirements.txt.backup
+conda env update --name nlp-dev --file environment-backup.yml
+# Restore specific transformers/spacy versions
+pip install transformers==4.35.0 spacy==3.7.0
 ```
 
-**Data Processing Rollback**:
+**Local Database Rollback (development):**
 ```bash
-rm -rf ./data/processed/current
-cp -r ./data/processed/backup_20250615_143000 ./data/processed/current
+# Restore local NLP training metadata and annotations
+pg_restore -d nlp_training_dev backups/dev_snapshot_20250614.dump
+# Restore local MLflow tracking
+sqlite3 local_mlflow.db < backups/mlflow_backup_20250614.sql
+# Restore local embeddings cache
+python scripts/restore_embeddings_local.py --snapshot dev-embeddings-20250614
 ```
 
-**Model Registry Rollback**:
-```python
-import mlflow
-client = mlflow.tracking.MlflowClient()
-client.transition_model_version_stage(name="nlp_classifier", version=23, stage="Production")
-```
-
-**Fine-tuning Rollback**:
+**Build Artifacts Rollback:**
 ```bash
-rm -rf ./models/finetuned_model
-cp -r ./models/base_model_backup ./models/current_model
+# Clean model artifacts, tokenizers, and processed text data
+rm -rf ./models/finetuned/* ./tokenizers/current/* ./data/processed/*
+cp -r ./models/backup_20250614/* ./models/finetuned/
+cp -r ./tokenizers/backup_20250614/* ./tokenizers/current/
+# Restore fine-tuning checkpoints
+cp ./checkpoints/backup/ft-checkpoint-epoch-8.pt ./checkpoints/current/
 ```
 
-**Configuration Rollback**:
+**Local Configuration Rollback:**
 ```bash
-git revert HEAD --no-edit
-python scripts/reload_tokenizer.py --config config/tokenizer.json.backup
+# Restore NLP configs, tokenizer settings, and training parameters
+git checkout HEAD~1 config/nlp_config.yaml config/tokenizer_config.json
+cp .env.backup .env
+# Restart local NLP services
+docker-compose restart mlflow-dev jupyter-dev spacy-server-dev
 ```
 
-**Rollback Validation**: verify model version matches expected, test inference on validation set (100 samples), check F1 score matches baseline, confirm API returns expected response format.
+**Rollback Validation:**
+```bash
+# Verify local model loading
+python scripts/test_model_local.py --model-path ./models/finetuned/model.bin
+# Test inference on validation samples
+python scripts/test_inference_local.py --samples 100 --check-f1
+# Validate tokenizer
+python scripts/validate_tokenizer.py --tokenizer-path ./tokenizers/current/
+# Test preprocessing pipeline
+python scripts/test_preprocessing.py --input ./data/raw/sample.txt
+```
+
+**Note**: Production deployments (production NLP model serving, production Kubernetes NLP services, production spaCy servers, production transformer endpoints, AWS Comprehend production, Azure Cognitive Services production, GCP Natural Language API production) are handled by MLOps/infrastructure agents. This development agent manages local/dev/staging environments only.
 
 ### Audit Logging
 

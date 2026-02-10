@@ -183,72 +183,63 @@ def validate_hyperparameters(params: Dict[str, Any]) -> bool:
 
 All ML operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
 
-**Model Deployment Rollback**:
+**Source Code Rollback:**
 ```bash
-# Rollback to previous model version
-mlflow models serve --model-uri models:/recommendation-model/production-1 --port 5001
-kubectl set image deployment/ml-service ml-container=ml-registry/model:v2.3.1
-kubectl rollout status deployment/ml-service --timeout=2m
-
-# Verify rollback
-curl -X POST http://ml-service:5001/predict -d '{"user_id": 12345}' | jq '.model_version'
+# Revert ML pipeline code, training scripts, and feature engineering
+git revert HEAD --no-edit && git push origin main
+git checkout HEAD~1 src/pipelines/ src/training/ src/features/
 ```
 
-**Training Pipeline Rollback**:
+**Dependencies Rollback:**
 ```bash
-# Restore previous pipeline version
-dvc checkout pipeline-v2.3.1
-dvc repro --dry
-git checkout HEAD~1 -- src/pipelines/training.py
-
-# Revert feature store
-feast apply feature_repo/ --tag v2.3.1
+# Restore Python ML environment
+pip install -r requirements.txt.backup
+conda env update --name mlengineering-dev --file environment-backup.yml
+# Restore specific ML framework versions
+pip install scikit-learn==1.3.0 xgboost==2.0.0
 ```
 
-**Experiment Tracking Rollback**:
-```python
-import mlflow
-
-mlflow.set_tracking_uri("http://mlflow-server:5000")
-client = mlflow.tracking.MlflowClient()
-
-# Transition previous model to production
-client.transition_model_version_stage(
-    name="recommendation-model",
-    version=23,  # previous production version
-    stage="Production"
-)
-
-# Archive failed version
-client.transition_model_version_stage(
-    name="recommendation-model",
-    version=24,
-    stage="Archived"
-)
+**Local Database Rollback (development):**
+```bash
+# Restore local MLflow tracking and experiment metadata
+sqlite3 local_mlflow.db < backups/mlflow_backup_20250614.sql
+# Restore local feature store
+python scripts/restore_local_features.py --snapshot dev-snapshot-20250614
+# Restore local model registry
+pg_restore -d ml_registry_dev backups/dev_snapshot_20250614.dump
 ```
 
-**Data Pipeline Rollback**:
+**Build Artifacts Rollback:**
 ```bash
-git revert abc123 --no-commit
+# Clean training outputs, model artifacts, and experiment results
+rm -rf ./models/current/* ./experiments/outputs/* ./artifacts/checkpoints/*
+cp -r ./models/backup_20250614/* ./models/current/
+# Restore DVC tracked data
 dvc checkout data/processed@v2.3.1
-airflow dags backfill feature_pipeline --start-date 2025-06-14 --end-date 2025-06-15 --reset-dagruns
 ```
 
-**Hyperparameter Configuration Rollback**:
+**Local Configuration Rollback:**
 ```bash
-git checkout config/hyperparameters.yaml@v2.3.1
-optuna delete-study --study-name xgboost-hpo-failed
-kubectl delete job model-training-v2.4.0
+# Restore training configs, hyperparameters, and pipeline settings
+git checkout HEAD~1 config/training_config.yaml config/hyperparameters.yaml
+cp .env.backup .env
+# Restart local ML services
+docker-compose restart mlflow-dev feast-dev jupyter-dev
 ```
 
-**Infrastructure Rollback**:
+**Rollback Validation:**
 ```bash
-helm rollback ml-training-platform 5 --timeout 3m
-kubectl scale deployment/inference-service --replicas=3
-terraform apply -var-file=environments/prod-previous.tfvars
+# Verify local pipeline execution
+python scripts/test_pipeline_local.py --config config/training_config.yaml
+# Test model training locally
+python scripts/train_local.py --dry-run --validate-only
+# Validate feature store
+feast feature-views describe --local
+# Test model loading and inference
+python scripts/test_model_local.py --model-path ./models/current/model.pkl
 ```
 
-**Rollback Validation**: Verify model version matches expected (`mlflow models list`), prediction latency <100ms, accuracy >90% on validation set, no feature schema drift (`feast feature-views describe`), error rates <0.1%.
+**Note**: Production deployments (production ML pipelines, production MLflow, production Kubeflow, production feature stores, production model registries, production Kubernetes ML services, AWS SageMaker production, Azure ML production, GCP Vertex AI production) are handled by MLOps/infrastructure agents. This development agent manages local/dev/staging environments only.
 
 ### Audit Logging
 

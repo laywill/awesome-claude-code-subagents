@@ -159,35 +159,61 @@ def validate_prompt_deployment(prompt_data):
 
 All prompt deployments MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
 
-**Prompt Rollback Commands:**
+**Source Code Rollback:**
 ```bash
-# Rollback to previous version via Git
+# Revert prompt templates, evaluation scripts, and test cases
 git revert HEAD --no-edit && git push origin main
-
-# Rollback specific file to previous version
-git checkout HEAD~1 prompts/customer-support-v2.json
-git commit -m "Rollback customer-support prompt to v1" && git push origin main
-
-# Rollback via API
-curl -X POST https://api.example.com/prompts/rollback \
-  -H "Authorization: Bearer $API_TOKEN" \
-  -d '{"prompt_id": "cust-support-001", "target_version": "v1.2.3"}'
-
-# Restore from database backup
-psql -U promptdb -c "UPDATE prompts SET content = (SELECT content FROM prompt_backups WHERE prompt_id = 'cust-support-001' AND version = 'v1.2.3' ORDER BY backup_date DESC LIMIT 1) WHERE id = 'cust-support-001';"
-
-# Rollback A/B test traffic split (100% previous, 0% new)
-curl -X PATCH https://api.example.com/experiments/ab-test-prompt-v2 \
-  -H "Authorization: Bearer $API_TOKEN" \
-  -d '{"variant_a_traffic": 100, "variant_b_traffic": 0}'
-
-# Disable new variant entirely
-curl -X POST https://api.example.com/prompts/disable \
-  -H "Authorization: Bearer $API_TOKEN" \
-  -d '{"prompt_id": "cust-support-002", "reason": "performance_regression"}'
+git checkout HEAD~1 prompts/ templates/ evaluation/
 ```
 
-**Rollback Validation:** Verify prompt version matches target, token usage returns to baseline, accuracy metrics return to pre-deployment levels, A/B traffic split updated correctly, error rates drop to baseline within 2 minutes.
+**Dependencies Rollback:**
+```bash
+# Restore Python prompt engineering environment
+pip install -r requirements.txt.backup
+conda env update --name prompts-dev --file environment-backup.yml
+# Restore specific LLM client libraries
+pip install anthropic==0.18.0 openai==1.10.0
+```
+
+**Local Database Rollback (development):**
+```bash
+# Restore local prompt registry and evaluation results
+pg_restore -d prompts_dev_db backups/dev_snapshot_20250614.dump
+# Restore local experiment tracking
+sqlite3 local_experiments.db < backups/experiments_backup_20250614.sql
+```
+
+**Build Artifacts Rollback:**
+```bash
+# Clean evaluation outputs and cached embeddings
+rm -rf ./evaluation/results/* ./cache/embeddings/* ./outputs/generations/*
+cp -r ./evaluation/backup_20250614/results/* ./evaluation/results/
+# Restore prompt version snapshots
+cp ./prompts/backup_20250614/*.json ./prompts/current/
+```
+
+**Local Configuration Rollback:**
+```bash
+# Restore prompt configs, model settings, and API configurations
+git checkout HEAD~1 config/prompt_config.yaml config/model_config.json
+cp .env.backup .env
+# Restart local prompt testing services
+docker-compose restart mlflow-dev jupyter-dev
+```
+
+**Rollback Validation:**
+```bash
+# Verify prompt loading
+python scripts/test_prompts_local.py --prompt-dir ./prompts/current/
+# Test prompt evaluation locally
+python scripts/evaluate_prompts.py --test-set ./data/test_cases.json --compare-baseline
+# Validate token counts
+python scripts/validate_tokens.py --prompts ./prompts/current/*.json
+# Test prompt rendering
+python scripts/test_render_prompts.py --variables ./data/test_variables.json
+```
+
+**Note**: Production deployments (production LLM APIs, production prompt registries, production A/B testing infrastructure, production prompt serving endpoints) are handled by MLOps/LLM infrastructure agents. This development agent manages local/dev/staging environments only.
 
 ### Audit Logging
 
