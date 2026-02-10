@@ -162,56 +162,84 @@ if not is_valid:
 
 ### Rollback Procedures
 
-All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+All development operations MUST have a rollback path completing in <5 minutes. This agent manages Django development and local/staging environments.
 
-**Django-specific rollback commands**:
-
-1. **Database migration rollback**:
-   ```bash
-   python manage.py migrate app_name 0003_previous_migration  # Rollback to previous
-   python manage.py migrate app_name zero  # Rollback entire app
-   python manage.py showmigrations  # Show current state
-   ```
-
-2. **Package dependency rollback**:
-   ```bash
-   git checkout HEAD~1 -- requirements.txt
-   pip install -r requirements.txt
-   pip install django==4.2.0  # Specify known-good version
-   ```
-
-3. **Code deployment rollback**:
-   ```bash
-   git revert HEAD --no-edit
-   git reset --hard <commit-hash>
-   systemctl restart gunicorn && systemctl restart celery
-   ```
-
-4. **Static files rollback**:
-   ```bash
-   git checkout HEAD~1 -- staticfiles/
-   python manage.py collectstatic --noinput
-   aws cloudfront create-invalidation --distribution-id <id> --paths "/*"  # Clear CDN cache if applicable
-   ```
-
-5. **Django settings rollback**:
-   ```bash
-   git checkout HEAD~1 -- project/settings.py
-   touch project/wsgi.py  # Trigger reload
-   ```
-
-6. **Database data rollback**:
-   ```bash
-   pg_restore -d database_name backup_file.dump  # PostgreSQL
-   mysql database_name < backup_file.sql  # MySQL
-   ```
-
-**Rollback Validation**: After rollback, verify application health:
+**Source Code Rollback**:
 ```bash
-python manage.py check
-python manage.py test --failfast
-curl -f http://localhost:8000/health/ || echo "Health check failed"
+# Revert code changes
+git revert HEAD --no-edit && git push origin feature-branch
+
+# Restore specific files
+git checkout HEAD~1 -- myapp/
+
+# Discard uncommitted changes
+git checkout . && git clean -fd
 ```
+
+**Dependencies Rollback**:
+```bash
+# Restore from requirements.txt
+pip install -r requirements.txt
+
+# Rollback specific package
+pip install django==<previous-version>
+
+# Reset virtual environment
+deactivate && rm -rf venv && python -m venv venv && source venv/bin/activate && pip install -r requirements.txt
+```
+
+**Local Database Rollback** (development):
+```bash
+# Rollback migration (local dev DB)
+python manage.py migrate app_name 0003_previous_migration
+
+# Rollback entire app migrations
+python manage.py migrate app_name zero
+
+# Show migration status
+python manage.py showmigrations
+
+# Reset local database
+dropdb myapp_dev && createdb myapp_dev && python manage.py migrate
+```
+
+**Static Files Rollback**:
+```bash
+# Restore previous static files
+git checkout HEAD~1 -- static/ staticfiles/
+
+# Recollect static files
+python manage.py collectstatic --noinput
+```
+
+**Configuration Rollback**:
+```bash
+# Restore settings
+git checkout HEAD~1 -- project/settings.py
+
+# Restore local settings
+cp project/settings/local.py.backup project/settings/local.py
+
+# Restart development server
+pkill -f "python manage.py runserver" && python manage.py runserver
+```
+
+**Rollback Validation**:
+```bash
+# Run Django checks
+python manage.py check
+
+# Run tests
+python manage.py test --failfast
+
+# Check local server
+curl http://localhost:8000/health/
+
+# Verify migrations
+python manage.py showmigrations
+```
+
+**Note**: Production deployments (gunicorn, celery, CDN invalidation, production databases) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
 
 ### Audit Logging
 

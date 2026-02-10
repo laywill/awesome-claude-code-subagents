@@ -155,83 +155,79 @@ func ValidateRequest[T any](next func(*T) error) func(*T) error {
 
 ### Rollback Procedures
 
-All operations MUST have rollback path completing in <5 minutes. Write and test rollback scripts before executing.
+All development operations MUST have rollback path completing in <5 minutes. This agent manages Go development and local/staging environments.
 
-**Go Deployment Rollback Commands**:
+**Source Code Rollback**:
 ```bash
-# Revert to previous Go module version
+# Revert code changes
+git revert HEAD && git push origin feature-branch
+
+# Restore specific files
+git checkout HEAD~1 -- main.go
+
+# Discard uncommitted changes
+git checkout . && git clean -fd
+```
+
+**Go Modules Rollback**:
+```bash
+# Restore from go.sum
+go mod download
+
+# Rollback specific module
 go get github.com/lib/pq@v1.10.8 && go mod tidy
 
-# Roll back migration (golang-migrate)
-migrate -path ./migrations -database "postgres://localhost:5432/db" down 1
-
-# Revert Docker image
-docker pull myregistry.io/goapp:v1.2.3 && docker tag myregistry.io/goapp:v1.2.3 myregistry.io/goapp:latest && kubectl set image deployment/goapp goapp=myregistry.io/goapp:v1.2.3
-
-# Kubernetes rollback
-kubectl rollout undo deployment/goapp -n production
-
-# Git revert
-git revert HEAD~1 --no-edit && git push origin main
-
-# Restore config backup
-cp config.yaml.backup config.yaml && go build -o ./bin/app ./cmd/app
+# Reset to clean state
+rm go.sum && go mod tidy
 ```
 
-**Automated Rollback**:
-```go
-package rollback
+**Local Database Rollback** (development):
+```bash
+# Rollback migration (golang-migrate)
+migrate -path ./migrations -database "postgres://localhost:5432/myapp_dev" down 1
 
-import (
-    "context"
-    "fmt"
-    "os/exec"
-    "time"
-    "github.com/sirupsen/logrus"
-)
-
-type RollbackService struct{ logger *logrus.Logger }
-
-type RollbackResult struct {
-    Success  bool
-    Duration time.Duration
-    Error    error
-}
-
-func (s *RollbackService) RollbackDeployment(ctx context.Context, deploymentID string) RollbackResult {
-    start := time.Now()
-    rollbackCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
-    defer cancel()
-
-    if err := s.executeCommand(rollbackCtx, "kubectl", "rollout", "undo", "deployment/goapp", "-n", "production"); err != nil {
-        return RollbackResult{Success: false, Duration: time.Since(start), Error: err}
-    }
-    if err := s.executeCommand(rollbackCtx, "migrate", "-path", "./migrations", "-database", "postgres://localhost:5432/db", "down", "1"); err != nil {
-        return RollbackResult{Success: false, Duration: time.Since(start), Error: err}
-    }
-    if err := s.clearCache(rollbackCtx, deploymentID); err != nil {
-        s.logger.WithError(err).Warn("Cache clear failed, continuing")
-    }
-
-    duration := time.Since(start)
-    s.logger.WithFields(logrus.Fields{"deployment_id": deploymentID, "duration_ms": duration.Milliseconds()}).Info("Rollback completed")
-    return RollbackResult{Success: true, Duration: duration, Error: nil}
-}
-
-func (s *RollbackService) executeCommand(ctx context.Context, name string, args ...string) error {
-    cmd := exec.CommandContext(ctx, name, args...)
-    if output, err := cmd.CombinedOutput(); err != nil {
-        return fmt.Errorf("command failed: %s: %w: %s", name, err, output)
-    }
-    return nil
-}
-
-func (s *RollbackService) clearCache(ctx context.Context, deploymentID string) error {
-    return nil // Implementation depends on cache backend
-}
+# Reset local database
+dropdb myapp_dev && createdb myapp_dev && migrate -path ./migrations -database "postgres://localhost:5432/myapp_dev" up
 ```
 
-**Rollback Validation**: Verify via `kubectl get pods -n production`, check DB schema version `SELECT version FROM schema_migrations`, validate app serving traffic via `curl http://app/health`.
+**Build Artifacts Rollback**:
+```bash
+# Clean build artifacts
+go clean -cache -modcache -testcache
+rm -rf ./bin/ ./dist/
+
+# Rebuild from clean state
+go build -o ./bin/app ./cmd/app
+```
+
+**Local Development Rollback**:
+```bash
+# Restore config
+cp config.yaml.backup config.yaml
+
+# Reset environment
+cp .env.backup .env
+
+# Rebuild and restart
+go build -o ./bin/app ./cmd/app && ./bin/app
+```
+
+**Rollback Validation**:
+```bash
+# Verify build succeeds
+go build ./...
+
+# Run tests
+go test ./...
+
+# Check local app
+curl http://localhost:8080/health
+
+# Verify database version
+psql myapp_dev -c "SELECT version FROM schema_migrations"
+```
+
+**Note**: Production deployments (Kubernetes, Docker registries, production databases) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
 
 ### Audit Logging
 

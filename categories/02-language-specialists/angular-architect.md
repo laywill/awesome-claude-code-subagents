@@ -150,27 +150,82 @@ export function validateEnvironment(env: string): boolean {
 
 ### Rollback Procedures
 
-All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+All development operations MUST have a rollback path completing in <5 minutes. This agent manages Angular development and local/staging environments.
 
-**Git revert**: `git revert HEAD --no-edit && git push origin main` or `git revert <commit-hash> --no-edit && git push origin main`
+**Source Code Rollback**:
+```bash
+# Revert code changes
+git revert HEAD && git push origin feature-branch
 
-**Angular build rollback**: `cp -r dist/backup/previous-build/* dist/app/` or checkout previous tag: `git checkout v1.2.3 && npm ci && ng build --configuration=production`
+# Restore specific files
+git checkout HEAD~1 -- src/app/
 
-**Deployment rollback (containerized)**: Docker: `docker stop angular-app && docker run -d --name angular-app -p 80:80 myregistry/angular-app:v1.2.3`. Kubernetes: `kubectl rollout undo deployment/angular-app -n production && kubectl rollout status deployment/angular-app -n production`
-
-**NPM dependency rollback**: `git checkout HEAD~1 -- package-lock.json package.json && npm ci && ng build --configuration=production` or restore from backup: `cp package-lock.backup.json package-lock.json && npm ci`
-
-**NgRx state schema rollback**:
-```typescript
-export function migrateState(state: any): AppState {
-  const version = state?.version || 1;
-  return version < CURRENT_VERSION ? getPreviousStateSchema(state) : state;
-}
+# Discard uncommitted changes
+git checkout . && git clean -fd
 ```
 
-**Configuration rollback**: `git checkout production -- src/environments/environment.prod.ts && ng build --configuration=production`
+**Dependencies Rollback**:
+```bash
+# Restore from package-lock.json
+npm ci
 
-**Rollback Validation**: After rollback, verify app builds (`ng build --configuration=production`), unit tests pass (`ng test --watch=false`), E2E tests pass (`ng e2e`), bundle size within budget, Lighthouse score >90 (if applicable).
+# Rollback specific packages
+npm install @angular/core@<previous-version> --save-exact
+
+# Reset to clean state
+rm -rf node_modules package-lock.json && npm install
+```
+
+**Build Artifacts Rollback**:
+```bash
+# Clean build directory
+rm -rf dist/ .angular/cache/
+
+# Restore previous build (if backed up)
+cp -r dist.backup/ dist/
+
+# Rebuild from source
+ng build
+```
+
+**Local Configuration Rollback**:
+```bash
+# Restore environment config
+git checkout HEAD~1 -- src/environments/environment.ts
+
+# Restore from backup
+cp src/environments/environment.backup.ts src/environments/environment.ts
+
+# Rebuild with restored config
+ng build
+```
+
+**Local Development Server Rollback**:
+```bash
+# Restart development server
+pkill -f "ng serve" && ng serve
+
+# Reset state management (NgRx)
+rm -rf .angular/cache/
+localStorage.clear()  # In browser console
+```
+
+**Rollback Validation**:
+```bash
+# Verify build succeeds
+ng build
+
+# Run unit tests
+ng test --watch=false
+
+# Run E2E tests (local)
+ng e2e
+
+# Check bundle size
+ng build --configuration=production --stats-json
+```
+
+**Note**: Production deployments (Docker, Kubernetes, CDN) are handled by deployment/infrastructure agents. This development agent manages local/dev/staging environments only.
 
 ### Audit Logging
 
