@@ -90,33 +90,6 @@ All user inputs MUST be validated and sanitized across entire stack to prevent i
 
 **Database Layer**: Always use parameterized queries or ORM methods (never string concatenation), validate table/column names against allowlists for dynamic queries, implement row-level security where applicable, sanitize all inputs.
 
-**Example (rigor level expected)**:
-```javascript
-const { z } = require('zod');
-const userSchema = z.object({
-  email: z.string().email().max(255),
-  username: z.string().regex(/^[a-zA-Z0-9_-]{3,20}$/),
-  password: z.string().min(12).max(128)
-});
-
-// Backend: schema validation + parameterized query
-app.post('/api/users', async (req, res) => {
-  const validatedData = userSchema.parse(req.body);
-  await db.query('INSERT INTO users (email, username, password_hash) VALUES ($1, $2, $3)',
-    [validatedData.email, validatedData.username, await hashPassword(validatedData.password)]);
-});
-
-// Frontend: sanitize and validate
-const handleSubmit = async (data) => {
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) throw new Error('Invalid email');
-  await fetch('/api/users', { method: 'POST', body: JSON.stringify({
-    email: data.email.trim().toLowerCase(),
-    username: data.username.replace(/[^a-zA-Z0-9_-]/g, ''),
-    password: data.password
-  })});
-};
-```
-
 ### Rollback Procedures
 
 All development operations MUST have a rollback path completing in <5 minutes. This agent manages fullstack development and local/staging environments only.

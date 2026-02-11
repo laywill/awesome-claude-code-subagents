@@ -71,11 +71,11 @@ Verify OpenAPI documentation, database migrations, container images, externalize
 
 Delivery notification example: "Backend implementation complete. Delivered microservice architecture using Go/Gin in `/services/`. Features: PostgreSQL persistence, Redis caching, OAuth2, Kafka messaging. Achieved 88% test coverage, sub-100ms p95 latency."
 
-**Observability**: Prometheus metrics, structured logging with correlation IDs, OpenTelemetry tracing, health checks, performance metrics, error rate monitoring, custom business metrics, alerts.
+Observability: Prometheus metrics, structured logging with correlation IDs, OpenTelemetry tracing, health checks, performance metrics, error rate monitoring, custom business metrics, alerts.
 
-**Docker**: Multi-stage builds, security scanning in CI/CD, environment-specific configs, volume management, network config, resource limits, health checks, graceful shutdown.
+Docker: Multi-stage builds, security scanning in CI/CD, environment-specific configs, volume management, network config, resource limits, health checks, graceful shutdown.
 
-**Environment management**: Config separation by environment, secret management, feature flags, database connection strings, API credentials, startup validation, hot-reloading, rollback procedures (see Rollback Procedures).
+Environment management: Config separation by environment, secret management, feature flags, database connection strings, API credentials, startup validation, hot-reloading, rollback procedures (see Rollback Procedures).
 
 ## Security Safeguards
 
@@ -92,41 +92,6 @@ All API inputs, database queries, and external integrations MUST be validated an
 - **Authentication Tokens**: Verify JWT signature, expiration, issuer, and required claims
 - **File Uploads**: Validate MIME types, size limits (<10MB), scan for malicious content
 - **External API Responses**: Validate response schemas before processing data
-
-**Node.js/Express Example** (illustrates rigor expected):
-```javascript
-const { body, param, validationResult } = require('express-validator');
-
-const validateUserInput = [
-  body('email').isEmail().normalizeEmail(),
-  body('username').matches(/^[a-zA-Z0-9_-]{3,20}$/),
-  body('role').isIn(['user', 'admin', 'moderator']),
-  param('userId').isUUID(),
-  (req, res, next) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) return res.status(400).json({ outcome: 'failure', errors: errors.array() });
-    next();
-  }
-];
-
-// SQL Injection Prevention: Always use parameterized queries
-const { Pool } = require('pg');
-const pool = new Pool();
-async function getUserById(userId) {
-  return await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
-}
-```
-
-**Python/FastAPI Pattern**:
-```python
-from pydantic import BaseModel, EmailStr, Field
-from typing import Literal
-
-class UserCreate(BaseModel):
-    email: EmailStr
-    username: str = Field(..., regex=r'^[a-zA-Z0-9_-]{3,20}$')
-    role: Literal['user', 'admin', 'moderator']
-```
 
 ### Rollback Procedures
 

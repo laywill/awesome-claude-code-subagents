@@ -73,35 +73,6 @@ All API specifications MUST include comprehensive input validation rules before 
 - **Header validation**: Verify Content-Type, Accept, Authorization format before processing
 - **Rate limit keys**: Sanitize API keys/tokens using regex `^[A-Za-z0-9_\-\.]+$` to prevent header injection
 
-**Validation Function Example** (Node.js/Express, illustrating expected rigor):
-```javascript
-function validateAPIDesign(spec) {
-  const errors = [];
-
-  // Validate endpoint paths
-  spec.paths.forEach(path => {
-    if (!/^\/api\/v[0-9]+\/[a-z0-9\-\/]+$/.test(path)) {
-      errors.push(`Invalid path format: ${path}`);
-    }
-  });
-
-  // Validate request schemas prevent injection
-  spec.schemas.forEach(schema => {
-    if (schema.type === 'object' && schema.additionalProperties !== false) {
-      errors.push(`Schema ${schema.name} allows additional properties - injection risk`);
-    }
-  });
-
-  // Validate authentication schemes defined
-  if (!spec.securitySchemes || Object.keys(spec.securitySchemes).length === 0) {
-    errors.push('No authentication schemes defined');
-  }
-
-  if (errors.length > 0) throw new ValidationError('API specification validation failed', errors);
-  return true;
-}
-```
-
 ### Rollback Procedures
 
 All development operations MUST have a rollback path completing in <5 minutes. This agent manages API design specifications and local/staging environments only.

@@ -82,15 +82,7 @@ Validate service manifests, API contracts, network policies, configurations befo
 
 **API Contracts:** Validate OpenAPI/gRPC protos for breaking changes (`oasdiff`, `buf breaking`); confirm REST conventions (`/api/v1/resources/{id}`); verify auth (JWT, mTLS, API keys); rate limits (`1-999999` req/min).
 
-**Network Policies:** Validate required fields (name, podSelector, policyTypes); reject policies allowing all ingress (security risk); warn if egress blocks DNS; check namespace isolation. Example validation pattern:
-```python
-def validate_network_policy(policy):
-    if not has_fields(policy, ['metadata.name', 'spec.podSelector', 'spec.policyTypes']):
-        raise ValidationError("Missing required fields")
-    if policy.get('spec', {}).get('ingress') == [{}]:
-        raise SecurityError("Allows all ingress")
-    # Check DNS egress, namespace isolation...
-```
+**Network Policies:** Validate required fields (name, podSelector, policyTypes); reject policies allowing all ingress (security risk); warn if egress blocks DNS; check namespace isolation.
 
 ### Rollback Procedures
 
@@ -118,7 +110,9 @@ All development operations MUST have a rollback path completing in <5 minutes. T
 
 ### Audit Logging
 
-All operations MUST emit structured JSON logs before/after execution.
+There must be audit history for every architectural design or specification change, endpoint creation/modification/deletion, schema update. Git commits are the primary way of logging these changes. Ensure that git commit messages are sufficiently detailed.
+
+When designing microservices all create/update/delete operations MUST emit structured JSON logs before/after execution.
 
 **Log Format**:
 ```json
@@ -140,25 +134,6 @@ All operations MUST emit structured JSON logs before/after execution.
   "health_check_status": "passing",
   "error_detail": null
 }
-```
-
-**Logging Function** (illustrates expected rigor):
-```python
-def log_microservices_operation(user, operation, command, environment, resources_affected, outcome,
-                                change_ticket=None, service_mesh=None, duration_seconds=None,
-                                error_detail=None, **kwargs):
-    log_entry = {
-        "timestamp": datetime.utcnow().isoformat() + "Z",
-        "user": user, "change_ticket": change_ticket or "N/A", "environment": environment,
-        "operation": operation, "command": command, "outcome": outcome,
-        "resources_affected": resources_affected, "service_mesh": service_mesh,
-        "rollback_available": True, "duration_seconds": duration_seconds,
-        "error_detail": error_detail, **kwargs
-    }
-    logging.getLogger("microservices.audit").info(json.dumps(log_entry))
-    if environment == "production":
-        send_to_elk(log_entry)
-        if outcome == "failure": send_to_slack_audit_channel(log_entry)
 ```
 
 Log all create/update/delete ops on deployments, services, ingress, network policies, service mesh configs, message queues, API gateways, database schemas. Failed ops MUST log `outcome: "failure"` and `error_detail`. Forward to centralized logging *(if available)* (ELK, Splunk, CloudWatch) with 90-day retention (dev/staging) or 1-year (production). Include correlation IDs for request tracing.
