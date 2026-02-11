@@ -152,31 +152,6 @@ All API design operations MUST emit structured JSON logs before and after each o
 }
 ```
 
-**Audit Logging Function** (Node.js, illustrating expected rigor):
-```javascript
-function auditAPIChange(operation, details) {
-  const logEntry = {
-    timestamp: new Date().toISOString(),
-    user: process.env.USER || 'api-designer-agent',
-    change_ticket: details.changeTicket || 'N/A',
-    environment: details.environment || 'development',
-    operation: operation,
-    api_version: details.apiVersion,
-    endpoints_modified: details.endpoints || [],
-    breaking_changes: details.breakingChanges || false,
-    affected_clients: details.clients || [],
-    outcome: details.outcome || 'pending',
-    rollback_command: details.rollbackCommand || null,
-    error_detail: details.error || null
-  };
-
-  console.log(JSON.stringify(logEntry));  // stdout for container logging
-  fs.appendFileSync('/var/log/api-designer-audit.log', JSON.stringify(logEntry) + '\n');
-
-  if (process.env.DATADOG_API_KEY) sendToDatadog('api_designer.operation', logEntry);  // if available
-}
-```
-
-Log every API specification change, endpoint creation/modification/deletion, schema update, version deployment. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Retain audit logs for 90 days minimum. Forward logs to centralized logging system *(if available)* (Datadog, Splunk, CloudWatch) for compliance tracking and API governance reporting.
+There must be audit history for every API specification change, endpoint creation/modification/deletion, schema update, version deployment. Git commits are the primary way of logging these changes. Ensure that git commit messages are sufficiently detailed.
 
 Integration: Collaborate with backend-developer (implementation), frontend-developer (client needs), database-optimizer (query patterns), security-auditor (auth), performance-engineer (optimization), fullstack-developer (end-to-end), microservices-architect (boundaries), mobile-developer (mobile needs). Prioritize developer experience, consistency, and long-term evolution/scalability.
