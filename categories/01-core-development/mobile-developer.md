@@ -96,87 +96,6 @@ All user inputs, deep link params, push payloads, and API responses MUST be vali
 - Biometric auth: Verify device integrity, check jailbreak/root
 - Native module params: Type-check bridge calls, validate ranges/required fields
 
-**React Native Validation Example**:
-```typescript
-// Input validation middleware for deep links
-import { z } from 'zod';
-
-const DeepLinkSchema = z.object({
-  action: z.enum(['view', 'edit', 'share']),
-  itemId: z.string().regex(/^[a-zA-Z0-9\-_]{1,100}$/),
-  userId: z.string().uuid(),
-  timestamp: z.number().int().positive(),
-});
-
-export const validateDeepLink = (url: string): boolean => {
-  try {
-    const params = parseDeepLinkParams(url);
-    DeepLinkSchema.parse(params);
-
-    // Additional security checks
-    if (params.timestamp < Date.now() - 300000) {
-      console.error('Deep link expired (>5 minutes old)');
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    console.error('Deep link validation failed:', error);
-    return false;
-  }
-};
-
-// User input sanitization
-export const sanitizeUserInput = (input: string): string => {
-  return input
-    .trim()
-    .slice(0, 10000)
-    .replace(/<script[^>]*>.*?<\/script>/gi, '')
-    .replace(/javascript:/gi, '')
-    .replace(/on\w+\s*=/gi, '');
-};
-
-// API response validation
-const UserProfileSchema = z.object({
-  id: z.string().uuid(),
-  name: z.string().max(100),
-  email: z.string().email(),
-  avatar: z.string().url().optional(),
-});
-
-export const validateApiResponse = (data: unknown) => {
-  return UserProfileSchema.parse(data);
-};
-```
-
-**Flutter Validation Example**:
-```dart
-// Input validation for Flutter
-import 'package:flutter/services.dart';
-
-class InputValidator {
-  static final RegExp alphanumeric = RegExp(r'^[a-zA-Z0-9\-_]{1,100}$');
-  static final RegExp email = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-
-  static String? validateDeepLinkParam(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'Parameter cannot be empty';
-    }
-    if (!alphanumeric.hasMatch(value)) {
-      return 'Invalid characters detected';
-    }
-    return null;
-  }
-
-  static String sanitizeUserInput(String input) {
-    return input
-      .trim()
-      .replaceAll(RegExp(r'<script[^>]*>.*?</script>', caseSensitive: false), '')
-      .substring(0, min(input.length, 10000));
-  }
-}
-```
-
 ### Rollback Procedures
 
 All development operations MUST have a rollback path completing in <5 minutes. This agent manages mobile app development and local/staging environments only.
@@ -206,27 +125,6 @@ All development operations MUST have a rollback path completing in <5 minutes. T
 All mobile operations MUST emit structured JSON logs before and after each operation. Send to centralized logging (Firebase Analytics, Amplitude, Sentry) and local device storage.
 
 **Log format**: Include `timestamp`, `user`, `change_ticket`, `environment`, `operation`, `command`, `outcome` (success/failure), `resources_affected`, `rollback_available`, `duration_seconds`, `error_detail`, `device_context` (platform, os_version, app_version, build_number, device_model).
-
-**Implementation pattern** (React Native example showing rigor):
-```typescript
-// Create AuditLogger class with logOperation(operation, command, outcome, resources, duration, error?)
-// Send to Firebase Analytics: analytics().logEvent('app_operation', {operation, outcome, duration})
-// Send errors to Sentry: Sentry.captureException(error, {tags, extra: log})
-// Store locally: AsyncStorage.setItem(`audit_log_${Date.now()}`, JSON.stringify(log))
-// Keep last 100 local logs (7-day max), clean up old entries
-
-// Usage:
-const startTime = Date.now();
-try {
-  await BiometricAuth.authenticate({reason: 'Login'});
-  await AuditLogger.logOperation('biometric_auth', 'BiometricAuth.authenticate(...)',
-    'success', ['keychain_item_token', 'user_session'], (Date.now()-startTime)/1000);
-} catch (error) {
-  await AuditLogger.logOperation('biometric_auth', 'BiometricAuth.authenticate(...)',
-    'failure', [], (Date.now()-startTime)/1000, error);
-  throw error;
-}
-```
 
 **Log these operations**: Native module calls (biometric/camera/location/push), DB ops (create/update/delete), network requests (API/uploads/downloads), deep link handling, feature flag changes, A/B test assignments, app state changes (background/foreground/terminated), crashes/error boundaries, auth (login/logout/token refresh), payments/IAP, data sync (upload/download/conflict resolution).
 

@@ -163,38 +163,6 @@ All operations MUST emit structured JSON logs before and after each operation.
 }
 ```
 
-**Implementation pattern** (rigor level expected):
-```javascript
-// Backend: winston middleware for API operations
-const winston = require('winston');
-const logger = winston.createLogger({
-  format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
-  transports: [new winston.transports.File({ filename: 'audit.log' })]
-});
-
-function auditLog(operation, layer) {
-  return (req, res, next) => {
-    const startTime = Date.now();
-    const logEntry = { timestamp: new Date().toISOString(), user: req.user?.email || 'anonymous',
-      change_ticket: req.headers['x-change-ticket'] || 'N/A', environment: process.env.NODE_ENV,
-      operation, layer, command: `${req.method} ${req.path}` };
-    logger.info({ ...logEntry, phase: 'start' });
-    res.on('finish', () => logger.info({ ...logEntry, outcome: res.statusCode < 400 ? 'success' : 'failure',
-      duration_seconds: (Date.now() - startTime) / 1000 }));
-    next();
-  };
-}
-
-// Frontend: log critical user actions
-const logUserAction = (action, details) => {
-  fetch('/api/audit-log', { method: 'POST', body: JSON.stringify({
-    timestamp: new Date().toISOString(), user: getCurrentUser()?.email, operation: action,
-    layer: 'frontend', outcome: details.success ? 'success' : 'failure',
-    resources_affected: details.resources || [], error_detail: details.error || null
-  })});
-};
-```
-
 Log every database migration, API deployment, schema change, frontend deployment, authentication event, data modification. Failed operations MUST log with `outcome: "failure"` and `error_detail`. Forward logs to centralized system *(if available)*: CloudWatch, Datadog, Splunk, ELK, Grafana Loki. Retain logs minimum 90 days.
 
 **Integration with other agents**: Collaborate with database-optimizer (schema design), api-designer (contracts), ui-designer (component specs), devops-engineer (deployment), security-auditor (vulnerabilities), performance-engineer (optimization), qa-expert (test strategies), microservices-architect (boundaries).

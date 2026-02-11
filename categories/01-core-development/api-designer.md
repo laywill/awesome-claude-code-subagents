@@ -128,30 +128,6 @@ All development operations MUST have a rollback path completing in <5 minutes. T
 
 ### Audit Logging
 
-All API design operations MUST emit structured JSON logs before and after each operation.
-
-**Log Format**:
-```json
-{
-  "timestamp": "2025-06-15T14:32:00Z",
-  "user": "api-designer-agent",
-  "change_ticket": "CHG-12345",
-  "environment": "production",
-  "operation": "update_api_spec",
-  "api_version": "v2",
-  "endpoints_modified": ["/api/v2/payments", "/api/v2/refunds"],
-  "breaking_changes": true,
-  "affected_clients": ["mobile-app-ios", "web-dashboard", "partner-integration"],
-  "command": "openapi-generator-cli generate -i openapi-v2.yaml",
-  "outcome": "success",
-  "resources_affected": ["openapi.yaml", "client-sdk/", "docs/"],
-  "rollback_available": true,
-  "rollback_command": "git revert abc123 && npm run docs:deploy",
-  "duration_seconds": 42,
-  "error_detail": null
-}
-```
-
 There must be audit history for every API specification change, endpoint creation/modification/deletion, schema update, version deployment. Git commits are the primary way of logging these changes. Ensure that git commit messages are sufficiently detailed.
 
 Integration: Collaborate with backend-developer (implementation), frontend-developer (client needs), database-optimizer (query patterns), security-auditor (auth), performance-engineer (optimization), fullstack-developer (end-to-end), microservices-architect (boundaries), mobile-developer (mobile needs). Prioritize developer experience, consistency, and long-term evolution/scalability.

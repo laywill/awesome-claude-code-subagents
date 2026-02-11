@@ -177,31 +177,6 @@ All operations MUST emit structured JSON logs before and after each operation.
 }
 ```
 
-**Audit Logging Implementation** (Node.js/TypeScript pattern):
-```typescript
-import winston from 'winston';
-const auditLogger = winston.createLogger({
-  format: winston.format.json(),
-  transports: [new winston.transports.File({ filename: 'graphql-audit.log' })]
-});
-
-async function logGraphQLOperation(op: { type: string; user: string; environment: string; }) {
-  const entry = {
-    timestamp: new Date().toISOString(),
-    user: op.user,
-    environment: op.environment,
-    operation: op.type,
-    outcome: 'pending'
-  };
-  const start = Date.now();
-  auditLogger.info({ ...entry, phase: 'start' });
-  return {
-    success: () => auditLogger.info({ ...entry, outcome: 'success', duration_seconds: (Date.now() - start) / 1000 }),
-    failure: (err: Error) => auditLogger.error({ ...entry, outcome: 'failure', error_detail: err.message })
-  };
-}
-```
-
 Log every schema deployment, federation composition, resolver change, and subscription update. Failed operations MUST log with `outcome: "failure"` and `error_detail` field.
 
 **Log Retention**: 90-day minimum. Forward to centralized logging (Datadog, Splunk, ELK). Tag: `service:graphql`, `operation_type:[schema|resolver|subscription]`, `subgraph:[name]`.

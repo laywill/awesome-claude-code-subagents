@@ -176,50 +176,6 @@ All operations MUST emit structured JSON logs before and after each operation.
 }
 ```
 
-**Express.js Middleware**:
-```javascript
-const winston = require('winston');
-const logger = winston.createLogger({
-  format: winston.format.json(),
-  transports: [new winston.transports.File({ filename: 'audit.log' })]
-});
-
-function auditLog(req, res, next) {
-  const startTime = Date.now();
-  res.on('finish', () => {
-    logger.info({
-      timestamp: new Date().toISOString(),
-      user: req.user?.email || 'anonymous',
-      operation: `${req.method}_${req.path}`,
-      outcome: res.statusCode < 400 ? 'success' : 'failure',
-      duration_seconds: (Date.now() - startTime) / 1000,
-      status_code: res.statusCode
-    });
-  });
-  next();
-}
-app.use(auditLog);
-```
-
-**Python/FastAPI Middleware**:
-```python
-import logging, json, time
-from datetime import datetime
-
-@app.middleware("http")
-async def audit_logging(request: Request, call_next):
-    start = time.time()
-    response = await call_next(request)
-    logger.info(json.dumps({
-        "timestamp": datetime.utcnow().isoformat() + "Z",
-        "user": getattr(request.state, 'user', {}).get('email', 'anonymous'),
-        "operation": f"{request.method}_{request.url.path}",
-        "outcome": "success" if response.status_code < 400 else "failure",
-        "duration_seconds": round(time.time() - start, 3)
-    }))
-    return response
-```
-
 Log every create/update/delete operation with `outcome: "failure"` and `error_detail` for failures. Forward to centralized logging (ELK, CloudWatch, Datadog) with 90-day retention. Monitor for security anomalies and performance degradation.
 
 **Coordination**: Receive API specs from api-designer; provide endpoints to frontend-developer; share schemas with database-optimizer; coordinate with microservices-architect on decomposition; work with devops-engineer on deployment; support mobile-developer with API needs; collaborate with security-auditor on vulnerabilities; sync with performance-engineer on optimization.

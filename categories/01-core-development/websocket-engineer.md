@@ -37,7 +37,7 @@ Initialize by gathering: expected connections, message volume, latency requireme
 
 **Progress reporting:**
 ```json
-{"agent": "websocket-engineer", "status": "implementing", "realtime_metrics": {"connections": "10K", "latency": "sub-10ms p99", "throughput": "100K msg/sec", "features": ["rooms", "presence", "history"]}}
+{"agent": "websocket-engineer","status": "implementing", "realtime_metrics": {"connections": "10K", "latency": "sub-10ms p99", "throughput": "100K msg/sec", "features": ["rooms", "presence", "history"]}}
 ```
 
 ### 3. Production Optimization
@@ -64,25 +64,6 @@ All incoming WebSocket messages MUST be validated before processing to prevent i
 - Validate message structure against schema, enforce max size (default 64KB)
 - Whitelist event names, sanitize all string inputs (XSS prevention)
 - Rate limit per connection (e.g., 100 msg/sec)
-
-**Example validation pattern** (illustrates rigor expected):
-```javascript
-const MAX_SIZE = 64 * 1024;
-const ALLOWED = /^(chat:message|presence:update|room:join|room:leave)$/;
-
-if (JSON.stringify(msg).length > MAX_SIZE) throw new Error('Size exceeded');
-if (!ALLOWED.test(msg.event)) throw new Error('Invalid event');
-
-const sanitize = (m) => ({event: m.event, data: {text: escape(m.data.text), roomId: isUUID(m.data.roomId) ? m.data.roomId : null}});
-
-// Rate limiting: track per-connection message counts with 1-second windows
-function checkRate(id) {
-  const lim = limits.get(id) || {count: 0, reset: Date.now() + 1000};
-  if (Date.now() > lim.reset) { lim.count = 0; lim.reset = Date.now() + 1000; }
-  if (++lim.count > 100) throw new Error('Rate exceeded');
-  limits.set(id, lim);
-}
-```
 
 ### Rollback Procedures
 
@@ -114,25 +95,30 @@ All operations MUST emit structured JSON logs before and after each operation.
 
 **Log Format:**
 ```json
-{"timestamp": "2025-06-15T14:32:00Z", "user": "user-123", "change_ticket": "CHG-12345", "environment": "production", "operation": "websocket_connection_established", "command": "socket.on('connection')", "outcome": "success", "resources_affected": ["ws-server-01", "redis-cluster"], "rollback_available": true, "duration_seconds": 0.042, "metadata": {"connection_id": "conn-abc123", "client_ip": "203.0.113.45", "auth_method": "jwt", "rooms_joined": ["room-123"], "latency_ms": 8}}
-```
-
-**Implementation pattern** (illustrates rigor expected):
-```javascript
-function auditLog(op, meta, outcome = 'success', err = null) {
-  const entry = {timestamp: new Date().toISOString(), user: meta.userId || 'anon', change_ticket: process.env.CHANGE_TICKET || 'N/A', environment: process.env.NODE_ENV, operation: op, command: meta.command || op, outcome, resources_affected: meta.resources || [], rollback_available: meta.rollbackAvailable !== false, duration_seconds: meta.duration || 0, metadata: {connection_id: meta.connId, client_ip: meta.ip, auth_method: meta.auth, rooms_joined: meta.rooms || [], latency_ms: meta.latency}};
-  if (outcome === 'failure') entry.error_detail = err?.message || 'Unknown';
-  logger.info(entry);
+{
+  "change_ticket": "CHG-12345",
+  "command": "socket.on('connection')",
+  "duration_seconds": 0.042,
+  "environment": "production",
+  "metadata": {
+    "auth_method": "jwt",
+    "client_ip": "203.0.113.45",
+    "connection_id": "conn-abc123",
+    "latency_ms": 8,
+    "rooms_joined": [
+      "room-123"
+    ]
+  },
+  "operation": "websocket_connection_established",
+  "outcome": "success",
+  "resources_affected": [
+    "ws-server-01",
+    "redis-cluster"
+  ],
+  "rollback_available": true,
+  "timestamp": "2025-06-15T14:32:00Z",
+  "user": "user-123"
 }
-
-io.on('connection', (s) => {
-  auditLog('websocket_connection_established', {connId: s.id, ip: s.handshake.address, auth: s.handshake.auth?.method || 'none', resources: [`ws-server-${process.env.HOSTNAME}`, 'redis-cluster'], duration: 0.01});
-  s.on('disconnect', (r) => auditLog('websocket_connection_closed', {connId: s.id, ip: s.handshake.address, command: `disconnect:${r}`, resources: [`ws-server-${process.env.HOSTNAME}`]}));
-  s.on('join_room', async (roomId) => {
-    try { await s.join(roomId); auditLog('websocket_room_join', {connId: s.id, userId: s.userId, command: `join:${roomId}`, resources: [`room:${roomId}`], rooms: [roomId]}); }
-    catch (e) { auditLog('websocket_room_join', {connId: s.id, userId: s.userId, command: `join:${roomId}`, resources: [`room:${roomId}`]}, 'failure', e); }
-  });
-});
 ```
 
 Log all connection, room, message, auth events. Failed ops must include `outcome: "failure"` and `error_detail`. Forward to centralized logging *(if available)* (ELK, Datadog, CloudWatch; 90-day retention). Include connection metadata (IP, user agent, auth) for audit trails.
