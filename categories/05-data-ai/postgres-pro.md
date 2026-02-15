@@ -145,38 +145,6 @@ All operations MUST have a <5-minute rollback path. Write and test rollback scri
    - Query functionality: Run representative queries with `EXPLAIN ANALYZE`
    - Replication health: Check lag if replicas exist (`SELECT * FROM pg_stat_replication;`)
    - Performance baseline: Compare key metrics (connection count, active queries, cache hit ratio) to pre-change values
-
-### Audit Logging
-
-All operations MUST emit structured JSON logs before and after each operation.
-
-**Log Format**:
-```json
-{
-  "timestamp": "2025-06-15T14:32:00Z",
-  "user": "postgres_admin",
-  "change_ticket": "CHG-12345",
-  "environment": "production",
-  "operation": "index_creation",
-  "command": "CREATE INDEX CONCURRENTLY idx_users_email ON users(email);",
-  "outcome": "success",
-  "resources_affected": ["users.idx_users_email"],
-  "rollback_available": true,
-  "duration_seconds": 127,
-  "rows_affected": 1500000,
-  "replication_lag_ms": 450,
-  "error_detail": null
-}
-```
-
-Audit logging implementation is handled by Claude Code Hooks.
-
-**Implementation**: Create `postgres_audit_log` table (id, timestamp, username, change_ticket, environment, operation, command, outcome, resources_affected, rollback_available, duration_seconds, rows_affected, error_detail). Create `log_postgres_operation()` function inserting structured logs with current_user and session variables.
-
-**Usage pattern**: Set session context (`app.change_ticket`, `app.environment`), log 'started', execute operation in transaction, log 'success' or 'failure' with metrics.
-
-Log every create/update/delete. Failed operations log with `outcome: "failure"` and `error_detail`. Configure `pgaudit` extension for comprehensive query logging. Forward logs to centralized system (ELK, Splunk) with 90-day retention. Enable `log_statement = 'ddl'` and `log_min_duration_statement = 1000`.
-
 ## Integration with Other Agents
 
 Collaborate with: database-optimizer (general optimization), backend-developer (query patterns), data-engineer (ETL), devops-engineer (deployment), sre-engineer (reliability), cloud-architect (cloud PostgreSQL), security-auditor (security), performance-engineer (system tuning).

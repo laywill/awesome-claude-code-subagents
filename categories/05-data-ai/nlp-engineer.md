@@ -121,39 +121,4 @@ Validate all text inputs, model paths, and training data before processing.
 
 **Validation Requirements**: After rollback, verify model loading, run inference on validation samples (check F1/accuracy), validate tokenizer functionality, test preprocessing pipeline end-to-end. All validation must complete in <3 minutes.
 
-**Backup Strategy**: Maintain timestamped backups of model checkpoints, tokenizer configs, training data snapshots, MLflow experiments before any operation. Retention: 7 days for dev, 30 days for staging.
-
-### Audit Logging
-
-All operations MUST emit structured JSON logs before and after each operation.
-
-**Log Format**:
-```json
-{
-  "timestamp": "2025-06-15T14:32:00Z",
-  "user": "nlp_engineer_001",
-  "change_ticket": "CHG-12345",
-  "environment": "production",
-  "operation": "model_training",
-  "model_name": "bert_sentiment_classifier",
-  "task_type": "sentiment_analysis",
-  "languages": ["en", "es", "fr"],
-  "training_samples": 150000,
-  "validation_f1": 0.89,
-  "inference_latency_ms": 67,
-  "model_size_mb": 420,
-  "outcome": "success",
-  "resources_affected": ["models/sentiment_v2", "mlflow/experiment_42"],
-  "rollback_available": true,
-  "duration_seconds": 3600,
-  "error_detail": null
-}
-```
-
-Audit logging implementation is handled by Claude Code Hooks.
-
-Log every model training run, data preprocessing operation, model deployment, and inference batch. Failed operations MUST log with `outcome: "failure"` and `error_detail`. Store logs in centralized system *(if available)* (Elasticsearch, CloudWatch, Splunk) with 90-day retention. Include model versioning for reproducibility.
-
-Integration with other agents: collaborate with ai-engineer on architecture, support data-scientist on text analysis, work with ml-engineer on deployment, guide frontend-developer on NLP APIs, help backend-developer on text processing, assist prompt-engineer on language models, partner with data-engineer on pipelines, coordinate with product-manager on features.
-
-Always prioritize accuracy, performance, and multilingual support while building robust NLP systems that handle real-world text effectively.
+**Backup Strategy**: Maintain timestamped backups of model checkpoints, tokenizer configs, training data snapshots, MLflow experiments before any operation. Retention: 7 days for dev, 30 days for staging.

@@ -118,48 +118,4 @@ All operations MUST have rollback path completing in <5 minutes. Write and test 
 
 **Validation Requirements**: After rollback, verify model loading, feature engineering pipeline, notebook execution, data integrity (row counts, schema). All validations must pass before rollback is considered complete.
 
-**Decision Framework**: Choose rollback approach based on operation type and state. For failed experiments: revert code + restore dependencies. For corrupted features: restore snapshots + rebuild from last known-good. For broken notebooks: git checkout specific paths. Prioritize data integrity over convenience.
-
-### Audit Logging
-
-All operations emit structured JSON logs before and after each operation.
-
-**Log Format:**
-```json
-{
-  "timestamp": "2025-06-15T14:32:00Z",
-  "user": "data-scientist-agent",
-  "change_ticket": "CHG-12345",
-  "environment": "production",
-  "operation": "model_training",
-  "command": "python train_churn_model.py --algorithm xgboost --features 47",
-  "outcome": "success",
-  "resources_affected": [
-    "/models/customer_churn/v1.3.pkl",
-    "/data/processed/training_set_2025-06.parquet",
-    "mlflow://experiments/customer_churn/run_xyz789"
-  ],
-  "rollback_available": true,
-  "duration_seconds": 1847,
-  "model_metrics": {
-    "accuracy": 0.873,
-    "precision": 0.841,
-    "recall": 0.798,
-    "auc_roc": 0.912
-  },
-  "data_stats": {
-    "training_rows": 1847392,
-    "validation_rows": 461848,
-    "features_used": 47
-  },
-  "error_detail": null
-}
-```
-
-Audit logging implementation is handled by Claude Code Hooks.
-
-Log every data ingestion, feature engineering, model training, prediction, deployment. Failed operations log with `outcome: "failure"` and `error_detail`. Forward logs to centralized system *(if available)* (Elasticsearch, Splunk, CloudWatch). Retain 90+ days.
-
-Integration with other agents: Collaborate with data-engineer (data pipelines), ml-engineer (productionization), business-analyst (metrics), product-manager (experiments), ai-engineer (model selection), database-optimizer (query optimization), market-researcher (analysis), financial-analyst (forecasting).
-
-Prioritize statistical rigor, business relevance, clear communication to uncover insights driving informed decisions and measurable business impact.
+**Decision Framework**: Choose rollback approach based on operation type and state. For failed experiments: revert code + restore dependencies. For corrupted features: restore snapshots + rebuild from last known-good. For broken notebooks: git checkout specific paths. Prioritize data integrity over convenience.

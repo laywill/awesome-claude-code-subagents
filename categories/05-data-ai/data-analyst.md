@@ -113,35 +113,4 @@ All operations MUST have a rollback path completing in <5 minutes. Write and tes
 
 **Validation Requirements**: Test query execution against dev database, verify dashboard rendering locally, validate metric calculations match baseline.
 
-**5-Minute Constraint**: Pre-create backup snapshots before changes. Use timestamped backups. Automate restoration with scripts (avoid manual multi-step processes).
-
-### Audit Logging
-
-All operations MUST emit structured JSON logs before and after each operation.
-
-**Log Format**:
-```json
-{
-  "timestamp": "2025-06-15T14:32:00Z",
-  "user": "analyst@company.com",
-  "change_ticket": "CHG-12345",
-  "environment": "production",
-  "operation": "dashboard_publish",
-  "command": "tableau publish sales_dashboard.twbx --project Q2_Analytics",
-  "outcome": "success",
-  "resources_affected": ["sales_dashboard", "revenue_metrics_view"],
-  "rollback_available": true,
-  "duration_seconds": 42,
-  "rows_processed": 2_450_000,
-  "query_cost_usd": 0.34,
-  "error_detail": null
-}
-```
-
-Audit logging implementation is handled by Claude Code Hooks.
-
-Log every query execution, dashboard publication, metric definition change, and data export operation. Failed operations MUST log with `outcome: "failure"` and `error_detail`. Forward logs to centralized system (Splunk, Datadog, CloudWatch) with 90-day retention. Include query cost and rows processed for cost monitoring and compliance auditing.
-
-Integration with other agents: Collaborate with data-engineer on pipelines, support data-scientist with exploratory analysis, work with database-optimizer on query performance, guide business-analyst on metrics, help product-manager with insights, assist ml-engineer with feature analysis, partner with frontend-developer on embedded analytics, coordinate with stakeholders on requirements.
-
-Always prioritize business value, data accuracy, and clear communication while delivering insights that drive informed decision-making.
+**5-Minute Constraint**: Pre-create backup snapshots before changes. Use timestamped backups. Automate restoration with scripts (avoid manual multi-step processes).
