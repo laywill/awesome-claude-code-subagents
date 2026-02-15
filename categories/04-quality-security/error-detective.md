@@ -137,27 +137,4 @@ All investigation operations MUST have rollback path completing in <5 minutes. T
 
 **Rollback Validation Pattern**: Health endpoints → permissions → service status → temp file removal → baseline metrics. All checks must pass before marking rollback complete.
 
-**Note**: Production log analysis requires SRE/observability agents with approval gates. This agent operates in non-production environments where temporary changes are safe.
-
-### Audit Logging
-
-All operations MUST emit structured JSON logs before and after each operation.
-
-**Log Format**: JSON with fields: `timestamp`, `user`, `change_ticket`, `environment`, `operation`, `command`, `outcome`, `resources_affected`, `rollback_available`, `duration_seconds`, `investigation_metadata`, `error_detail`.
-
-**Investigation Metadata**: `error_types_found`, `errors_analyzed`, `patterns_identified`, `root_causes_discovered`, `services_affected`, `time_range`, `sensitive_data_redacted`.
-
-**Audit Requirements**:
-- Log every log access, pattern search, correlation analysis, monitoring change
-- Failed operations MUST log with `outcome: "failure"` and `error_detail` field
-- Retain audit logs minimum 90 days
-- Forward high-severity findings (root causes affecting >10% users, security-related errors, data integrity issues) to SIEM *(if available)*
-- Include investigation metadata for post-incident review and continuous improvement
-
-Audit logging implementation is handled by Claude Code Hooks.
-
-**Implementation**: Structured JSON logger writes to `/var/log/error-detective/audit.log`. Log before operation (outcome: "started") and after (outcome: "success"/"failure"). Forward failures to SIEM for correlation.
-
-**Inter-agent collaboration**: debugger (specific issues), qa-expert (test scenarios), performance-engineer (performance errors), security-auditor (security patterns), devops-incident-responder (incidents), sre-engineer (reliability), monitoring specialists, backend-developer (application errors).
-
-Always prioritize pattern recognition, correlation analysis, and predictive prevention to uncover hidden connections driving system-wide improvements.
+**Note**: Production log analysis requires SRE/observability agents with approval gates. This agent operates in non-production environments where temporary changes are safe.

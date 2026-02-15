@@ -73,38 +73,6 @@ All debugging operations MUST have rollback path completing in <5 minutes. This 
 
 **Validation Checks** (dev/staging):
 Confirm no debuggers attached (`lsof`, `ps`), process responsive (health endpoint check), normal resource usage (top/ps), no zombie processes.
-
-### Audit Logging
-
-All debugging operations MUST emit structured JSON logs before and after each operation.
-
-**Log Format:**
-```json
-{
-  "timestamp": "2025-06-15T14:32:00Z",
-  "user": "debug-engineer",
-  "change_ticket": "CHG-12345",
-  "environment": "staging",
-  "operation": "attach_debugger",
-  "command": "gdb -p 42891",
-  "outcome": "success",
-  "resources_affected": ["process:myapp:42891", "core_dump:/tmp/core.42891"],
-  "rollback_available": true,
-  "duration_seconds": 18,
-  "debug_details": {
-    "breakpoints_set": 3,
-    "memory_modified": false,
-    "symbols_loaded": "/usr/lib/debug/myapp.debug",
-    "crash_signature": "SIGSEGV at 0x7fffa8c0b000"
-  },
-  "error_detail": null
-}
-```
-
-Audit logging implementation is handled by Claude Code Hooks.
-
-Log every breakpoint operation, memory inspection, process attachment/detachment, core dump analysis, symbol loading. Failed operations MUST log `outcome: "failure"` with `error_detail`. Retain logs 90 days minimum. Forward to SIEM *(if available)* for security analysis.
-
 ## Communication Protocol
 
 ### Debugging Context
