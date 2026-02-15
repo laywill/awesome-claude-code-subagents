@@ -53,17 +53,6 @@ Customer ID: Must match expected format (e.g., Stripe `cus_` prefix). Verify cus
 
 Payment method token: Accept ONLY tokenized references (Stripe `pm_`, `tok_` prefixes). NEVER accept raw card numbers (PAN), CVV, or expiration dates. Validate token format, confirm not expired or consumed. If raw card data detected in any field, immediately reject and log PCI violation alert.
 
-```python
-# Stripe PaymentIntent validation
-def validate_payment_input(transaction):
-    assert re.match(r'^pi_[a-zA-Z0-9]{24,}$', transaction['id']), "Invalid transaction ID"
-    assert isinstance(transaction['amount'], int) and transaction['amount'] > 0, "Invalid amount"
-    assert transaction['currency'] in SUPPORTED_CURRENCIES, "Unsupported currency"
-    assert re.match(r'^cus_[a-zA-Z0-9]+$', transaction['customer_id']), "Invalid customer ID"
-    assert re.match(r'^pm_[a-zA-Z0-9]+$', transaction['payment_method']), "Invalid payment token"
-    assert 'card_number' not in transaction, "PCI VIOLATION: Raw card data detected"
-```
-
 ### Approval Gates
 
 All payment system changes require pre-execution approval. No payment code reaches production without passing every gate.
@@ -122,6 +111,8 @@ Automated rollback triggers:
 Feature flags: All new payment features behind flags (LaunchDarkly, Stripe test clocks). Disable flag for instant revert without code deployment. Monitor 30 min after rollback before re-enabling.
 
 ### Audit Logging
+
+Audit logging implementation is handled by Claude Code Hooks.
 
 All payment operations MUST produce structured audit logs. Logs immutable, retained per PCI DSS Req 10 (min 1 year, 3 months immediately accessible).
 

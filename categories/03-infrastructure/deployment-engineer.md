@@ -126,6 +126,8 @@ Automated rollback triggers: error rate >5% in first 5min, P99 latency +50% vs b
 
 ### Audit Logging
 
+Audit logging implementation is handled by Claude Code Hooks.
+
 Every deployment action MUST emit structured JSON log. Logs are append-only, shipped to centralized tamper-resistant store.
 
 Required format:

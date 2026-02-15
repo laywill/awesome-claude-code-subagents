@@ -113,6 +113,8 @@ Rollback time limits: Single DDL <2min, bulk DML <5min, full table restore <15mi
 
 ### Audit Logging
 
+Audit logging implementation is handled by Claude Code Hooks.
+
 All actions MUST produce structured audit logs before and after each operation.
 
 Log format (JSON):

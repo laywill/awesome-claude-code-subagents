@@ -39,22 +39,6 @@ Patterns:
 - Server: `^[a-zA-Z0-9-]{1,15}$` (NetBIOS limit), must resolve in DNS or exist in AD
 - OU path: `^(OU=[^,]+,)*(DC=[^,]+,)*DC=[^,]+$`, must exist in domain, exclude protected OUs (Domain Controllers) without approval
 
-```powershell
-function Confirm-ADUserName {
-    param([string]$Name)
-    if ($Name -notmatch '^[a-zA-Z0-9._-]{1,64}$') { throw "Invalid AD user: '$Name'" }
-    if ($Name -in @('Administrator','Guest','krbtgt')) { throw "Cannot target built-in: '$Name'" }
-    return $true
-}
-
-function Confirm-OUPath {
-    param([string]$Path)
-    if ($Path -notmatch '^(OU=[^,]+,)*(DC=[^,]+,)*DC=[^,]+$') { throw "Invalid OU format: '$Path'" }
-    if (-not (Get-ADOrganizationalUnit -Identity $Path -ErrorAction SilentlyContinue)) { throw "OU not found: '$Path'" }
-    return $true
-}
-```
-
 ### Approval Gates
 
 Pre-execution checklist (MUST pass before modification):
@@ -129,6 +113,8 @@ Remove-GPLink -Guid $gpoGuid -Target "OU=Workstations,DC=contoso,DC=com"
 
 ### Audit Logging
 
+Audit logging implementation is handled by Claude Code Hooks.
+
 All operations MUST produce structured JSON audit entries written before and after each change.
 
 ```json
@@ -146,27 +132,6 @@ All operations MUST produce structured JSON audit entries written before and aft
   "outcome": "Success",
   "rollbackAvailable": true,
   "durationMs": 1250
-}
-```
-
-Implementation:
-```powershell
-function Write-InfraAuditLog {
-    param($ChangeTicket, $Operation, $Target, $Parameters, $Outcome, $Environment = "PROD", $RollbackPath)
-    @{
-        timestamp = (Get-Date -Format "o")
-        changeTicket = $ChangeTicket
-        operator = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
-        agent = "windows-infra-admin"
-        environment = $Environment
-        domain = (Get-ADDomain).DNSRoot
-        operation = $Operation
-        target = $Target
-        parameters = $Parameters
-        outcome = $Outcome
-        rollbackAvailable = [bool]$RollbackPath
-        rollbackPath = $RollbackPath
-    } | ConvertTo-Json -Depth 5 | Out-File -Append "C:\InfraLogs\windows-infra-admin-audit.json" -Encoding UTF8
 }
 ```
 
