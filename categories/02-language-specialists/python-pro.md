@@ -55,43 +55,13 @@ Verify: black formatting, mypy type check, pytest >90%, ruff lint clean, bandit 
 
 Validate all user inputs, external data, API requests before processing.
 
-**Path Traversal Prevention:**
-```python
-from pathlib import Path
+**Path Traversal Prevention**: Resolve the user path against an allowed base directory using `Path.resolve()` and verify it `is_relative_to(allowed_base)` — raise `ValueError` on mismatch.
 
-def validate_file_path(user_path: str, allowed_base: Path) -> Path:
-    resolved = (allowed_base / user_path).resolve()
-    if not resolved.is_relative_to(allowed_base):
-        raise ValueError(f"Path traversal: {user_path}")
-    return resolved
-```
+**Pydantic Input Sanitization**: Use `Field(..., regex=...)` for format constraints and `@validator` for semantic rules (e.g., reject reserved usernames like `admin`, `root`).
 
-**Pydantic Input Sanitization:**
-```python
-from pydantic import BaseModel, Field, validator
+**SQL Injection Prevention**: Always use parameterized queries (ORM expressions or `?` placeholders). Never concatenate user input into SQL strings.
 
-class UserInput(BaseModel):
-    username: str = Field(..., regex=r'^[a-zA-Z0-9_-]{3,32}$')
-
-    @validator('username')
-    def validate_username(cls, v):
-        if v.lower() in ['admin', 'root']: raise ValueError('Reserved')
-        return v
-```
-
-**SQL Injection Prevention** (use parameterized queries):
-```python
-# CORRECT
-result = session.execute(select(User).where(User.username == username))
-# NEVER: f"SELECT * FROM users WHERE username = '{username}'"
-```
-
-**Command Injection Prevention** (never shell=True with user input):
-```python
-# CORRECT
-subprocess.run(['git', 'clone', repo_url], capture_output=True)
-# NEVER: subprocess.run(f'git clone {repo_url}', shell=True)
-```
+**Command Injection Prevention**: Pass command arguments as a list to `subprocess.run()`. Never use `shell=True` with user-controlled input.
 
 ### Rollback Procedures
 
@@ -117,35 +87,7 @@ subprocess.run(['git', 'clone', repo_url], capture_output=True)
 
 Emit structured JSON logs before/after each operation: timestamp, user, change_ticket, environment, operation, command, outcome, resources_affected, rollback_available, duration_seconds, error_detail.
 
-**Implementation:**
-```python
-import logging, json
-from datetime import datetime
-from functools import wraps
-
-logging.basicConfig(level=logging.INFO, format='%(message)s')
-logger = logging.getLogger(__name__)
-
-def audit_log(operation: str, user: str, environment: str, change_ticket: str = None):
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            start = datetime.utcnow()
-            log = {"timestamp": start.isoformat()+"Z", "user": user, "change_ticket": change_ticket or "N/A",
-                   "environment": environment, "operation": operation, "outcome": "started", "error_detail": None}
-            logger.info(json.dumps(log))
-            try:
-                result = func(*args, **kwargs)
-                log.update({"outcome": "success", "duration_seconds": round((datetime.utcnow()-start).total_seconds(), 2)})
-                logger.info(json.dumps(log))
-                return result
-            except Exception as e:
-                log.update({"outcome": "failure", "duration_seconds": round((datetime.utcnow()-start).total_seconds(), 2), "error_detail": str(e)})
-                logger.error(json.dumps(log))
-                raise
-        return wrapper
-    return decorator
-```
+Audit logging implementation is handled by Claude Code Hooks.
 
 Log all create/update/delete ops. Failed ops MUST log `outcome: "failure"` with `error_detail`. Production: forward to centralized logging *(if available)* (ELK, Datadog, CloudWatch). Use `python-json-logger` for FastAPI/Django middleware.
 

@@ -101,62 +101,7 @@ Validate/sanitize all user inputs, API requests, database queries before process
 
 **Rules**: Validate `$_POST`/`$_GET`/`$_REQUEST` against strict type/format. SQL injection prevention: parameterized queries only (never concatenation). XSS prevention: `htmlspecialchars()` or framework filters. File uploads: MIME type, extension whitelist, max size, malware scan. API: validate via OpenAPI/Form Requests.
 
-**Example**:
-```php
-<?php declare(strict_types=1);
-
-final readonly class InputValidator
-{
-    public function validateEmail(string $email): string
-    {
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            throw new InvalidArgumentException('Invalid email format');
-        }
-        if (!preg_match('/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/', $email)) {
-            throw new InvalidArgumentException('Email format rejected by policy');
-        }
-        return $email;
-    }
-
-    public function sanitizeUserInput(string $input, int $maxLength = 255): string
-    {
-        $sanitized = strip_tags(trim($input));
-        if (mb_strlen($sanitized) > $maxLength) {
-            throw new InvalidArgumentException("Input exceeds maximum length of {$maxLength}");
-        }
-        return htmlspecialchars($sanitized, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-    }
-
-    public function validateFileUpload(array $file): void
-    {
-        $allowedMimeTypes = ['image/jpeg', 'image/png', 'application/pdf'];
-        $maxSize = 5 * 1024 * 1024; // 5MB
-
-        if ($file['error'] !== UPLOAD_ERR_OK) {
-            throw new RuntimeException('File upload failed');
-        }
-        if ($file['size'] > $maxSize) {
-            throw new InvalidArgumentException('File size exceeds 5MB limit');
-        }
-        $finfo = finfo_open(FILEINFO_MIME_TYPE);
-        $mimeType = finfo_file($finfo, $file['tmp_name']);
-        if (!in_array($mimeType, $allowedMimeTypes, true)) {
-            throw new InvalidArgumentException('File type not allowed');
-        }
-    }
-}
-```
-
-**Laravel FormRequest**:
-```php
-public function rules(): array {
-    return [
-        'email' => 'required|email:rfc,dns|max:255',
-        'username' => 'required|alpha_dash|min:3|max:50',
-        'age' => 'required|integer|between:18,120',
-    ];
-}
-```
+**Patterns**: Validate email with `filter_var` + regex policy checks, strip and `htmlspecialchars` user input, verify MIME type via `finfo` for file uploads. Use Laravel FormRequest rules for structured validation (e.g., `required|email:rfc,dns|max:255`). Symfony: use Form Types with constraints.
 
 ### Rollback Procedures
 
@@ -201,78 +146,7 @@ Emit structured JSON logs before/after operations.
 }
 ```
 
-**Laravel example**:
-```php
-<?php declare(strict_types=1);
-
-namespace App\Services;
-
-use Illuminate\Support\Facades\Log;
-
-final readonly class AuditLogger
-{
-    public function logOperation(
-        string $operation,
-        string $command,
-        array $resourcesAffected,
-        string $outcome = 'success',
-        ?string $errorDetail = null,
-        float $duration = 0.0
-    ): void {
-        Log::channel('audit')->info('operation_executed', [
-            'timestamp' => now()->toIso8601String(),
-            'user' => auth()->user()?->email ?? 'system',
-            'change_ticket' => request()->header('X-Change-Ticket', 'N/A'),
-            'environment' => config('app.env'),
-            'operation' => $operation,
-            'command' => $command,
-            'outcome' => $outcome,
-            'resources_affected' => $resourcesAffected,
-            'rollback_available' => true,
-            'duration_seconds' => round($duration, 2),
-            'error_detail' => $errorDetail,
-            'ip_address' => request()->ip(),
-            'user_agent' => request()->userAgent(),
-        ]);
-    }
-}
-
-// Usage in controller or service:
-$startTime = microtime(true);
-try {
-    Artisan::call('migrate', ['--force' => true]);
-    $this->auditLogger->logOperation(
-        operation: 'database_migration',
-        command: 'php artisan migrate --force',
-        resourcesAffected: ['users_table', 'posts_table'],
-        outcome: 'success',
-        duration: microtime(true) - $startTime
-    );
-} catch (\Exception $e) {
-    $this->auditLogger->logOperation(
-        operation: 'database_migration',
-        command: 'php artisan migrate --force',
-        resourcesAffected: [],
-        outcome: 'failure',
-        errorDetail: $e->getMessage(),
-        duration: microtime(true) - $startTime
-    );
-    throw $e;
-}
-```
-
-**Config** (`config/logging.php`):
-```php
-'channels' => [
-    'audit' => [
-        'driver' => 'daily',
-        'path' => storage_path('logs/audit.log'),
-        'level' => 'info',
-        'days' => 90,
-        'formatter' => \Monolog\Formatter\JsonFormatter::class,
-    ],
-],
-```
+Audit logging implementation is handled by Claude Code Hooks.
 
 Log all create/update/delete ops. Failures log `outcome: "failure"` + `error_detail`. Laravel: `Log::channel('audit')`. Symfony: Monolog with JSON formatter. Retain 90+ days. Forward to centralized logging *(if available)*: ELK/Splunk/CloudWatch.
 

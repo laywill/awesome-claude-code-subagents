@@ -31,39 +31,7 @@ Validate parameters, domain context, and RSAT module availability before executi
 
 **Required**: Parameter validation (`[ValidatePattern()]`, `[ValidateScript()]`, `[ValidateSet()]`), domain context (`Get-ADDomain` before AD ops), RSAT module checks, credential/permission verification.
 
-```powershell
-function Validate-ADOperationPrerequisites {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory=$true)]
-        [ValidatePattern('^[a-zA-Z0-9\-\.]+$')]
-        [string]$DomainName,
-        [ValidateScript({ Test-Path $_ })]
-        [string]$InputCSV,
-        [ValidateSet('User','Group','Computer','OrganizationalUnit')]
-        [string]$ObjectType
-    )
-    try {
-        $domain = Get-ADDomain -Identity $DomainName -ErrorAction Stop
-        Write-Verbose "Connected to domain: $($domain.DNSRoot)"
-    } catch {
-        throw "Cannot connect to domain $DomainName. Verify VPN/network connectivity."
-    }
-    if (-not (Get-Module -ListAvailable -Name ActiveDirectory)) {
-        throw "ActiveDirectory RSAT module not installed. Install via: Install-WindowsFeature RSAT-AD-PowerShell"
-    }
-    $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
-    try {
-        $null = Get-ADUser -Filter {SamAccountName -eq 'Administrator'} -ErrorAction Stop
-        Write-Verbose "User $currentUser has AD read permissions"
-    } catch {
-        throw "User $currentUser lacks necessary AD permissions. Verify group membership."
-    }
-}
-
-# DNS validation: ValidatePattern for RecordName, ValidateSet for RecordType (A/AAAA/CNAME/MX/TXT/PTR),
-# ValidateScript for IP parsing on A records, verify zone exists with Get-DnsServerZone.
-```
+**Patterns**: Use `[ValidatePattern()]` for domain names (alphanumeric/hyphens/dots), `[ValidateScript({ Test-Path $_ })]` for file paths, `[ValidateSet()]` for object types. Verify domain connectivity via `Get-ADDomain`, check RSAT module availability with `Get-Module -ListAvailable`, confirm AD read permissions before operations. For DNS: ValidatePattern for RecordName, ValidateSet for RecordType (A/AAAA/CNAME/MX/TXT/PTR), ValidateScript for IP parsing, verify zone exists with `Get-DnsServerZone`.
 
 ### Rollback Procedures
 
@@ -90,39 +58,7 @@ Emit structured JSON logs before and after each operation.
 
 **Log Format:** timestamp (ISO8601), user, change_ticket, environment, operation, command, outcome (success/failure), resources_affected, rollback_available, duration_seconds, error_detail.
 
-```powershell
-function Write-AuditLog {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory=$true)][string]$Operation,
-        [Parameter(Mandatory=$true)][string]$Command,
-        [Parameter(Mandatory=$true)][ValidateSet('success','failure')][string]$Outcome,
-        [Parameter(Mandatory=$true)][string[]]$ResourcesAffected,
-        [string]$ErrorDetail = $null,
-        [double]$DurationSeconds = 0,
-        [string]$ChangeTicket = "N/A",
-        [bool]$RollbackAvailable = $true
-    )
-    $logEntry = [PSCustomObject]@{
-        timestamp = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
-        user = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
-        change_ticket = $ChangeTicket
-        environment = $env:COMPUTERNAME
-        operation = $Operation
-        command = $Command
-        outcome = $Outcome
-        resources_affected = $ResourcesAffected
-        rollback_available = $RollbackAvailable
-        duration_seconds = [math]::Round($DurationSeconds, 2)
-        error_detail = $ErrorDetail
-    }
-    $logPath = "C:\Logs\PowerShell_Audit_$(Get-Date -Format 'yyyyMMdd').json"
-    $logEntry | ConvertTo-Json -Compress | Add-Content -Path $logPath
-    Write-EventLog -LogName Application -Source "PowerShell Automation" -EventId 1000 -EntryType Information -Message ($logEntry | ConvertTo-Json)
-}
-
-# Usage: wrap operations with try/catch, use [System.Diagnostics.Stopwatch] to track duration, call Write-AuditLog with outcome success/failure
-```
+Audit logging implementation is handled by Claude Code Hooks.
 
 Log every create/update/delete operation. Failed operations log with `outcome: "failure"` and `error_detail`. Forward to SIEM *(if available)* or centralized aggregator. Retain logs 90 days minimum. Use `Start-Transcript` at script start.
 

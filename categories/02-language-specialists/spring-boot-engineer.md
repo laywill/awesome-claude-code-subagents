@@ -107,33 +107,7 @@ All Spring Boot configuration changes, dependency updates, and code generations 
 4. **API endpoint paths**: Enforce REST conventions, no executable code in path variables
 5. **Security configurations**: Verify CORS origins are not wildcard `*` in production profiles
 
-**Validation Implementation** (Java):
-```java
-@Component
-public class ConfigurationValidator {
-    private static final Pattern SPRING_PROPERTY_PATTERN = Pattern.compile("^[a-z0-9]+([.-][a-z0-9]+)*$");
-    private static final Pattern JDBC_URL_PATTERN = Pattern.compile("^jdbc:[a-z]+://[^/]+(?:/[^?]+)?(?:\\?.*)?$");
-
-    public ValidationResult validateProperty(String key, String value) {
-        if (!SPRING_PROPERTY_PATTERN.matcher(key).matches())
-            return ValidationResult.failure("Invalid property key: " + key);
-
-        if (key.startsWith("spring.datasource.url") &&
-            (!JDBC_URL_PATTERN.matcher(value).matches() || value.contains("password=") || value.contains("user=")))
-            return ValidationResult.failure("Invalid JDBC URL or embedded credentials");
-
-        if (key.equals("spring.security.cors.allowed-origins") && value.contains("*") && isProductionProfile())
-            return ValidationResult.failure("Wildcard CORS forbidden in production");
-
-        return ValidationResult.success();
-    }
-
-    private boolean isProductionProfile() {
-        String profiles = System.getProperty("spring.profiles.active", "");
-        return profiles.contains("prod") || profiles.contains("production");
-    }
-}
-```
+**Validation Patterns**: Validate property keys match Spring Boot conventions (`^[a-z0-9]+([.-][a-z0-9]+)*$`). For `spring.datasource.url`, verify JDBC URL format and reject inline credentials (`password=`, `user=`). Reject wildcard CORS (`*`) in production profiles. Use `mvn dependency-check:check` for dependency CVE scanning before accepting version updates.
 
 ### Rollback Procedures
 
@@ -178,53 +152,7 @@ All operations MUST emit structured JSON logs before and after each operation.
 }
 ```
 
-**Audit Logging Implementation** (Java with SLF4J):
-```java
-@Component @Slf4j
-public class OperationAuditor {
-    private final ObjectMapper mapper = new ObjectMapper();
-
-    public void logOperation(OperationAuditLog log) {
-        try { log.info("AUDIT: {}", mapper.writeValueAsString(log)); }
-        catch (JsonProcessingException e) { log.error("Failed to serialize audit", e); }
-    }
-
-    public OperationAuditLog createAuditLog(String operation, String command) {
-        return OperationAuditLog.builder()
-            .timestamp(Instant.now().toString())
-            .user(System.getProperty("user.name", "claude-agent"))
-            .changeTicket(System.getenv("CHANGE_TICKET"))
-            .environment(System.getProperty("spring.profiles.active", "default"))
-            .operation(operation).command(command).rollbackAvailable(true).build();
-    }
-}
-
-@Data @Builder
-class OperationAuditLog {
-    String timestamp, user, changeTicket, environment, operation, command, outcome, errorDetail;
-    List<String> resourcesAffected;
-    Boolean rollbackAvailable;
-    Integer durationSeconds;
-}
-```
-
-**Integration with Spring Boot Actuator**:
-```yaml
-# application.yml
-management:
-  endpoints:
-    web:
-      exposure:
-        include: "auditevents,loggers,metrics"
-  auditevents:
-    enabled: true
-
-logging:
-  pattern:
-    console: "%d{ISO8601} [%thread] %-5level %logger{36} - %msg%n"
-  level:
-    com.yourcompany.audit: INFO
-```
+Audit logging implementation is handled by Claude Code Hooks.
 
 Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Configure log forwarding to centralized logging (ELK, Splunk, CloudWatch) and retain for 90 days minimum for compliance audits.
 

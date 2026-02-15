@@ -33,18 +33,7 @@ Validate all parameters/inputs before execution to prevent injection, unauthoriz
 
 **Rules**: Resource names alphanumeric+hyphens/underscores (`^[a-zA-Z0-9_-]+$`), subscription IDs GUID format (`^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$`), Azure paths hierarchy validated, script blocks sanitized (reject `;|&`), file paths checked for traversal (`../`, `..\`), emails RFC 5322 compliant, API scopes whitelisted.
 
-**Example**:
-```powershell
-function Test-SecureInput {
-    param(
-        [Parameter(Mandatory)][ValidatePattern('^[a-zA-Z0-9_-]+$')][string]$ResourceName,
-        [Parameter(Mandatory)][ValidatePattern('^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$')][string]$SubscriptionId,
-        [ValidateScript({if($_ -match '\.\.|;|\||&|`'){throw "Dangerous chars"}; $true})][string]$FilePath
-    )
-    if(-not(Get-AzSubscription -SubscriptionId $SubscriptionId -EA SilentlyContinue)){throw "Subscription not found"}
-    Write-AuditLog -Operation "InputValidation" -Status "Success" -Details @{ResourceName=$ResourceName;SubscriptionId=$SubscriptionId}
-}
-```
+**Patterns**: Use `[ValidatePattern('^[a-zA-Z0-9_-]+$')]` for resource names, `[ValidatePattern('^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$')]` for subscription IDs, and `[ValidateScript()]` to reject dangerous characters (`..|;|&|\``) in file paths. Verify subscription exists with `Get-AzSubscription` before use.
 
 ### Rollback Procedures
 
@@ -73,43 +62,7 @@ All operations MUST have rollback path completing in <5min. Write and test rollb
 
 All operations emit structured JSON logs before/after execution. Log format: `{timestamp, user, change_ticket, environment, operation, command, outcome, resources_affected, subscription_id, rollback_available, duration_seconds, error_detail}`.
 
-```powershell
-function Write-AuditLog {
-    param(
-        [Parameter(Mandatory)][string]$Operation,
-        [Parameter(Mandatory)][ValidateSet('Success','Failure','Warning')][string]$Outcome,
-        [hashtable]$Details = @{},
-        [string]$ErrorDetail = $null,
-        [int]$DurationSeconds = 0
-    )
-    $logEntry = @{
-        timestamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
-        user = $env:USERNAME ?? $env:USER
-        change_ticket = $env:CHANGE_TICKET ?? "N/A"
-        environment = $env:ENVIRONMENT ?? "unknown"
-        operation = $Operation
-        command = $MyInvocation.Line
-        outcome = $Outcome.ToLower()
-        resources_affected = $Details.ResourcesAffected ?? @()
-        subscription_id = (Get-AzContext).Subscription.Id ?? "N/A"
-        rollback_available = $Details.RollbackAvailable ?? $true
-        duration_seconds = $DurationSeconds
-        error_detail = $ErrorDetail
-    } | ConvertTo-Json -Compress
-    Add-Content -Path "$env:TEMP/powershell-audit-$(Get-Date -Format 'yyyyMMdd').log" -Value $logEntry
-    if($env:LOG_ANALYTICS_WORKSPACE_ID){Send-AzMonitorCustomLog -WorkspaceId $env:LOG_ANALYTICS_WORKSPACE_ID -LogEntry $logEntry}
-}
-
-# Usage
-$start = Get-Date
-try {
-    New-AzVM -ResourceGroupName "rg-prod" -Name "vm-app-001"
-    Write-AuditLog -Operation "Provision-AzureVM" -Outcome "Success" -Details @{ResourcesAffected=@("vm-app-001","nic-app-001");RollbackAvailable=$true} -DurationSeconds ((Get-Date)-$start).TotalSeconds
-} catch {
-    Write-AuditLog -Operation "Provision-AzureVM" -Outcome "Failure" -ErrorDetail $_.Exception.Message -DurationSeconds ((Get-Date)-$start).TotalSeconds
-    throw
-}
-```
+Audit logging implementation is handled by Claude Code Hooks.
 
 Log every create/update/delete. Failed ops MUST log `outcome: "failure"` + `error_detail`. Retain 90 days minimum. Forward to centralized logging (Azure Log Analytics, Splunk, file rotation). Use in all runbooks/pipelines.
 

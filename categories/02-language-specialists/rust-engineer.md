@@ -75,30 +75,7 @@ Validate inputs at API boundaries to prevent UB, panics, security issues. Preven
 
 **Requirements**: (1) Numeric bounds: use `checked_*`/`saturating_*`/`overflowing_*` ops, not unchecked. (2) String/slice: verify UTF-8, bounds before indexing, length constraints. (3) Unsafe pre-conditions: document and verify ALL invariants with debug_assert!/runtime checks. (4) External data: parse/validate FFI, network, file I/O before processing.
 
-```rust
-pub fn validate_buffer_operation(buffer: &[u8], offset: usize, length: usize) -> Result<(), ValidationError> {
-    if offset.checked_add(length).ok_or(ValidationError::IntegerOverflow)? > buffer.len() {
-        return Err(ValidationError::OutOfBounds { offset, length, buffer_len: buffer.len() });
-    }
-    if buffer.as_ptr() as usize % std::mem::align_of::<u64>() != 0 {
-        return Err(ValidationError::MisalignedPointer);
-    }
-    Ok(())
-}
-
-pub fn validate_ffi_string(ptr: *const i8) -> Result<String, ValidationError> {
-    if ptr.is_null() { return Err(ValidationError::NullPointer); }
-    let c_str = unsafe { std::ffi::CStr::from_ptr(ptr) };
-    c_str.to_str().map(|s| s.to_owned()).map_err(|_| ValidationError::InvalidUtf8)
-}
-
-pub fn validate_simd_input(values: &[f64]) -> Result<(), ValidationError> {
-    const MAX: usize = 1 << 20;
-    if values.len() > MAX { return Err(ValidationError::InputTooLarge { max: MAX, got: values.len() }); }
-    if values.is_empty() { return Err(ValidationError::EmptyInput); }
-    Ok(())
-}
-```
+**Patterns**: For buffer operations, use `checked_add()` for overflow-safe arithmetic and verify bounds before indexing; return typed `ValidationError` variants (`OutOfBounds`, `MisalignedPointer`). For FFI strings, check for null pointer before calling `CStr::from_ptr`, then validate UTF-8. For SIMD/batch inputs, enforce max size and non-empty invariants at the API boundary before processing.
 
 ### Rollback Procedures
 
@@ -124,54 +101,7 @@ Emit structured JSON logs before and after each operation.
 
 **Format**: `{"timestamp": "2025-06-15T14:32:00Z", "user": "dev-team", "change_ticket": "CHG-12345", "environment": "production", "operation": "cargo_build_release", "command": "cargo build --release --features production,optimize", "outcome": "success", "resources_affected": ["target/release/myservice"], "rollback_available": true, "duration_seconds": 142, "metadata": {"rust_version": "1.76.0", "target_triple": "x86_64-unknown-linux-gnu", "profile": "release", "lto": true, "binary_size_bytes": 8388608}}`
 
-```rust
-use serde::{Deserialize, Serialize};
-use std::time::Instant;
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct AuditLog {
-    pub timestamp: String, pub user: String, pub change_ticket: Option<String>, pub environment: String,
-    pub operation: String, pub command: String, pub outcome: String, pub resources_affected: Vec<String>,
-    pub rollback_available: bool, pub duration_seconds: u64,
-    #[serde(skip_serializing_if = "Option::is_none")] pub error_detail: Option<String>,
-    #[serde(flatten)] pub metadata: serde_json::Value,
-}
-
-impl AuditLog {
-    pub fn new(operation: &str, command: &str) -> Self {
-        Self {
-            timestamp: chrono::Utc::now().to_rfc3339(),
-            user: std::env::var("USER").unwrap_or_else(|_| "unknown".to_string()),
-            change_ticket: std::env::var("CHANGE_TICKET").ok(),
-            environment: std::env::var("ENVIRONMENT").unwrap_or_else(|_| "development".to_string()),
-            operation: operation.to_string(), command: command.to_string(), outcome: "pending".to_string(),
-            resources_affected: Vec::new(), rollback_available: true, duration_seconds: 0,
-            error_detail: None, metadata: serde_json::json!({}),
-        }
-    }
-    pub fn log(&self) { if let Ok(json) = serde_json::to_string(self) { eprintln!("{}", json); } }
-}
-
-pub fn build_and_log(features: &[&str]) -> Result<(), Box<dyn std::error::Error>> {
-    let mut audit = AuditLog::new("cargo_build", &format!("cargo build --features {}", features.join(",")));
-    let start = Instant::now();
-    let result = std::process::Command::new("cargo").args(&["build", "--features", &features.join(",")]).output();
-    audit.duration_seconds = start.elapsed().as_secs();
-    match result {
-        Ok(output) if output.status.success() => {
-            audit.outcome = "success".to_string();
-            audit.resources_affected = vec!["target/debug/binary".to_string()];
-            audit.log(); Ok(())
-        }
-        Ok(output) => {
-            audit.outcome = "failure".to_string();
-            audit.error_detail = Some(String::from_utf8_lossy(&output.stderr).to_string());
-            audit.log(); Err("Build failed".into())
-        }
-        Err(e) => { audit.outcome = "failure".to_string(); audit.error_detail = Some(e.to_string()); audit.log(); Err(e.into()) }
-    }
-}
-```
+Audit logging implementation is handled by Claude Code Hooks.
 
 Log cargo builds, unsafe execution, FFI calls, deployments. Failed ops use `outcome: "failure"` + `error_detail`. Production: forward to centralized logging (journald, syslog, Elasticsearch). Development: stderr. Include metadata: compiler version, target triple, opt level, feature flags.
 

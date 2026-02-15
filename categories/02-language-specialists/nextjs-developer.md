@@ -85,46 +85,7 @@ Validate all user inputs, API requests, dynamic routes before processing. Implem
 
 **Required**: Server Action inputs (Zod schemas for forms/mutations), dynamic routes (sanitize `params.id`, `params.slug` to prevent path traversal), API bodies (validate content-type, enforce < 10MB payloads), env vars (validate at build time with `t3-env`), file uploads (validate MIME, extensions, size limits).
 
-**Patterns**:
-```typescript
-// Server Action with Zod
-'use server'
-import { z } from 'zod'
-
-const ProductSchema = z.object({
-  name: z.string().min(1).max(200).regex(/^[a-zA-Z0-9\s\-_]+$/),
-  price: z.number().positive().max(1000000),
-  categoryId: z.string().uuid(),
-})
-
-export async function createProduct(formData: FormData) {
-  const result = ProductSchema.safeParse(Object.fromEntries(formData))
-  if (!result.success) return { error: result.error.flatten() }
-
-  const product = await db.product.create({ data: result.data })
-  revalidatePath('/products')
-  return { success: true, product }
-}
-
-// API Route validation
-export async function POST(req: NextRequest) {
-  if (!req.headers.get('content-type')?.includes('application/json')) {
-    return NextResponse.json({ error: 'Invalid content-type' }, { status: 415 })
-  }
-  const len = req.headers.get('content-length')
-  if (len && parseInt(len) > 10_485_760) {
-    return NextResponse.json({ error: 'Payload too large' }, { status: 413 })
-  }
-  const result = ProductSchema.safeParse(await req.json())
-  if (!result.success) return NextResponse.json({ error: result.error.flatten() }, { status: 400 })
-}
-
-// Dynamic route sanitization
-export async function generateMetadata({ params }: { params: { slug: string } }) {
-  const sanitized = params.slug.replace(/[^a-zA-Z0-9\-_]/g, '')
-  if (sanitized !== params.slug) notFound()
-}
-```
+**Patterns**: Use Zod schemas for Server Action inputs (validate before processing, return flattened errors on failure). Sanitize dynamic route params by stripping non-alphanumeric characters and calling `notFound()` on mismatch. For API routes, reject mismatched content-type (415) and oversized payloads (413) before parsing body.
 
 ### Rollback Procedures
 All operations MUST rollback in < 5 minutes. Write and test rollback scripts before executing.
@@ -155,58 +116,7 @@ All operations MUST emit structured JSON logs before/after execution.
 {"timestamp":"2025-06-15T14:32:00Z","user":"user@example.com","change_ticket":"CHG-12345","environment":"production","operation":"server_action","action_name":"createProduct","request_id":"req_abc123xyz","outcome":"success","resources_affected":["/products","/api/products/prod_123"],"rollback_available":true,"duration_ms":342,"metadata":{"product_id":"prod_123","cache_invalidated":["/products","products-tag"],"database_writes":1},"error_detail":null}
 ```
 
-**Server Action logging**:
-```typescript
-// lib/audit-logger.ts
-export async function auditLog(entry: AuditLogEntry) {
-  const log = { timestamp: new Date().toISOString(), ...entry }
-  console.log(JSON.stringify(log))
-  await fetch(process.env.AUDIT_LOG_ENDPOINT, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(log),
-  }).catch(() => {})
-}
-
-// Server Action with logging
-'use server'
-export async function createProduct(formData: FormData) {
-  const requestId = `req_${crypto.randomUUID()}`, startTime = Date.now()
-  const baseLog = { request_id: requestId, user: await getCurrentUser(), environment: process.env.VERCEL_ENV || 'development', operation: 'server_action', action_name: 'createProduct' }
-
-  await auditLog({ ...baseLog, outcome: 'started', rollback_available: true })
-
-  try {
-    const result = ProductSchema.safeParse(Object.fromEntries(formData))
-    if (!result.success) throw new Error('Validation failed')
-
-    const product = await db.product.create({ data: result.data })
-    revalidatePath('/products')
-
-    await auditLog({ ...baseLog, outcome: 'success', resources_affected: ['/products', `/products/${product.id}`], rollback_available: true, duration_ms: Date.now() - startTime, metadata: { product_id: product.id, cache_invalidated: ['/products'], database_writes: 1 } })
-    return { success: true, product }
-  } catch (error) {
-    await auditLog({ ...baseLog, outcome: 'failure', rollback_available: true, duration_ms: Date.now() - startTime, error_detail: error instanceof Error ? error.message : 'Unknown error' })
-    throw error
-  }
-}
-```
-
-**API Route logging**:
-```typescript
-// middleware.ts
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
-
-export async function middleware(request: NextRequest) {
-  const requestId = crypto.randomUUID()
-  const response = NextResponse.next()
-  response.headers.set('x-request-id', requestId)
-
-  console.log(JSON.stringify({ timestamp: new Date().toISOString(), request_id: requestId, method: request.method, path: request.nextUrl.pathname, user_agent: request.headers.get('user-agent'), ip: request.ip || request.headers.get('x-forwarded-for') }))
-  return response
-}
-```
+Audit logging implementation is handled by Claude Code Hooks.
 
 Log all create/update/delete ops. Failed ops MUST log with `outcome: "failure"` and `error_detail`. Production: forward logs to centralized logging (Datadog, LogFlare, Axiom) via Vercel Log Drains. Retain 90+ days.
 

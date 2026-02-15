@@ -88,35 +88,7 @@ All user inputs, API responses, and component props MUST be validated before use
 - Route parameters: Validate format/type before using in data fetching or navigation
 - File uploads: Validate type, size, and content before processing
 
-**Input Validation Example**:
-```typescript
-import { z } from 'zod';
-import DOMPurify from 'dompurify';
-
-// Props with runtime validation
-const props = defineProps({
-  userId: { type: String, required: true, validator: (v: string) => /^[a-zA-Z0-9_-]{3,50}$/.test(v) },
-  email: { type: String, required: true, validator: (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) }
-});
-
-// API schema validation
-const userSchema = z.object({ id: z.string().uuid(), name: z.string().min(1).max(100), email: z.string().email(), role: z.enum(['admin', 'user', 'guest']) });
-
-// Safe data fetching composable
-export function useSafeApi<T>(url: string, schema: z.ZodSchema<T>) {
-  const data = ref<T | null>(null), error = ref<Error | null>(null);
-  async function fetch() {
-    try { const response = await $fetch(url); data.value = schema.parse(response); }
-    catch (e) { error.value = e as Error; console.error('[VALIDATION_FAILED]', { url, error: e }); }
-  }
-  return { data, error, fetch };
-}
-
-// Sanitize before v-html
-function sanitizeHtml(content: string): string {
-  return DOMPurify.sanitize(content, { ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'p', 'br'], ALLOWED_ATTR: [] });
-}
-```
+**Validation Patterns**: Use TypeScript `validator` functions on `defineProps` for format constraints (e.g., `userId` matching `^[a-zA-Z0-9_-]{3,50}$`, email RFC format). Validate API responses against Zod/Yup schemas before assigning to reactive state — log `[VALIDATION_FAILED]` with the URL and error on schema mismatch. Sanitize user-generated HTML with DOMPurify before `v-html` rendering, restricting to a safe tag/attribute allowlist.
 
 ### Rollback Procedures
 
@@ -162,35 +134,7 @@ All operations MUST emit structured JSON logs before and after each operation.
 }
 ```
 
-**Audit Logging Implementation**:
-```typescript
-import { $fetch } from 'ofetch';
-
-interface AuditLogEntry { timestamp: string; user: string; change_ticket?: string; environment: string; operation: string; command: string; outcome: 'success' | 'failure'; resources_affected: string[]; rollback_available: boolean; duration_seconds: number; error_detail?: string; }
-
-export function useAuditLog() {
-  async function logOperation(entry: AuditLogEntry) {
-    const log = { ...entry, timestamp: new Date().toISOString(), user: process.env.USER || 'unknown' };
-    console.log('[AUDIT_LOG]', JSON.stringify(log));
-    try { await $fetch('/api/audit-log', { method: 'POST', body: log }); }
-    catch (e) { console.error('[AUDIT_LOG_FAILED]', e); }
-  }
-  return { logOperation };
-}
-
-// Usage
-const { logOperation } = useAuditLog();
-async function deployComponent() {
-  const startTime = Date.now();
-  try {
-    await executeDeployment();
-    await logOperation({ operation: 'component_update', command: 'update UserDashboard.vue with reactive optimization', outcome: 'success', resources_affected: ['UserDashboard.vue'], rollback_available: true, duration_seconds: (Date.now() - startTime) / 1000, environment: process.env.NODE_ENV || 'development' });
-  } catch (error) {
-    await logOperation({ operation: 'component_update', command: 'update UserDashboard.vue with reactive optimization', outcome: 'failure', resources_affected: ['UserDashboard.vue'], rollback_available: true, duration_seconds: (Date.now() - startTime) / 1000, error_detail: String(error), environment: process.env.NODE_ENV || 'development' });
-    throw error;
-  }
-}
-```
+Audit logging implementation is handled by Claude Code Hooks.
 
 Log all component modifications, state updates, build operations, deployments. Failed operations MUST log `outcome: "failure"` and `error_detail`. Store in monitoring service (Sentry, LogRocket, Datadog) or centralized logging (CloudWatch, Azure Monitor) for 90+ day retention.
 

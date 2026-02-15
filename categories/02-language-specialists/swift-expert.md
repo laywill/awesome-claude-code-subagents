@@ -107,39 +107,7 @@ All user-provided Swift code, package dependencies, and configuration files must
 - **Code Input**: Validate for unsafe patterns (force unwraps in production, unsafe pointer operations without bounds checking, dynamic member lookup without validation).
 - **Configuration Files**: Validate Info.plist, project settings, build configs for suspicious entitlements, URL schemes, or privacy permissions without justification.
 
-**Swift Validation Functions**:
-```swift
-func validatePackageDependency(_ package: Package.Dependency) throws {
-    guard let url = package.url else {
-        throw ValidationError.missingPackageURL
-    }
-    if vulnerablePackages.contains(where: { $0.matches(url) }) {
-        throw ValidationError.vulnerablePackage(url: url)
-    }
-    guard url.hasPrefix("https://") else {
-        throw ValidationError.insecurePackageURL(url: url)
-    }
-    guard package.requirement != nil else {
-        throw ValidationError.missingVersionConstraint(url: url)
-    }
-}
-
-func validateSwiftCode(_ code: String) -> ValidationResult {
-    var warnings: [String] = []
-    if code.contains(#/!\s*(?!\/\/)/#) {
-        warnings.append("Force unwraps detected - consider optional binding")
-    }
-    if (code.contains("UnsafeMutablePointer") || code.contains("UnsafeRawPointer")) {
-        if !code.contains("assumingMemoryBound") && !code.contains("bindMemory") {
-            warnings.append("Unsafe pointer usage without bounds checking")
-        }
-    }
-    if code.contains("@dynamicMemberLookup") && !code.contains("guard") && !code.contains("if let") {
-        warnings.append("Dynamic member lookup without validation guard")
-    }
-    return ValidationResult(isValid: warnings.isEmpty, warnings: warnings)
-}
-```
+**Validation Patterns**: For package dependencies, verify the URL starts with `https://`, check against known vulnerable package list, and require a version constraint (`package.requirement != nil`). For code review, flag force unwraps (bare `!`), unsafe pointer usage without `assumingMemoryBound`/`bindMemory`, and `@dynamicMemberLookup` usage without validation guards. For configuration files, check Info.plist for unjustified entitlements or URL schemes.
 
 ### Rollback Procedures
 
@@ -191,55 +159,7 @@ All operations MUST emit structured JSON logs before and after each operation.
 }
 ```
 
-**Swift Audit Implementation**:
-```swift
-import Foundation
-import OSLog
-
-actor AuditLogger {
-    private let logger = Logger(subsystem: "com.app.audit", category: "operations")
-
-    func logOperation(
-        user: String, changeTicket: String?, environment: String,
-        operation: String, command: String, outcome: OperationOutcome,
-        resourcesAffected: [String], rollbackAvailable: Bool,
-        duration: TimeInterval, errorDetail: String? = nil,
-        swiftContext: SwiftContext
-    ) async {
-        let logEntry: [String: Any] = [
-            "timestamp": ISO8601DateFormatter().string(from: Date()),
-            "user": user, "change_ticket": changeTicket ?? "N/A",
-            "environment": environment, "operation": operation,
-            "command": command, "outcome": outcome.rawValue,
-            "resources_affected": resourcesAffected,
-            "rollback_available": rollbackAvailable,
-            "duration_seconds": Int(duration),
-            "error_detail": errorDetail as Any,
-            "swift_context": [
-                "swift_version": swiftContext.swiftVersion,
-                "platform": swiftContext.platform,
-                "dependencies_changed": swiftContext.dependenciesChanged,
-                "build_passed": swiftContext.buildPassed,
-                "tests_passed": swiftContext.testsPassed
-            ]
-        ]
-        if let jsonData = try? JSONSerialization.data(withJSONObject: logEntry, options: []),
-           let jsonString = String(data: jsonData, encoding: .utf8) {
-            logger.info("\(jsonString)")
-        }
-    }
-}
-
-enum OperationOutcome: String { case success, failure }
-
-struct SwiftContext {
-    let swiftVersion: String
-    let platform: String
-    let dependenciesChanged: [String]
-    let buildPassed: Bool
-    let testsPassed: Bool
-}
-```
+Audit logging implementation is handled by Claude Code Hooks.
 
 Log every Swift package update, Xcode project modification, deployment, and Core Data migration. Failed operations MUST log with `outcome: "failure"` and `error_detail`. For iOS/macOS apps, forward logs to OSLog. For server-side Swift, integrate with centralized logging (ELK, CloudWatch). Retain logs minimum 90 days.
 

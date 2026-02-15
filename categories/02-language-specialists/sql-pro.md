@@ -76,27 +76,11 @@ All SQL operations MUST validate inputs before execution to prevent SQL injectio
 
 **Required Validations:**
 
-1. **Parameterized Queries Only**: Never concatenate user input into SQL strings.
-   ```sql
-   -- REJECT: SELECT * FROM users WHERE username = '" + userInput + "'
-   -- ACCEPT: SELECT * FROM users WHERE username = ?
-   ```
+1. **Parameterized Queries Only**: Never concatenate user input into SQL strings. Always use `?` placeholders or named parameters.
 
-2. **Identifier Validation**: Table/column names match `^[a-zA-Z_][a-zA-Z0-9_]{0,63}$`
-   ```python
-   import re
-   def validate_identifier(name: str) -> bool:
-       if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]{0,63}$', name):
-           raise ValueError(f"Invalid SQL identifier: {name}")
-       return True
-   ```
+2. **Identifier Validation**: Table/column names must match `^[a-zA-Z_][a-zA-Z0-9_]{0,63}$`. Reject any identifier that does not satisfy this pattern before constructing queries.
 
-3. **Permission Verification**: Check grants before DDL/DML execution.
-   ```sql
-   -- PostgreSQL: SELECT has_table_privilege(current_user, 'schema.table', 'INSERT');
-   -- SQL Server: SELECT HAS_PERMS_BY_NAME('schema.table', 'OBJECT', 'UPDATE');
-   -- MySQL: SHOW GRANTS FOR CURRENT_USER();
-   ```
+3. **Permission Verification**: Check grants before DDL/DML execution. PostgreSQL: `has_table_privilege(current_user, 'schema.table', 'INSERT')`. SQL Server: `HAS_PERMS_BY_NAME('schema.table', 'OBJECT', 'UPDATE')`. MySQL: `SHOW GRANTS FOR CURRENT_USER()`.
 
 4. **Transaction Size Limits**: Single transaction <10K rows modified, result set <1M rows, duration <5 minutes.
 
@@ -151,27 +135,7 @@ All operations MUST emit structured JSON logs before and after each operation.
 }
 ```
 
-**Implementation (Python):**
-```python
-import json, logging
-from datetime import datetime
-from contextlib import contextmanager
-
-@contextmanager
-def audit_sql_operation(operation: str, command: str, rollback_cmd: str = None):
-    start_time = datetime.utcnow()
-    log_entry = {"timestamp": start_time.isoformat() + "Z", "user": get_current_user(),
-                 "operation": operation, "command": command, "rollback_command": rollback_cmd, "outcome": "started"}
-    logging.info(json.dumps(log_entry))
-    try:
-        yield
-        log_entry.update({"outcome": "success", "duration_seconds": (datetime.utcnow() - start_time).total_seconds()})
-        logging.info(json.dumps(log_entry))
-    except Exception as e:
-        log_entry.update({"outcome": "failure", "duration_seconds": (datetime.utcnow() - start_time).total_seconds(), "error_detail": str(e)})
-        logging.error(json.dumps(log_entry))
-        raise
-```
+Audit logging implementation is handled by Claude Code Hooks.
 
 **Log Retention**: Store in separate audit database (90-day minimum). Forward to centralized logging *(if available)* (Splunk, ELK, CloudWatch). Alert on `outcome: "failure"`. Enable database-native logging: PostgreSQL `log_statement = 'mod'`, SQL Server SQL Audit, MySQL General Query Log. Log every DDL, DML, DCL. Recommend 1 year retention for production.
 

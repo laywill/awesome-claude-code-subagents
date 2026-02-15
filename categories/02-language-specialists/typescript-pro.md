@@ -102,63 +102,13 @@ Integration patterns: JavaScript interop, third-party type definitions, ambient 
 All TypeScript code changes MUST validate inputs to prevent type-unsafe operations, dependency vulnerabilities, and build failures.
 
 **Required Validations**:
-1. **Package dependency validation**: Verify package names match official registry
-   ```typescript
-   const OFFICIAL_PACKAGES = /^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/;
-   if (!OFFICIAL_PACKAGES.test(packageName)) {
-     throw new Error(`Invalid package name: ${packageName}`);
-   }
-   ```
+1. **Package dependency validation**: Verify package names match the official registry pattern (`^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$`). Reject names that don't match.
 
-2. **tsconfig.json validation**: Ensure strict mode flags remain enabled
-   ```typescript
-   function validateTsConfig(config: any): void {
-     const requiredStrict = ['strict', 'noImplicitAny', 'strictNullChecks'];
-     const missing = requiredStrict.filter(flag => config.compilerOptions?.[flag] !== true);
-     if (missing.length > 0) {
-       throw new Error(`Missing strict flags: ${missing.join(', ')}`);
-     }
-   }
-   ```
+2. **tsconfig.json validation**: Ensure strict mode flags (`strict`, `noImplicitAny`, `strictNullChecks`) remain `true` in `compilerOptions`. Reject changes that disable these flags.
 
-3. **Type-unsafe patterns**: Block explicit `any` usage without justification comments
-   ```typescript
-   const UNSAFE_ANY = /:\s*any(?!\s*\/\/\s*JUSTIFIED:)/;
-   if (UNSAFE_ANY.test(sourceCode)) {
-     throw new Error('Explicit any without JUSTIFIED comment detected');
-   }
-   ```
+3. **Type-unsafe patterns**: Block explicit `any` without justification comments (pattern: `:\s*any` not followed by `// JUSTIFIED:`).
 
-4. **Generic constraint validation**: Ensure generic types have appropriate constraints
-   ```typescript
-   function validateGenericConstraints(typeParam: string): boolean {
-     const UNCONSTRAINED_PUBLIC = /<[A-Z]\w*>.*export\s+(class|interface|type|function)/;
-     return !UNCONSTRAINED_PUBLIC.test(typeParam);
-   }
-   ```
-
-**Pre-operation validation script**:
-```typescript
-import { readFileSync } from 'fs';
-import { parse } from 'jsonc-parser';
-
-function validateTypeScriptChanges(files: string[]): void {
-  for (const file of files) {
-    if (file.endsWith('tsconfig.json')) {
-      const config = parse(readFileSync(file, 'utf-8'));
-      validateTsConfig(config);
-    } else if (file.endsWith('.ts') || file.endsWith('.tsx')) {
-      const source = readFileSync(file, 'utf-8');
-      validateSourceSafety(source);
-    } else if (file === 'package.json') {
-      const pkg = JSON.parse(readFileSync(file, 'utf-8'));
-      validateDependencies(pkg.dependencies);
-      validateDependencies(pkg.devDependencies);
-    }
-  }
-  console.log('✓ All TypeScript validation checks passed');
-}
-```
+4. **Generic constraint validation**: Ensure exported generic types have appropriate constraints. Flag unconstrained single-letter type params on public APIs.
 
 ### Rollback Procedures
 
@@ -214,100 +164,7 @@ All TypeScript operations MUST emit structured JSON logs before and after each o
 }
 ```
 
-**TypeScript-specific logging function**:
-```typescript
-interface TypeScriptAuditLog {
-  timestamp: string;
-  user: string;
-  change_ticket?: string;
-  environment: string;
-  operation: 'type_change' | 'dependency_update' | 'config_change' | 'migration' | 'build_optimization';
-  command: string;
-  outcome: 'success' | 'failure';
-  resources_affected: string[];
-  type_errors: number;
-  build_time_ms?: number;
-  bundle_size_kb?: number;
-  rollback_available: boolean;
-  duration_seconds: number;
-  error_detail?: string;
-}
-
-export function logTypeScriptOperation(log: TypeScriptAuditLog): void {
-  const logEntry = JSON.stringify({
-    ...log,
-    timestamp: log.timestamp || new Date().toISOString(),
-    user: log.user || process.env.USER || 'unknown',
-  });
-
-  console.log(logEntry);
-
-  if (process.env.AUDIT_LOG_PATH) {
-    appendFileSync(process.env.AUDIT_LOG_PATH, logEntry + '\n');
-  }
-
-  if (process.env.LOG_AGGREGATOR_URL) {
-    fetch(process.env.LOG_AGGREGATOR_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: logEntry,
-    }).catch(err => console.error('Failed to forward audit log:', err));
-  }
-}
-
-async function updateDependency(packageName: string, version: string): Promise<void> {
-  const startTime = Date.now();
-  const operation = `npm install ${packageName}@${version}`;
-
-  logTypeScriptOperation({
-    timestamp: new Date().toISOString(),
-    user: process.env.USER || 'unknown',
-    environment: process.env.NODE_ENV || 'development',
-    operation: 'dependency_update',
-    command: operation,
-    outcome: 'success',
-    resources_affected: ['package.json', 'package-lock.json'],
-    type_errors: 0,
-    rollback_available: true,
-    duration_seconds: 0,
-  });
-
-  try {
-    execSync(operation, { stdio: 'inherit' });
-
-    const typeCheckResult = execSync('npm run type-check', { encoding: 'utf-8' });
-    const typeErrors = (typeCheckResult.match(/error TS\d+:/g) || []).length;
-
-    logTypeScriptOperation({
-      timestamp: new Date().toISOString(),
-      user: process.env.USER || 'unknown',
-      environment: process.env.NODE_ENV || 'development',
-      operation: 'dependency_update',
-      command: operation,
-      outcome: 'success',
-      resources_affected: ['package.json', 'package-lock.json', 'node_modules/'],
-      type_errors: typeErrors,
-      rollback_available: true,
-      duration_seconds: Math.floor((Date.now() - startTime) / 1000),
-    });
-  } catch (error) {
-    logTypeScriptOperation({
-      timestamp: new Date().toISOString(),
-      user: process.env.USER || 'unknown',
-      environment: process.env.NODE_ENV || 'development',
-      operation: 'dependency_update',
-      command: operation,
-      outcome: 'failure',
-      resources_affected: ['package.json'],
-      type_errors: 999,
-      rollback_available: true,
-      duration_seconds: Math.floor((Date.now() - startTime) / 1000),
-      error_detail: error instanceof Error ? error.message : String(error),
-    });
-    throw error;
-  }
-}
-```
+Audit logging implementation is handled by Claude Code Hooks.
 
 Log every type system change, dependency update, config modification, and build operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Store logs in project's `logs/typescript-audit.jsonl` file and forward to centralized logging system *(if available)*.
 
