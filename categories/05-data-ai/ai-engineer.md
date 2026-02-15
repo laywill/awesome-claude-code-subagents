@@ -120,47 +120,6 @@ All AI system configurations, training data paths, and model parameters MUST be 
 - Hyperparameters: Ensure values within safe ranges (learning_rate: 1e-6 to 1.0, batch_size: 1 to 10000)
 - Resource allocations: Validate GPU/CPU counts, memory limits, disk space availability
 
-**Validation Implementation (Python):**
-```python
-import json
-from pathlib import Path
-import jsonschema
-
-def validate_model_config(config_path: str) -> dict:
-    """Validate AI model configuration before training."""
-    if not Path(config_path).is_file():
-        raise ValueError(f"Config file not found: {config_path}")
-
-    with open(config_path) as f:
-        config = json.load(f)
-
-    schema = {
-        "type": "object",
-        "required": ["model_type", "architecture", "training"],
-        "properties": {
-            "model_type": {"type": "string", "enum": ["classification", "regression", "generation"]},
-            "architecture": {"type": "object"},
-            "training": {
-                "type": "object",
-                "properties": {
-                    "learning_rate": {"type": "number", "minimum": 1e-6, "maximum": 1.0},
-                    "batch_size": {"type": "integer", "minimum": 1, "maximum": 10000},
-                    "epochs": {"type": "integer", "minimum": 1, "maximum": 10000}
-                }
-            }
-        }
-    }
-    jsonschema.validate(config, schema)
-
-    if "data_path" in config:
-        data_path = Path(config["data_path"])
-        if not data_path.exists():
-            raise ValueError(f"Training data not found: {data_path}")
-        if data_path.stat().st_size == 0:
-            raise ValueError(f"Training data is empty: {data_path}")
-    return config
-```
-
 ### Rollback Procedures
 
 **Constraint**: All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
@@ -208,78 +167,7 @@ All operations MUST emit structured JSON logs before and after each operation.
 }
 ```
 
-**Audit Logging Implementation (Python):**
-```python
-import json
-import time
-from datetime import datetime
-from typing import Dict, List, Any
-
-class AIOperationLogger:
-    """Structured logger for AI operations."""
-
-    def __init__(self, user: str, environment: str):
-        self.user = user
-        self.environment = environment
-
-    def log_operation(self, operation: str, command: str, resources: List[str],
-                     metadata: Dict[str, Any], outcome: str = "success", error: str = None) -> None:
-        """Log AI operation with full context."""
-        log_entry = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
-            "user": self.user,
-            "change_ticket": metadata.get("change_ticket", "N/A"),
-            "environment": self.environment,
-            "operation": operation,
-            "command": command,
-            "outcome": outcome,
-            "resources_affected": resources,
-            "rollback_available": True,
-            "duration_seconds": metadata.get("duration", 0)
-        }
-
-        if outcome == "failure" and error:
-            log_entry["error_detail"] = error
-
-        if "model_metadata" in metadata:
-            log_entry["model_metadata"] = metadata["model_metadata"]
-
-        with open("/var/log/ai-operations/audit.jsonl", "a") as f:
-            f.write(json.dumps(log_entry) + "\n")
-
-        if self.environment == "production":
-            self._forward_to_elk(log_entry)
-
-    def _forward_to_elk(self, log_entry: dict) -> None:
-        """Forward logs to ELK stack."""
-        pass
-
-# Usage
-logger = AIOperationLogger(user="ml-engineer@company.com", environment="production")
-start = time.time()
-try:
-    # Execute training...
-    duration = time.time() - start
-    logger.log_operation(
-        operation="model_training",
-        command="python train.py --config configs/prod.yaml",
-        resources=["experiment-12345", "gpu-cluster-1"],
-        metadata={
-            "change_ticket": "CHG-12345",
-            "duration": duration,
-            "model_metadata": {"model_name": "recommendation-model", "version": "v3.0.0", "accuracy": 0.943}
-        }
-    )
-except Exception as e:
-    logger.log_operation(
-        operation="model_training",
-        command="python train.py --config configs/prod.yaml",
-        resources=["experiment-12345"],
-        metadata={"change_ticket": "CHG-12345", "duration": time.time() - start},
-        outcome="failure",
-        error=str(e)
-    )
-```
+Audit logging implementation is handled by Claude Code Hooks.
 
 Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Logs stored in `/var/log/ai-operations/audit.jsonl`, forwarded to ELK stack *(if available)* for production. Retain logs 90 days minimum for model governance and incident investigation.
 

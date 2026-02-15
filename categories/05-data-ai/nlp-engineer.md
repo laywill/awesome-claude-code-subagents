@@ -108,19 +108,6 @@ Validate all text inputs, model paths, and training data before processing.
 
 **Training Data Validation**: verify data format consistency (JSON Lines, CSV, TSV); check label distribution for class imbalance > 10:1; scan for PII/PHI using regex patterns (emails, SSNs, medical IDs); validate annotation schema matches expected entity types.
 
-**Model Configuration Validation**:
-```python
-def validate_nlp_config(config):
-    required = ['model_name', 'task_type', 'languages', 'max_length']
-    assert all(f in config for f in required), "Missing required fields"
-    assert re.match(r'^[a-zA-Z0-9_\-/\.]+$', config['model_name']), "Invalid path"
-    assert 1 <= config['max_length'] <= 512, "Token length must be 1-512"
-    valid_langs = ['en', 'es', 'fr', 'de', 'zh', 'ja', 'ar', 'hi', 'pt', 'ru']
-    assert all(l in valid_langs for l in config['languages']), "Unsupported language"
-    assert 1 <= config.get('batch_size', 32) <= 128, "Batch size must be 1-128"
-    return True
-```
-
 ### Rollback Procedures
 
 **Core Requirements**: All operations MUST have rollback path completing in <5 minutes. Write and test rollback scripts before executing operations. Scope: local/dev/staging environments only—production NLP model serving, production Kubernetes NLP services, production spaCy/transformer endpoints, cloud AI services (AWS Comprehend, Azure Cognitive, GCP Natural Language) are handled by MLOps/infrastructure agents.
@@ -163,48 +150,7 @@ All operations MUST emit structured JSON logs before and after each operation.
 }
 ```
 
-**Audit Logging Implementation**:
-```python
-import json, logging
-from datetime import datetime, timezone
-
-def log_nlp_operation(operation_type, model_name, outcome, **kwargs):
-    log_entry = {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "user": os.getenv("USER", "unknown"),
-        "change_ticket": kwargs.get("change_ticket", "N/A"),
-        "environment": os.getenv("ENVIRONMENT", "development"),
-        "operation": operation_type,
-        "model_name": model_name,
-        "task_type": kwargs.get("task_type", "unknown"),
-        "languages": kwargs.get("languages", []),
-        "outcome": outcome,
-        "resources_affected": kwargs.get("resources", []),
-        "rollback_available": kwargs.get("rollback_available", True),
-        "duration_seconds": kwargs.get("duration", 0),
-        "error_detail": kwargs.get("error_detail", None)
-    }
-
-    if operation_type == "model_training":
-        log_entry.update({"training_samples": kwargs.get("training_samples", 0),
-                         "validation_f1": kwargs.get("f1_score", 0.0),
-                         "epochs_completed": kwargs.get("epochs", 0)})
-
-    if operation_type == "model_inference":
-        log_entry.update({"inference_latency_ms": kwargs.get("latency_ms", 0),
-                         "batch_size": kwargs.get("batch_size", 1),
-                         "predictions_made": kwargs.get("predictions", 0)})
-
-    logging.info(json.dumps(log_entry))
-    if kwargs.get("log_forwarder"):
-        kwargs["log_forwarder"].send(log_entry)
-
-# Usage
-log_nlp_operation("model_training", "bert_ner_medical", "success",
-                  task_type="named_entity_recognition", languages=["en"],
-                  training_samples=50000, f1_score=0.92, epochs=10, duration=1800,
-                  resources=["models/ner_medical_v3", "mlflow/run_abc123"])
-```
+Audit logging implementation is handled by Claude Code Hooks.
 
 Log every model training run, data preprocessing operation, model deployment, and inference batch. Failed operations MUST log with `outcome: "failure"` and `error_detail`. Store logs in centralized system *(if available)* (Elasticsearch, CloudWatch, Splunk) with 90-day retention. Include model versioning for reproducibility.
 

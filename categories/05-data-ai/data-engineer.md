@@ -61,32 +61,6 @@ All pipeline operations MUST validate inputs before execution.
 - Data volume estimates: Numeric with units (GB, TB, PB)
 - Schedule expressions: Validate cron syntax using `croniter`
 
-**SQL Query Validation**
-```python
-import re
-from typing import Optional
-
-def validate_data_operation(operation_type: str, params: dict) -> tuple[bool, Optional[str]]:
-    if 'table_name' in params and not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', params['table_name']):
-        return False, f"Invalid table name: {params['table_name']}"
-
-    if 'partition_key' in params and not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', params['partition_key']):
-        return False, f"Invalid partition key: {params['partition_key']}"
-
-    if 'output_path' in params and not re.match(r'^(s3|gs|hdfs|abfss)://[a-z0-9][a-z0-9-/._]*$', params['output_path']):
-        return False, f"Invalid storage path: {params['output_path']}"
-
-    if 'query' in params:
-        dangerous = ['DROP', 'TRUNCATE', 'DELETE FROM', 'ALTER TABLE']
-        if any(p in params['query'].upper() for p in dangerous):
-            return False, "Query contains destructive operations - requires approval"
-
-    if 'row_limit' in params and params['row_limit'] > 10_000_000:
-        return False, f"Row limit exceeds 10M threshold"
-
-    return True, None
-```
-
 ### Rollback Procedures
 
 All operations MUST have a rollback path completing in <5 minutes. Test rollback scripts before executing.
@@ -145,40 +119,7 @@ All operations MUST emit structured JSON logs before and after each operation.
 }
 ```
 
-**Audit Logging Implementation**
-```python
-import json, logging
-from datetime import datetime
-
-class DataEngineerAuditLogger:
-    def __init__(self, environment: str):
-        self.environment = environment
-        self.logger = logging.getLogger('data-engineer-audit')
-
-    def log_operation(self, operation: str, pipeline_id: str, resources: list[str],
-                     outcome: str, duration_seconds: float, data_volume_gb: float = 0,
-                     rows_affected: int = 0, error_detail: str = None, **kwargs):
-        log_entry = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
-            "user": "data-engineer-agent",
-            "change_ticket": kwargs.get('change_ticket', 'N/A'),
-            "environment": self.environment,
-            "operation": operation,
-            "pipeline_id": pipeline_id,
-            "command": kwargs.get('command', ''),
-            "outcome": outcome,
-            "resources_affected": resources,
-            "data_volume_processed_gb": data_volume_gb,
-            "rows_affected": rows_affected,
-            "duration_seconds": duration_seconds,
-            "rollback_available": kwargs.get('rollback_available', True),
-            "rollback_commands": kwargs.get('rollback_commands', []),
-            "quality_checks_passed": kwargs.get('quality_checks_passed', True),
-            "error_detail": error_detail
-        }
-        self.logger.info(json.dumps(log_entry))
-        return log_entry
-```
+Audit logging implementation is handled by Claude Code Hooks.
 
 Log every pipeline deployment, schema change, data transformation, config update. Failed operations MUST include `outcome: "failure"` and `error_detail`. Forward to centralized system *(if available)* (CloudWatch, Elasticsearch, Datadog) with 90-day retention. Include data lineage for compliance (GDPR, CCPA).
 

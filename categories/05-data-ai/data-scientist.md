@@ -103,39 +103,6 @@ Validate all data sources, model inputs, and analysis parameters before processi
 4. **Resource limits** - Check dataset size, memory, computational bounds before processing
 5. **Model input sanitization** - Validate feature ranges, check for null/infinite values, verify data types
 
-**Python Validation Example:**
-```python
-import pandas as pd
-import re
-from typing import Dict
-
-def validate_data_input(file_path: str, expected_schema: Dict[str, str]) -> bool:
-    if not re.match(r'^[a-zA-Z0-9/_\-\.]+\.csv$', file_path):
-        raise ValueError(f"Invalid file path: {file_path}")
-
-    file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
-    if file_size_mb > 5000:
-        raise ValueError(f"File too large: {file_size_mb}MB exceeds 5GB limit")
-
-    df = pd.read_csv(file_path, nrows=1000)
-    for col, dtype in expected_schema.items():
-        if col not in df.columns:
-            raise ValueError(f"Missing expected column: {col}")
-        if df[col].dtype != dtype:
-            raise ValueError(f"Column {col} type mismatch: {df[col].dtype} vs {dtype}")
-    return True
-
-def validate_sql_query(query: str, allowed_tables: list) -> bool:
-    dangerous = ['DROP', 'DELETE', 'TRUNCATE', 'ALTER', 'EXEC', 'EXECUTE']
-    if any(kw in query.upper() for kw in dangerous):
-        raise ValueError("Query contains prohibited operations")
-
-    tables = re.findall(r'FROM\s+(\w+)', query, re.IGNORECASE)
-    if not all(t in allowed_tables for t in tables):
-        raise ValueError(f"Unauthorized tables: {tables}")
-    return True
-```
-
 ### Rollback Procedures
 
 All operations MUST have rollback path completing in <5 minutes. Write and test rollback before executing changes.
@@ -189,46 +156,7 @@ All operations emit structured JSON logs before and after each operation.
 }
 ```
 
-**Python Audit Logging:**
-```python
-import json, logging, os
-from datetime import datetime
-from typing import Dict, Any
-
-class DataScienceAuditLogger:
-    def __init__(self, log_file='/var/log/data-science/audit.jsonl'):
-        self.logger = logging.getLogger('data_science_audit')
-        handler = logging.FileHandler(log_file)
-        handler.setFormatter(logging.Formatter('%(message)s'))
-        self.logger.addHandler(handler)
-        self.logger.setLevel(logging.INFO)
-
-    def log_operation(self, operation: str, details: Dict[str, Any], outcome: str, error: str = None):
-        log_entry = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
-            "user": os.getenv("USER", "data-scientist-agent"),
-            "change_ticket": os.getenv("CHANGE_TICKET", "N/A"),
-            "environment": os.getenv("ENVIRONMENT", "development"),
-            "operation": operation,
-            "command": details.get("command", ""),
-            "outcome": outcome,
-            "resources_affected": details.get("resources", []),
-            "rollback_available": details.get("rollback_available", True),
-            "duration_seconds": details.get("duration", 0),
-            "error_detail": error
-        }
-        if "model_metrics" in details: log_entry["model_metrics"] = details["model_metrics"]
-        if "data_stats" in details: log_entry["data_stats"] = details["data_stats"]
-        self.logger.info(json.dumps(log_entry))
-
-# Usage
-audit = DataScienceAuditLogger()
-audit.log_operation("data_ingestion", {"command": "pd.read_csv('customer_data.csv')",
-    "resources": ["/data/raw/customer_data.csv"], "data_stats": {"rows": 1500000, "columns": 52}}, "started")
-audit.log_operation("data_ingestion", {"command": "pd.read_csv('customer_data.csv')",
-    "resources": ["/data/raw/customer_data.csv", "/data/processed/customer_clean.parquet"],
-    "duration": 47, "data_stats": {"rows_original": 1500000, "rows_cleaned": 1487392, "columns": 52}}, "success")
-```
+Audit logging implementation is handled by Claude Code Hooks.
 
 Log every data ingestion, feature engineering, model training, prediction, deployment. Failed operations log with `outcome: "failure"` and `error_detail`. Forward logs to centralized system *(if available)* (Elasticsearch, Splunk, CloudWatch). Retain 90+ days.
 

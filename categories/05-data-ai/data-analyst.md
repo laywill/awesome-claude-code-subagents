@@ -98,26 +98,6 @@ All data queries and analysis operations MUST validate inputs to prevent SQL inj
 
 **Required Validation Rules**: SQL queries (parameterized queries only, validate table/column names against schema whitelist); dashboard filters (sanitize inputs, date ranges max 5 years, result sets max 1M rows); data source connections (verify credentials, enforce read-only access, validate connection strings); file uploads (validate CSV/Excel structure, size limits <500MB, scan for malicious content).
 
-**Validation Implementation**:
-```python
-import re
-from datetime import datetime
-
-def validate_sql_query(query: str, allowed_tables: list) -> bool:
-    if re.search(r'\b(DROP|DELETE|UPDATE|INSERT|ALTER|CREATE|TRUNCATE)\b', query, re.I):
-        raise ValueError("Only SELECT queries allowed")
-    tables = re.findall(r'FROM\s+(\w+)', query, re.I)
-    if not all(table.lower() in [t.lower() for t in allowed_tables]):
-        raise ValueError(f"Unauthorized tables: {tables}")
-    return True
-
-def validate_dashboard_filter(date_start: str, date_end: str, limit: int) -> dict:
-    start, end = datetime.fromisoformat(date_start), datetime.fromisoformat(date_end)
-    if (end - start).days > 1825: raise ValueError("Date range exceeds 5 years")
-    if limit > 1_000_000: raise ValueError("Limit exceeds 1M rows")
-    return {"start": start, "end": end, "limit": limit}
-```
-
 ### Rollback Procedures
 
 All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
@@ -158,27 +138,7 @@ All operations MUST emit structured JSON logs before and after each operation.
 }
 ```
 
-**Audit Logging Implementation**:
-```python
-import json, logging
-from datetime import datetime
-from typing import Optional
-
-logger = logging.getLogger(__name__)
-
-def audit_log(user: str, operation: str, command: str, outcome: str, resources: list,
-              duration: float, environment: str = "production", change_ticket: Optional[str] = None,
-              error: Optional[str] = None, **kwargs):
-    log_entry = {
-        "timestamp": datetime.utcnow().isoformat() + "Z", "user": user,
-        "change_ticket": change_ticket or "N/A", "environment": environment,
-        "operation": operation, "command": command, "outcome": outcome,
-        "resources_affected": resources, "rollback_available": True,
-        "duration_seconds": round(duration, 2), **kwargs
-    }
-    if outcome == "failure": log_entry["error_detail"] = error
-    logger.info(json.dumps(log_entry))
-```
+Audit logging implementation is handled by Claude Code Hooks.
 
 Log every query execution, dashboard publication, metric definition change, and data export operation. Failed operations MUST log with `outcome: "failure"` and `error_detail`. Forward logs to centralized system (Splunk, Datadog, CloudWatch) with 90-day retention. Include query cost and rows processed for cost monitoring and compliance auditing.
 

@@ -109,49 +109,6 @@ Validate all inputs before execution to prevent security vulnerabilities and res
 - GPU/CPU limits within quota (max 8 GPUs, 256GB RAM/job)
 - API keys properly scoped, not hardcoded
 
-**Fine-tuning Dataset Validation**
-```python
-import re
-from pathlib import Path
-
-def validate_llm_inputs(config):
-    """Validate LLM architecture configuration before deployment"""
-    errors = []
-
-    # Validate model identifier
-    model_pattern = r'^(openai|anthropic|huggingface|custom)/[\w\-\.]+:\d+\.\d+$'
-    if not re.match(model_pattern, config.get('model_id', '')):
-        errors.append(f"Invalid model_id: {config.get('model_id')}")
-
-    # Validate inference endpoint
-    endpoint = config.get('inference_endpoint', '')
-    allowed_domains = ['api.internal', 'models.company.com', 'localhost']
-    if not any(domain in endpoint for domain in allowed_domains):
-        errors.append(f"Endpoint not in approved list: {endpoint}")
-
-    # Validate training data paths
-    if 'training_data' in config:
-        data_path = Path(config['training_data'])
-        allowed_base = Path('/data/training')
-        if not str(data_path).startswith(str(allowed_base)):
-            errors.append(f"Training data outside allowed directory: {data_path}")
-
-    # Validate resource limits
-    if config.get('gpu_count', 0) > 8:
-        errors.append(f"GPU count {config['gpu_count']} exceeds limit of 8")
-    if config.get('memory_gb', 0) > 256:
-        errors.append(f"Memory {config['memory_gb']}GB exceeds limit of 256GB")
-
-    # Check for hardcoded secrets
-    config_str = str(config)
-    if re.search(r'(api[_-]?key|secret|token)[\'\"]?\s*[:=]\s*[\'\"][^\'\"\s]{20,}', config_str, re.I):
-        errors.append("Hardcoded API key/secret detected in config")
-
-    if errors:
-        raise ValueError(f"Input validation failed: {'; '.join(errors)}")
-    return True
-```
-
 ### Rollback Procedures
 All operations MUST have rollback path completing <5 minutes. Write and test rollback scripts before execution.
 
@@ -206,36 +163,7 @@ All operations MUST emit structured JSON logs before and after execution.
 }
 ```
 
-**Audit Logging Implementation**
-```python
-import json, logging
-from datetime import datetime
-
-def log_llm_operation(operation_type, config, outcome, **kwargs):
-    log_entry = {
-        "timestamp": datetime.utcnow().isoformat() + "Z",
-        "user": kwargs.get('user', 'system'),
-        "change_ticket": kwargs.get('change_ticket', 'N/A'),
-        "environment": kwargs.get('environment', 'development'),
-        "operation": operation_type,
-        "model_id": config.get('model_id'),
-        "command": kwargs.get('command', ''),
-        "outcome": outcome,
-        "resources_affected": kwargs.get('resources', []),
-        "rollback_available": True,
-        "duration_seconds": kwargs.get('duration', 0),
-        "metrics": {
-            "latency_p95_ms": kwargs.get('latency_p95'),
-            "throughput_tokens_per_sec": kwargs.get('throughput'),
-            "gpu_count": config.get('gpu_count'),
-            "cost_per_1k_tokens": kwargs.get('cost_per_1k_tokens')
-        },
-        "error_detail": kwargs.get('error') if outcome == 'failure' else None
-    }
-    logger = logging.getLogger('llm-architect')
-    logger.info(json.dumps(log_entry))
-    return log_entry
-```
+Audit logging implementation is handled by Claude Code Hooks.
 
 Log every create/update/delete. Failed operations MUST log `outcome: "failure"` with `error_detail`. Forward to centralized logging (DataDog, CloudWatch, ELK) with 90+ day retention. Tag `service:llm-architecture`.
 

@@ -112,39 +112,6 @@ Delivery notification:
 - Reject dangerous operations without explicit confirmation: `DROP DATABASE`, `TRUNCATE`, `DELETE FROM ... WHERE 1=1`
 - Validate inputs: database identifiers `^[a-zA-Z_][a-zA-Z0-9_]{0,62}$`, SSL mode in connection strings, config params against `pg_settings.name` whitelist
 
-**Configuration Validation**:
-```sql
-CREATE OR REPLACE FUNCTION validate_pg_config(param_name TEXT, param_value TEXT)
-RETURNS BOOLEAN AS $$
-DECLARE
-  valid_param BOOLEAN;
-  current_val TEXT;
-BEGIN
-  SELECT EXISTS(SELECT 1 FROM pg_settings WHERE name = param_name) INTO valid_param;
-  IF NOT valid_param THEN RAISE EXCEPTION 'Invalid parameter: %', param_name; END IF;
-
-  SELECT setting INTO current_val FROM pg_settings WHERE name = param_name;
-  RAISE NOTICE 'Current % = %, proposing %', param_name, current_val, param_value;
-
-  IF param_name = 'max_connections' AND param_value::INT < 10 THEN
-    RAISE EXCEPTION 'max_connections too low: %', param_value;
-  END IF;
-  RETURN TRUE;
-END;
-$$ LANGUAGE plpgsql;
-```
-
-**Replication Validation**:
-```bash
-# Verify replica is healthy before promoting
-pg_is_in_recovery=$(psql -Atc "SELECT pg_is_in_recovery();")
-[ "$pg_is_in_recovery" != "t" ] && echo "ERROR: Not a replica" && exit 1
-
-# Check replication lag before failover
-lag=$(psql -Atc "SELECT EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp()));")
-(( $(echo "$lag > 10" | bc -l) )) && echo "WARNING: Replication lag ${lag}s, confirm promotion"
-```
-
 ### Rollback Procedures
 
 All operations MUST have a <5-minute rollback path. Write and test rollback scripts before executing. **Scope**: local/dev/staging environments only; production PostgreSQL (clusters, replication, backup infrastructure, AWS RDS, Azure Database, GCP Cloud SQL) is handled by database/infrastructure agents.
@@ -201,6 +168,8 @@ All operations MUST emit structured JSON logs before and after each operation.
   "error_detail": null
 }
 ```
+
+Audit logging implementation is handled by Claude Code Hooks.
 
 **Implementation**: Create `postgres_audit_log` table (id, timestamp, username, change_ticket, environment, operation, command, outcome, resources_affected, rollback_available, duration_seconds, rows_affected, error_detail). Create `log_postgres_operation()` function inserting structured logs with current_user and session variables.
 

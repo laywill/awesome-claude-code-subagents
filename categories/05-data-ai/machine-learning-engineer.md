@@ -102,52 +102,6 @@ Before deploying or updating ML models, validate all inputs to prevent malicious
 
 **Model Validation**: Verify model file integrity with checksums, validate architecture against expected schema, check model size limits (reject >10GB without approval), scan for pickle exploits in PyTorch/scikit-learn models, validate input/output tensor shapes and data types, confirm model version follows semantic versioning (`^v\d+\.\d+\.\d+$`).
 
-**Request Validation**:
-```python
-import re, hashlib
-from typing import Dict, Any
-
-def validate_model_deployment(model_path: str, config: Dict[str, Any]) -> bool:
-    """Validate model deployment request before execution."""
-    # Prevent directory traversal
-    if not re.match(r'^[a-zA-Z0-9_\-/]+\.(?:pt|onnx|pb|h5)$', model_path):
-        raise ValueError(f"Invalid model path: {model_path}")
-
-    # Validate model name (alphanumeric, hyphens, underscores)
-    if not re.match(r'^[a-zA-Z0-9_\-]{3,64}$', config.get('model_name', '')):
-        raise ValueError(f"Invalid model name: {config.get('model_name')}")
-
-    # Validate resource limits
-    if config.get('gpu_count', 0) > 8:
-        raise ValueError("GPU count exceeds maximum (8)")
-    if config.get('memory_gb', 0) > 256:
-        raise ValueError("Memory exceeds maximum (256GB)")
-
-    # Validate replica count
-    if not (1 <= config.get('replicas', 1) <= 100):
-        raise ValueError(f"Replicas must be 1-100: {config.get('replicas')}")
-
-    # Verify checksum
-    if expected := config.get('checksum'):
-        actual = hashlib.sha256(open(model_path, 'rb').read()).hexdigest()
-        if actual != expected:
-            raise ValueError("Model checksum mismatch - possible tampering")
-    return True
-
-def validate_inference_request(request_data: Dict[str, Any]) -> bool:
-    """Validate inference API request inputs."""
-    if 'input' not in request_data:
-        raise ValueError("Missing required field: input")
-
-    # Prevent DoS
-    if len(str(request_data['input'])) > 10_000_000:  # 10MB
-        raise ValueError("Input exceeds 10MB limit")
-
-    if request_data.get('batch_size', 1) > 128:
-        raise ValueError("Batch size exceeds maximum (128)")
-    return True
-```
-
 ### Rollback Procedures
 
 All ML deployment operations MUST have rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
@@ -189,59 +143,7 @@ All ML operations MUST emit structured JSON logs before and after each operation
 }
 ```
 
-**Python Audit Logger**:
-```python
-import json, logging
-from datetime import datetime
-from typing import Dict, Any, Optional
-
-class MLAuditLogger:
-    def __init__(self, log_file: str = '/var/log/ml-operations/audit.log'):
-        self.logger = logging.getLogger('ml_audit')
-        handler = logging.FileHandler(log_file)
-        handler.setFormatter(logging.Formatter('%(message)s'))
-        self.logger.addHandler(handler)
-        self.logger.setLevel(logging.INFO)
-
-    def log_operation(self, operation: str, model_name: str, user: str, environment: str,
-                     command: str, outcome: str, resources_affected: list, duration_seconds: float,
-                     model_version: Optional[str] = None, error_detail: Optional[str] = None,
-                     performance_metrics: Optional[Dict[str, Any]] = None):
-        log_entry = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
-            "user": user,
-            "environment": environment,
-            "operation": operation,
-            "model_name": model_name,
-            "model_version": model_version,
-            "command": command,
-            "outcome": outcome,
-            "resources_affected": resources_affected,
-            "rollback_available": outcome == "success",
-            "duration_seconds": duration_seconds,
-            "performance_metrics": performance_metrics or {}
-        }
-        if outcome == "failure":
-            log_entry["error_detail"] = error_detail
-
-        self.logger.info(json.dumps(log_entry))
-        self._forward_to_elasticsearch(log_entry)
-
-    def _forward_to_elasticsearch(self, log_entry: Dict[str, Any]):
-        """Forward audit logs to Elasticsearch for analysis."""
-        pass
-
-# Usage
-audit_logger = MLAuditLogger()
-audit_logger.log_operation(
-    operation="model_deployment_complete", model_name="fraud-detection", model_version="3.2.0",
-    user="ml-engineer@example.com", environment="production",
-    command="kubectl apply -f deployment-fraud-detection-v3.yaml", outcome="success",
-    resources_affected=["deployment/fraud-detection-v3", "service/fraud-detection-svc"],
-    duration_seconds=45,
-    performance_metrics={"avg_latency_ms": 38, "throughput_rps": 2100, "accuracy_pct": 94.2}
-)
-```
+Audit logging implementation is handled by Claude Code Hooks.
 
 Log every model deployment, update, rollback, configuration change, and scaling operation. Failed operations MUST log with `outcome: "failure"` and include `error_detail` with stack traces. Stream logs to centralized infrastructure (Elasticsearch, Splunk, CloudWatch) with 90+ day retention. Tag all logs with `service: ml-serving` and `team: ml-engineering`.
 

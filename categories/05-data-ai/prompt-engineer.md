@@ -114,47 +114,6 @@ Before deploying or testing prompt modifications, validate all inputs to prevent
 - Content filtering: check for prohibited patterns (PII, credentials, harmful instructions)
 - Version metadata: verify prompt version, author, approval status before deployment
 
-**Validation Function Example (Python):**
-```python
-import re
-import tiktoken
-
-def validate_prompt_deployment(prompt_data):
-    """Validate prompt before production deployment."""
-    errors = []
-
-    # Token count validation
-    encoding = tiktoken.encoding_for_model("gpt-4")
-    token_count = len(encoding.encode(prompt_data["content"]))
-    if token_count > 100000:
-        errors.append(f"Token count {token_count} exceeds limit")
-
-    # Variable placeholder validation
-    if not re.match(r'^[\w\-_{{}}]+$', prompt_data.get("variables", "")):
-        errors.append("Invalid variable placeholder format")
-
-    # PII detection (basic patterns)
-    pii_patterns = [
-        r'\b\d{3}-\d{2}-\d{4}\b',  # SSN
-        r'\b[\w\.-]+@[\w\.-]+\.\w+\b',  # Email
-        r'\b\d{16}\b'  # Credit card
-    ]
-    for pattern in pii_patterns:
-        if re.search(pattern, prompt_data["content"]):
-            errors.append(f"Potential PII detected: {pattern}")
-
-    # Metadata validation
-    required_fields = ["version", "author", "approved_by", "deployment_date"]
-    for field in required_fields:
-        if field not in prompt_data:
-            errors.append(f"Missing required metadata: {field}")
-
-    if errors:
-        raise ValueError(f"Prompt validation failed: {', '.join(errors)}")
-
-    return True
-```
-
 ### Rollback Procedures
 
 All prompt deployments MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
@@ -208,37 +167,7 @@ All operations MUST emit structured JSON logs before and after each operation.
 }
 ```
 
-**Audit Logging Implementation (Python):**
-```python
-import json
-import logging
-from datetime import datetime
-
-def log_prompt_operation(operation_type, prompt_data, outcome, **kwargs):
-    """Log all prompt engineering operations with structured data."""
-    log_entry = {
-        "timestamp": datetime.utcnow().isoformat() + "Z",
-        "user": kwargs.get("user", "unknown"),
-        "change_ticket": kwargs.get("change_ticket", "N/A"),
-        "environment": kwargs.get("environment", "development"),
-        "operation": operation_type,
-        "prompt_id": prompt_data.get("id"),
-        "prompt_version": prompt_data.get("version"),
-        "model": prompt_data.get("model", "unknown"),
-        "token_count": prompt_data.get("token_count", 0),
-        "previous_version": prompt_data.get("previous_version"),
-        "ab_test_config": prompt_data.get("ab_test_config"),
-        "outcome": outcome,
-        "resources_affected": kwargs.get("resources_affected", []),
-        "rollback_available": kwargs.get("rollback_available", True),
-        "duration_seconds": kwargs.get("duration_seconds", 0),
-        "error_detail": kwargs.get("error_detail")
-    }
-
-    logging.info(json.dumps(log_entry))
-    # Also send to centralized logging (DataDog, Splunk)
-    return log_entry
-```
+Audit logging implementation is handled by Claude Code Hooks.
 
 Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Store logs in centralized system (CloudWatch, DataDog, Splunk) with 90-day retention. Include prompt version, model, token counts, performance metrics for cost tracking and debugging.
 
