@@ -116,33 +116,6 @@ All test automation inputs MUST be validated before execution to prevent malicio
 3. **Selector/Locator Strings**: Validate all element selectors and XPath expressions to prevent code injection through test scripts
 4. **Environment Variables**: Verify all environment-specific configurations (API endpoints, database connections) are properly scoped
 
-**Validation Implementation** (JavaScript/TypeScript):
-```javascript
-function validateTestConfig(config) {
-  const urlPattern = /^https?:\/\/([\w-]+\.)+[\w-]+(:\d+)?(\/[\w-\.\/]*)?$/;
-  if (!urlPattern.test(config.baseUrl)) {
-    throw new Error(`Invalid base URL: ${config.baseUrl}`);
-  }
-
-  const safePathPattern = /^[a-zA-Z0-9_\-\/\.]+$/;
-  if (!safePathPattern.test(config.testDataPath)) {
-    throw new Error(`Invalid test data path: ${config.testDataPath}`);
-  }
-
-  const allowedBrowsers = ['chrome', 'firefox', 'safari', 'edge'];
-  if (!allowedBrowsers.includes(config.browser)) {
-    throw new Error(`Unsupported browser: ${config.browser}`);
-  }
-
-  const dangerousPatterns = [/javascript:/i, /eval\(/i, /script>/i];
-  const checkSelector = (selector) => {
-    return !dangerousPatterns.some(pattern => pattern.test(selector));
-  };
-
-  return true;
-}
-```
-
 ### Rollback Procedures
 
 All test automation operations MUST have a rollback path completing in <5 minutes. This agent manages test framework development in **local/dev/staging environments only**. Production test automation deployments (CI/CD pipeline modifications affecting production, integration with production monitoring, production test data management) are handled by DevOps/platform engineers with appropriate approval gates.
@@ -223,87 +196,7 @@ All test automation operations MUST emit structured JSON logs before and after e
 }
 ```
 
-**Audit Logging Implementation** (JavaScript/TypeScript):
-```javascript
-const fs = require('fs');
-const path = require('path');
-
-class TestAuditLogger {
-  constructor(logFilePath = 'logs/test-automation-audit.jsonl') {
-    this.logFilePath = logFilePath;
-    this.ensureLogDirectory();
-  }
-
-  ensureLogDirectory() {
-    const dir = path.dirname(this.logFilePath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-  }
-
-  logOperation(operation, outcome, metadata = {}) {
-    const logEntry = {
-      timestamp: new Date().toISOString(),
-      user: process.env.USER || 'test-automator-agent',
-      change_ticket: process.env.CHANGE_TICKET || 'N/A',
-      environment: process.env.TEST_ENV || 'unknown',
-      operation: operation,
-      command: metadata.command || '',
-      outcome: outcome,
-      resources_affected: metadata.resources || [],
-      rollback_available: metadata.rollbackAvailable || true,
-      duration_seconds: metadata.duration || 0,
-      test_metrics: metadata.metrics || {},
-      error_detail: metadata.error || null
-    };
-
-    fs.appendFileSync(this.logFilePath, JSON.stringify(logEntry) + '\n');
-    console.log(`[AUDIT] ${operation}: ${outcome}`, logEntry);
-  }
-
-  logTestExecution(suite, startTime, results) {
-    const duration = (Date.now() - startTime) / 1000;
-    this.logOperation('test_execution', results.failed === 0 ? 'success' : 'partial_failure', {
-      command: `npm test -- --suite=${suite}`,
-      resources: [suite, 'test-reports', 'test-artifacts'],
-      duration: duration,
-      metrics: {
-        total_tests: results.total,
-        passed: results.passed,
-        failed: results.failed,
-        skipped: results.skipped,
-        coverage: results.coverage
-      },
-      error: results.failed > 0 ? `${results.failed} tests failed` : null
-    });
-  }
-
-  logFrameworkChange(changeType, details) {
-    this.logOperation('framework_change', details.outcome, {
-      command: details.command,
-      resources: details.filesChanged || [],
-      rollbackAvailable: true,
-      error: details.error || null
-    });
-  }
-}
-
-// Usage
-const auditLogger = new TestAuditLogger();
-const startTime = Date.now();
-
-try {
-  const results = await runTestSuite('regression');
-  auditLogger.logTestExecution('regression', startTime, results);
-} catch (error) {
-  auditLogger.logOperation('test_execution', 'failure', {
-    command: 'npm test -- --suite=regression',
-    error: error.message,
-    duration: (Date.now() - startTime) / 1000
-  });
-  throw error;
-}
-```
+Audit logging implementation is handled by Claude Code Hooks.
 
 Log every test execution, framework modification, configuration change, and CI/CD pipeline update. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Store audit logs in a centralized logging system (e.g., ELK stack, CloudWatch, Datadog) with minimum 90-day retention. Configure alerting for failed test executions affecting critical test suites.
 

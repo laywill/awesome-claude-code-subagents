@@ -83,6 +83,8 @@ All operations MUST emit structured JSON logs before and after each operation.
 
 **Required Log Fields**: `timestamp` (ISO 8601 UTC), `user`, `change_ticket` *(if available)*, `environment`, `operation`, `command`, `outcome` (success/failure), `resources_affected[]`, `rollback_available` (bool), `rollback_location`, `duration_seconds`, `error_detail` (null on success), `security_context{}` (operation-specific state: previous/new values, affected principals, verification results).
 
+Audit logging implementation is handled by Claude Code Hooks.
+
 **Logging Implementation**:
 - Append JSON entries to `C:\Logs\PowerShell-Security-Audit.json` (one entry per line)
 - Forward to SIEM via POST to `$env:SIEM_ENDPOINT` *(if available)* with 5s timeout; log warning on failure

@@ -110,23 +110,6 @@ All performance operations MUST validate inputs before execution.
 - Cache TTL: `1s <= ttl <= 30d`
 - Timeouts: `100ms <= timeout <= 5m`
 
-**Query Optimization Validation**
-```python
-import re, sqlparse
-
-def validate_query_safe(query: str) -> tuple[bool, str]:
-    parsed = sqlparse.parse(query)[0]
-    dangerous = ['DROP', 'TRUNCATE', 'DELETE FROM', 'UPDATE.*SET']
-    for kw in dangerous:
-        if re.search(rf'\b{kw}\b', query, re.IGNORECASE):
-            return False, f"Blocked: {kw} detected"
-    if parsed.get_type() == 'SELECT' and 'WHERE' not in query.upper():
-        return True, "Warning: Full table scan"
-    if not re.match(r'^https?:\/\/', query) or 'localhost' in query or '127.0.0.1' in query:
-        return True, "Internal endpoint - caution"
-    return True, "Validation passed"
-```
-
 ### Rollback Procedures
 
 All operations MUST complete rollback in <5 minutes. Scope: Local/dev/staging environments only—production optimizations are handled by SRE/infrastructure agents.
@@ -193,58 +176,7 @@ All operations MUST emit structured JSON logs before and after each operation.
 }
 ```
 
-**Performance Audit Logger**
-```python
-import json, logging
-from datetime import datetime
-from typing import Optional, Dict, Any
-
-class PerformanceAuditLogger:
-    def __init__(self, log_file: str = "/var/log/performance-optimization.log"):
-        self.logger = logging.getLogger("performance_audit")
-        self.logger.setLevel(logging.INFO)
-        handler = logging.FileHandler(log_file)
-        handler.setFormatter(logging.Formatter('%(message)s'))
-        self.logger.addHandler(handler)
-
-    def log_optimization(self, operation: str, command: str, resources_affected: list[str],
-                        rollback_command: Optional[str] = None, outcome: str = "success",
-                        error_detail: Optional[str] = None, performance_metrics: Optional[Dict[str, Any]] = None,
-                        duration_seconds: Optional[float] = None, change_ticket: Optional[str] = None,
-                        environment: str = "production"):
-        log_entry = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
-            "user": "performance-engineer-agent",
-            "change_ticket": change_ticket or "N/A",
-            "environment": environment,
-            "operation": operation,
-            "command": command,
-            "outcome": outcome,
-            "resources_affected": resources_affected,
-            "rollback_available": rollback_command is not None,
-            "rollback_command": rollback_command,
-            "duration_seconds": duration_seconds,
-            "error_detail": error_detail,
-            "performance_impact": performance_metrics or {}
-        }
-        self.logger.info(json.dumps(log_entry))
-        if outcome == "failure":
-            self.logger.error(f"PERFORMANCE_OPTIMIZATION_FAILED: {json.dumps(log_entry)}")
-
-# Usage
-audit = PerformanceAuditLogger()
-audit.log_optimization(
-    operation="load_test_execution",
-    command="k6 run --vus 500 --duration 10m load-test.js",
-    resources_affected=["service:api-gateway", "database:postgres-prod"],
-    rollback_command="kubectl scale deployment api-gateway --replicas=3",
-    outcome="success",
-    duration_seconds=600,
-    performance_metrics={"throughput_before_rps": 1200, "throughput_after_rps": 4100, "p95_latency_ms": 210},
-    change_ticket="CHG-12345",
-    environment="staging"
-)
-```
+Audit logging implementation is handled by Claude Code Hooks.
 
 Log every optimization operation (index creation, config change, load test, cache tuning). Failed operations MUST log with `outcome: "failure"` and `error_detail`. Retain logs 90 days minimum. Forward critical degradation events to incident management *(if available)*.
 

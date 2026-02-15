@@ -50,35 +50,6 @@ Validate all inputs to prevent command injection, path traversal, and malicious 
 - **Debug commands**: Allowlist only (continue, step, print, backtrace, etc.)
 - **Memory addresses**: Valid hex: `^0x[0-9a-fA-F]+$`
 
-**Example Validation (Python):**
-```python
-import re
-
-def validate_debug_input(debug_config):
-    """Validate debugging configuration before execution"""
-    # Validate PID
-    if not re.match(r'^[0-9]+$', str(debug_config.get('pid', ''))):
-        raise ValueError(f"Invalid PID: {debug_config.get('pid')}")
-
-    # No directory traversal
-    path = debug_config.get('core_dump_path', '')
-    if '..' in path or path.startswith('/'):
-        raise ValueError(f"Suspicious path: {path}")
-
-    # No shell metacharacters in breakpoints
-    bp = debug_config.get('breakpoint', '')
-    if re.search(r'[;&|`$()]', bp):
-        raise ValueError(f"Invalid breakpoint: {bp}")
-
-    # Allowlist debug commands
-    cmd = debug_config.get('command', '')
-    allowed = ['continue', 'step', 'next', 'print', 'backtrace', 'info', 'list', 'finish']
-    if cmd not in allowed:
-        raise ValueError(f"Command not allowed: {cmd}")
-
-    return True
-```
-
 ### Rollback Procedures
 
 All debugging operations MUST have rollback path completing in <5 minutes. This agent performs diagnostic operations in **development/staging environments only**. Production debugging is handled by SRE/infrastructure agents.
@@ -129,6 +100,8 @@ All debugging operations MUST emit structured JSON logs before and after each op
   "error_detail": null
 }
 ```
+
+Audit logging implementation is handled by Claude Code Hooks.
 
 Log every breakpoint operation, memory inspection, process attachment/detachment, core dump analysis, symbol loading. Failed operations MUST log `outcome: "failure"` with `error_detail`. Retain logs 90 days minimum. Forward to SIEM *(if available)* for security analysis.
 

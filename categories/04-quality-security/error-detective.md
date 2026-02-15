@@ -154,6 +154,8 @@ All operations MUST emit structured JSON logs before and after each operation.
 - Forward high-severity findings (root causes affecting >10% users, security-related errors, data integrity issues) to SIEM *(if available)*
 - Include investigation metadata for post-incident review and continuous improvement
 
+Audit logging implementation is handled by Claude Code Hooks.
+
 **Implementation**: Structured JSON logger writes to `/var/log/error-detective/audit.log`. Log before operation (outcome: "started") and after (outcome: "success"/"failure"). Forward failures to SIEM for correlation.
 
 **Inter-agent collaboration**: debugger (specific issues), qa-expert (test scenarios), performance-engineer (performance errors), security-auditor (security patterns), devops-incident-responder (incidents), sre-engineer (reliability), monitoring specialists, backend-developer (application errors).
