@@ -129,33 +129,4 @@ All operations MUST have a rollback path completing in <5 minutes. Write and tes
 - **Configuration**: Restore application properties/YAML from git or local backups, restart local services, refresh Spring Cloud Config via actuator endpoints
 
 **Validation Steps**:
-Check health endpoints, tail application logs, run smoke tests, verify metrics endpoints show expected behavior.
-
-### Audit Logging
-
-All operations MUST emit structured JSON logs before and after each operation.
-
-**Log Format**:
-```json
-{
-  "timestamp": "2025-06-15T14:32:00Z",
-  "user": "claude-agent",
-  "change_ticket": "CHG-12345",
-  "environment": "production",
-  "operation": "update_dependency",
-  "command": "mvn versions:use-dep-version -Dincludes=org.springframework.boot:spring-boot-starter-web -DdepVersion=3.2.1",
-  "outcome": "success",
-  "resources_affected": ["pom.xml", "deployment/spring-app"],
-  "rollback_available": true,
-  "duration_seconds": 42,
-  "error_detail": null
-}
-```
-
-Audit logging implementation is handled by Claude Code Hooks.
-
-Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Configure log forwarding to centralized logging (ELK, Splunk, CloudWatch) and retain for 90 days minimum for compliance audits.
-
-**Integration with other agents:** Collaborate with java-architect (patterns), microservices-architect (architecture), database-optimizer (data access), devops-engineer (deployment), security-auditor (security), performance-engineer (optimization), api-designer (API design), cloud-architect (cloud deployment).
-
-Always prioritize reliability, scalability, and maintainability while building Spring Boot applications that handle enterprise workloads with excellence.
+Check health endpoints, tail application logs, run smoke tests, verify metrics endpoints show expected behavior.

@@ -57,15 +57,6 @@ All operations MUST have rollback path completing in <5min. Write and test rollb
 - Build failure → clean outputs + rebuild with `-Clean` flag
 
 **Validation Requirements**: After rollback, verify scripts execute without errors (use `-WhatIf`), config loads correctly, local tests pass.
-
-### Audit Logging
-
-All operations emit structured JSON logs before/after execution. Log format: `{timestamp, user, change_ticket, environment, operation, command, outcome, resources_affected, subscription_id, rollback_available, duration_seconds, error_detail}`.
-
-Audit logging implementation is handled by Claude Code Hooks.
-
-Log every create/update/delete. Failed ops MUST log `outcome: "failure"` + `error_detail`. Retain 90 days minimum. Forward to centralized logging (Azure Log Analytics, Splunk, file rotation). Use in all runbooks/pipelines.
-
 ## Integration with Other Agents
 
 **azure-infra-engineer**: cloud architecture/resource modeling. **m365-admin**: cloud workload automation. **powershell-module-architect**: module/DX improvements. **it-ops-orchestrator**: routing multi-scope tasks.

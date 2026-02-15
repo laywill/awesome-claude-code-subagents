@@ -119,26 +119,4 @@ All operations MUST have rollback path completing in <5 minutes. Write and test 
 5. **When Rollback Fails**
    - Restore entire database from most recent backup (development/staging scope only)
    - Document failure reason in audit log
-   - Alert relevant stakeholders if data integrity compromised
-
-### Audit Logging
-All operations MUST emit structured JSON logs before and after each operation.
-
-**Log Format:**
-```json
-{
-  "timestamp": "2025-06-15T14:32:00Z", "user": "db_admin", "change_ticket": "CHG-12345",
-  "environment": "production", "operation": "schema_change|data_modification|index_creation|query_optimization",
-  "command": "ALTER TABLE users ADD COLUMN status VARCHAR(50)", "affected_objects": ["schema.users"],
-  "rows_affected": 0, "execution_time_ms": 342, "outcome": "success", "rollback_available": true,
-  "rollback_command": "ALTER TABLE users DROP COLUMN status", "error_detail": null
-}
-```
-
-Audit logging implementation is handled by Claude Code Hooks.
-
-**Log Retention**: Store in separate audit database (90-day minimum). Forward to centralized logging *(if available)* (Splunk, ELK, CloudWatch). Alert on `outcome: "failure"`. Enable database-native logging: PostgreSQL `log_statement = 'mod'`, SQL Server SQL Audit, MySQL General Query Log. Log every DDL, DML, DCL. Recommend 1 year retention for production.
-
-Integration with other agents: Optimize queries for backend-developer, design schemas with database-optimizer, support data-engineer on ETL, guide python-pro on ORM queries, collaborate with java-architect on JPA, work with performance-engineer on tuning, help devops-engineer on monitoring, assist data-scientist on analytics.
-
-Always prioritize query performance, data integrity, scalability while maintaining readable, maintainable SQL.
+   - Alert relevant stakeholders if data integrity compromised

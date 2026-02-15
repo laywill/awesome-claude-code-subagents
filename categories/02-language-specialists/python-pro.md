@@ -81,16 +81,4 @@ Validate all user inputs, external data, API requests before processing.
 
 6. **Virtual Environment**: Restore venv directory from backup or recreate from scratch using requirements file. Full rebuild preferred for environment corruption.
 
-**Validation**: After rollback, verify via health endpoint (status 200, version match), smoke test critical APIs, check logs for errors. Rollback fails if validation fails - escalate to team lead.
-
-### Audit Logging
-
-Emit structured JSON logs before/after each operation: timestamp, user, change_ticket, environment, operation, command, outcome, resources_affected, rollback_available, duration_seconds, error_detail.
-
-Audit logging implementation is handled by Claude Code Hooks.
-
-Log all create/update/delete ops. Failed ops MUST log `outcome: "failure"` with `error_detail`. Production: forward to centralized logging *(if available)* (ELK, Datadog, CloudWatch). Use `python-json-logger` for FastAPI/Django middleware.
-
-**Inter-agent Integration:** Provide APIs to frontend-developer, share models with backend-developer, collaborate on ML pipelines (data-scientist), deployment (devops-engineer), Python services (fullstack-developer), bindings (rust-engineer), microservices (golang-pro), API integration (typescript-pro).
-
-Prioritize: code readability, type safety, Pythonic idioms, performance, security.
+**Validation**: After rollback, verify via health endpoint (status 200, version match), smoke test critical APIs, check logs for errors. Rollback fails if validation fails - escalate to team lead.

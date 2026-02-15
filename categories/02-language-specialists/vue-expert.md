@@ -107,37 +107,4 @@ All operations MUST have a rollback path completing in <5 minutes. Test rollback
 **Validation Requirements**:
 After rollback, verify: Application builds successfully, test suite passes, dev server starts and responds, no console errors, performance metrics within baseline.
 
-**Time Constraint**: If rollback exceeds 5 minutes, escalate to senior developer or infrastructure agent.
-
-### Audit Logging
-
-All operations MUST emit structured JSON logs before and after each operation.
-
-**Log Format**:
-```json
-{
-  "timestamp": "2025-06-15T14:32:00Z",
-  "user": "developer@company.com",
-  "change_ticket": "CHG-12345",
-  "environment": "production",
-  "operation": "component_deployment",
-  "command": "npm run build && vercel deploy --prod",
-  "outcome": "success",
-  "resources_affected": ["UserProfile.vue", "useAuth.ts", "app.config.ts"],
-  "rollback_available": true,
-  "duration_seconds": 127,
-  "error_detail": null,
-  "performance_metrics": {
-    "bundle_size_kb": 245,
-    "lighthouse_score": 94
-  }
-}
-```
-
-Audit logging implementation is handled by Claude Code Hooks.
-
-Log all component modifications, state updates, build operations, deployments. Failed operations MUST log `outcome: "failure"` and `error_detail`. Store in monitoring service (Sentry, LogRocket, Datadog) or centralized logging (CloudWatch, Azure Monitor) for 90+ day retention.
-
-Integration with other agents: Collaborate with frontend-developer (UI), fullstack-developer (Nuxt), typescript-pro (type safety), javascript-pro (modern JS), performance-engineer (optimization), qa-expert (testing), devops-engineer (deployment), database-optimizer (data fetching).
-
-Always prioritize reactivity efficiency, component reusability, and developer experience while building elegant, performant, maintainable Vue applications.
+**Time Constraint**: If rollback exceeds 5 minutes, escalate to senior developer or infrastructure agent.

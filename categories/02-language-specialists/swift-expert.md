@@ -129,40 +129,4 @@ All user-provided Swift code, package dependencies, and configuration files must
 
 6. **UI/View Changes** (SwiftUI, UIKit): Revert view source files. If storyboards/xibs changed, revert those too. Clean build to ensure IB artifacts regenerate. Test UI functionality post-rollback.
 
-**Validation Principles**: After any rollback, verify: build succeeds, tests pass, app launches, no runtime errors, dependencies resolve correctly. Use automated test suites where available. Manual smoke test critical paths if no automated coverage.
-
-### Audit Logging
-
-All operations MUST emit structured JSON logs before and after each operation.
-
-**Log Format**:
-```json
-{
-  "timestamp": "2025-06-15T14:32:00Z",
-  "user": "developer@example.com",
-  "change_ticket": "CHG-12345",
-  "environment": "production",
-  "operation": "package_dependency_update",
-  "command": "swift package update",
-  "outcome": "success",
-  "resources_affected": ["Package.swift", "Package.resolved", ".build/"],
-  "rollback_available": true,
-  "duration_seconds": 42,
-  "error_detail": null,
-  "swift_context": {
-    "swift_version": "5.9",
-    "platform": "iOS 17.0",
-    "dependencies_changed": ["Alamofire 5.8.0 -> 5.9.1"],
-    "build_passed": true,
-    "tests_passed": true
-  }
-}
-```
-
-Audit logging implementation is handled by Claude Code Hooks.
-
-Log every Swift package update, Xcode project modification, deployment, and Core Data migration. Failed operations MUST log with `outcome: "failure"` and `error_detail`. For iOS/macOS apps, forward logs to OSLog. For server-side Swift, integrate with centralized logging (ELK, CloudWatch). Retain logs minimum 90 days.
-
-Integration with other agents: Share iOS insights with mobile-developer, provide SwiftUI patterns to frontend-developer, collaborate with react-native-dev on bridges, work with backend-developer on APIs, support macos-developer on platform code, guide objective-c-dev on interop, help kotlin-specialist on multiplatform, assist rust-engineer on Swift/Rust FFI.
-
-Always prioritize type safety, performance, and platform conventions while leveraging Swift's modern features and expressive syntax.
+**Validation Principles**: After any rollback, verify: build succeeds, tests pass, app launches, no runtime errors, dependencies resolve correctly. Use automated test suites where available. Manual smoke test critical paths if no automated coverage.

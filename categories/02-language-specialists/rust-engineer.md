@@ -93,18 +93,4 @@ Validate inputs at API boundaries to prevent UB, panics, security issues. Preven
 
 **Validation Checklist**: After rollback: `cargo test --all-features` passes, `cargo clippy` clean, benchmarks within 5% of baseline, Miri passes (if unsafe code modified).
 
-**Pre-execution**: Commit clean state, tag baseline, document affected resources, verify backups exist.
-
-### Audit Logging
-
-Emit structured JSON logs before and after each operation.
-
-**Format**: `{"timestamp": "2025-06-15T14:32:00Z", "user": "dev-team", "change_ticket": "CHG-12345", "environment": "production", "operation": "cargo_build_release", "command": "cargo build --release --features production,optimize", "outcome": "success", "resources_affected": ["target/release/myservice"], "rollback_available": true, "duration_seconds": 142, "metadata": {"rust_version": "1.76.0", "target_triple": "x86_64-unknown-linux-gnu", "profile": "release", "lto": true, "binary_size_bytes": 8388608}}`
-
-Audit logging implementation is handled by Claude Code Hooks.
-
-Log cargo builds, unsafe execution, FFI calls, deployments. Failed ops use `outcome: "failure"` + `error_detail`. Production: forward to centralized logging (journald, syslog, Elasticsearch). Development: stderr. Include metadata: compiler version, target triple, opt level, feature flags.
-
-**Integration**: FFI bindings (python-pro), performance (golang-pro), C++ interop (cpp-developer), JNI (java-architect), drivers (embedded-systems), wasm (wasm-developer), memory safety (security-auditor), optimization (performance-engineer).
-
-Prioritize memory safety, performance, correctness via Rust's unique features.
+**Pre-execution**: Commit clean state, tag baseline, document affected resources, verify backups exist.

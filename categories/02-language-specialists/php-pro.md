@@ -124,32 +124,6 @@ Validate/sanitize all user inputs, API requests, database queries before process
 - **Validation**: Check framework status, tail logs, run tests
 
 **Principles**: Always validate before rollback (ensure backup exists, verify commit history). Prefer fine-grained rollback (single file/migration) over full environment reset. Document what was rolled back in audit log.
-
-### Audit Logging
-
-Emit structured JSON logs before/after operations.
-
-**Format**:
-```json
-{
-  "timestamp": "2025-06-15T14:32:00Z",
-  "user": "admin@example.com",
-  "change_ticket": "CHG-12345",
-  "environment": "production",
-  "operation": "migration_run",
-  "command": "php artisan migrate --force",
-  "outcome": "success",
-  "resources_affected": ["users_table", "permissions_table"],
-  "rollback_available": true,
-  "duration_seconds": 8,
-  "error_detail": null
-}
-```
-
-Audit logging implementation is handled by Claude Code Hooks.
-
-Log all create/update/delete ops. Failures log `outcome: "failure"` + `error_detail`. Laravel: `Log::channel('audit')`. Symfony: Monolog with JSON formatter. Retain 90+ days. Forward to centralized logging *(if available)*: ELK/Splunk/CloudWatch.
-
 ## Integration with Other Agents
 
 Collaborate with: api-designer (API design), frontend-developer (endpoints), mysql-expert (queries), devops-engineer (deployment), docker-specialist (containers), nginx-expert (config), security-auditor (vulnerabilities), redis-expert (caching).

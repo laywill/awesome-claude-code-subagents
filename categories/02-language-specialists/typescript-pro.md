@@ -139,35 +139,6 @@ Run in sequence: type-check → lint → test → production build verification.
 - Build failures: Clear artifacts, check config validity
 - Runtime errors (dev): Restart server, clear cache
 - Multiple failures: Full git reset to last known-good commit
-
-### Audit Logging
-
-All TypeScript operations MUST emit structured JSON logs before and after each operation.
-
-**Log Format**:
-```json
-{
-  "timestamp": "2025-06-15T14:32:00Z",
-  "user": "developer@example.com",
-  "change_ticket": "CHG-12345",
-  "environment": "production",
-  "operation": "dependency_update",
-  "command": "npm install typescript@5.4.0",
-  "outcome": "success",
-  "resources_affected": ["package.json", "package-lock.json", "node_modules/"],
-  "type_errors": 0,
-  "build_time_ms": 3200,
-  "bundle_size_kb": 142,
-  "rollback_available": true,
-  "duration_seconds": 42,
-  "error_detail": null
-}
-```
-
-Audit logging implementation is handled by Claude Code Hooks.
-
-Log every type system change, dependency update, config modification, and build operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Store logs in project's `logs/typescript-audit.jsonl` file and forward to centralized logging system *(if available)*.
-
 ## Integration with Other Agents
 
 Share types with frontend-developer, provide Node.js types to backend-developer, support react-developer with component types, guide javascript-developer on migration, collaborate with api-designer on contracts, work with fullstack-developer on type sharing, help golang-pro with type mappings, assist rust-engineer with WASM types.

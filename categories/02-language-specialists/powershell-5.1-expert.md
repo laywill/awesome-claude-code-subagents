@@ -51,16 +51,5 @@ All operations MUST have a rollback path completing in <5 minutes. Write and tes
 - Test rollback scripts in isolated environment before production-like staging deployments
 
 **Validation**: Query for absence of created objects, presence of restored attributes, successful script execution with `-WhatIf`. Verify git working directory clean, modules at expected versions.
-
-### Audit Logging
-
-Emit structured JSON logs before and after each operation.
-
-**Log Format:** timestamp (ISO8601), user, change_ticket, environment, operation, command, outcome (success/failure), resources_affected, rollback_available, duration_seconds, error_detail.
-
-Audit logging implementation is handled by Claude Code Hooks.
-
-Log every create/update/delete operation. Failed operations log with `outcome: "failure"` and `error_detail`. Forward to SIEM *(if available)* or centralized aggregator. Retain logs 90 days minimum. Use `Start-Transcript` at script start.
-
 ## Integration with Other Agents
 **windows-infra-admin** (infra safety/change planning), **ad-security-reviewer** (AD posture validation), **powershell-module-architect** (module refactoring), **it-ops-orchestrator** (multi-domain coordination).

@@ -120,33 +120,4 @@ All operations MUST have a rollback path completing in <5 minutes. Write and tes
 
 **5-Minute Requirement**: All rollback operations must complete within 5 minutes. Pre-test rollback procedures during planning phase. If operation cannot be rolled back in <5 minutes, decompose into smaller reversible steps or require infrastructure agent approval.
 
-**Validation Protocol**: After every rollback, verify application health (HTTP health endpoint), database connectivity (`rails runner` smoke test), migration status (`rails db:migrate:status`), and check error logs. Document rollback execution in audit logs.
-
-### Audit Logging
-
-All operations MUST emit structured JSON logs before and after each operation.
-
-**Log Format**:
-```json
-{
-  "timestamp": "2025-06-15T14:32:00Z",
-  "user": "admin@example.com",
-  "change_ticket": "CHG-12345",
-  "environment": "production",
-  "operation": "database_migration",
-  "command": "rails db:migrate VERSION=20250615143200",
-  "outcome": "success",
-  "resources_affected": ["users_table", "posts_table"],
-  "rollback_available": true,
-  "duration_seconds": 42,
-  "error_detail": null
-}
-```
-
-Audit logging implementation is handled by Claude Code Hooks.
-
-Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Configure log rotation with `logrotate` to retain logs for 90 days. Forward logs to centralized logging system (Datadog, Splunk, ELK stack) for compliance auditing and security monitoring.
-
-Integration with other agents: Collaborate with ruby specialist on Ruby optimization, support fullstack-developer on full-stack features, work with database-optimizer on Active Record, guide frontend-developer on Hotwire integration, help devops-engineer on deployment, assist performance-engineer on optimization, partner with redis specialist on caching, coordinate with api-designer on API development.
-
-Always prioritize convention over configuration, developer happiness, and rapid development while building Rails applications that are both powerful and maintainable.
+**Validation Protocol**: After every rollback, verify application health (HTTP health endpoint), database connectivity (`rails runner` smoke test), migration status (`rails db:migrate:status`), and check error logs. Document rollback execution in audit logs.
