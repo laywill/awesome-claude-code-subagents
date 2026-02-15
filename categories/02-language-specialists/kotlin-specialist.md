@@ -108,35 +108,9 @@ Ensure idiomatic Kotlin and cross-platform compatibility.
 
 Before modifying Kotlin code or configuration, validate ALL inputs with domain-specific rules:
 
-**File Path Validation**
-```kotlin
-fun validateKotlinFilePath(path: String): Result<Path> {
-    val normalizedPath = Paths.get(path).normalize()
-    return when {
-        !normalizedPath.toString().matches(Regex("^[a-zA-Z0-9_/\\-\\.]+(\\.(kt|kts|gradle\\.kts))$")) ->
-            Result.failure(IllegalArgumentException("Invalid Kotlin file path format"))
-        normalizedPath.toString().contains("..") ->
-            Result.failure(SecurityException("Path traversal attempt detected"))
-        !Files.exists(normalizedPath) ->
-            Result.failure(FileNotFoundException("File does not exist: $path"))
-        else -> Result.success(normalizedPath)
-    }
-}
-```
-
-**Dependency Validation**
-```kotlin
-fun validateDependency(dependency: String): Result<Dependency> {
-    val depRegex = Regex("^[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+:[0-9.]+(-(alpha|beta|RC|SNAPSHOT))?$")
-    return when {
-        !dependency.matches(depRegex) ->
-            Result.failure(IllegalArgumentException("Invalid dependency format"))
-        dependency.contains("..") || dependency.contains("/") ->
-            Result.failure(SecurityException("Suspicious dependency notation"))
-        else -> Result.success(Dependency.parse(dependency))
-    }
-}
-```
+**Validation Rules**:
+- **File paths**: Must match Kotlin file extensions (`.kt`, `.kts`, `.gradle.kts`), reject path traversal (`..`), validate existence
+- **Dependencies**: Must match `group:artifact:version` format, reject traversal characters
 
 **Coroutine Dispatcher Validation:** Reject unbounded `Dispatchers.Default` in production without timeout. Validate custom dispatcher thread counts against system resources. Ensure database/IO operations use `Dispatchers.IO`, not `Dispatchers.Main`.
 
@@ -186,58 +160,7 @@ All operations MUST emit structured JSON logs before and after each operation.
 }
 ```
 
-**Kotlin Audit Logging Implementation**
-```kotlin
-data class AuditLog(
-    val timestamp: Instant = Clock.System.now(),
-    val user: String,
-    val changeTicket: String?,
-    val environment: String,
-    val operation: String,
-    val command: String,
-    val outcome: Outcome,
-    val resourcesAffected: List<String>,
-    val rollbackAvailable: Boolean,
-    val durationSeconds: Long,
-    val errorDetail: String? = null
-)
-
-enum class Outcome { SUCCESS, FAILURE }
-
-fun logOperation(operation: String, block: () -> Unit): Result<Unit> {
-    val startTime = Clock.System.now()
-    val log = AuditLog(
-        user = System.getenv("USER") ?: "unknown",
-        changeTicket = System.getenv("CHANGE_TICKET"),
-        environment = System.getenv("ENV") ?: "development",
-        operation = operation,
-        command = getCurrentCommand(),
-        resourcesAffected = emptyList(),
-        rollbackAvailable = true,
-        durationSeconds = 0
-    )
-
-    return runCatching {
-        println(Json.encodeToString(log))
-        block()
-    }.fold(
-        onSuccess = {
-            val duration = (Clock.System.now() - startTime).inWholeSeconds
-            println(Json.encodeToString(log.copy(outcome = Outcome.SUCCESS, durationSeconds = duration)))
-            Result.success(Unit)
-        },
-        onFailure = { error ->
-            val duration = (Clock.System.now() - startTime).inWholeSeconds
-            println(Json.encodeToString(log.copy(
-                outcome = Outcome.FAILURE,
-                durationSeconds = duration,
-                errorDetail = error.message
-            )))
-            Result.failure(error)
-        }
-    )
-}
-```
+Audit logging implementation is handled by Claude Code Hooks.
 
 Log every Gradle command, dependency change, multiplatform target addition, coroutine refactoring, and database migration. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Logs should be forwarded to centralized logging (Datadog, Splunk) or written to `~/.kotlin-specialist-audit.jsonl` for local development.
 

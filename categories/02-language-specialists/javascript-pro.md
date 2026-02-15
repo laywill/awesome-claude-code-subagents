@@ -185,42 +185,8 @@ All operations MUST emit structured JSON logs before and after each operation.
 }
 ```
 
-**Implementation**:
-```javascript
-function auditLog(operation, command, outcome, resources, error = null) {
-  const logEntry = {
-    timestamp: new Date().toISOString(),
-    user: process.env.USER || 'unknown',
-    change_ticket: process.env.CHANGE_TICKET || 'N/A',
-    environment: process.env.NODE_ENV || 'development',
-    operation, command, outcome,
-    resources_affected: resources,
-    rollback_available: true,
-    duration_seconds: process.uptime(),
-    error_detail: error ? error.message : null
-  };
 
-  fs.appendFileSync(path.join(process.cwd(), 'logs', 'audit.log'), JSON.stringify(logEntry) + '\n');
-
-  if (process.env.LOG_ENDPOINT) {
-    fetch(process.env.LOG_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(logEntry)
-    }).catch(err => console.error('Failed to send audit log:', err));
-  }
-}
-
-// Usage
-try {
-  auditLog('file_modification', 'fs.writeFileSync(config.json)', 'started', ['config.json']);
-  // ... perform operation ...
-  auditLog('file_modification', 'fs.writeFileSync(config.json)', 'success', ['config.json']);
-} catch (error) {
-  auditLog('file_modification', 'fs.writeFileSync(config.json)', 'failure', ['config.json'], error);
-  throw error;
-}
-```
+Audit logging implementation is handled by Claude Code Hooks.
 
 Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Store logs in `logs/audit.log` and forward to centralized logging system *(if available)* such as Datadog, Splunk, or CloudWatch Logs. Retain logs for minimum 90 days.
 

@@ -164,42 +164,7 @@ All operations MUST emit structured JSON logs before and after each operation.
 }
 ```
 
-Implementation:
-```elixir
-defmodule MyApp.AuditLogger do
-  require Logger
-
-  def log_operation(operation, metadata, fun) do
-    start_time = System.monotonic_time(:second)
-
-    log_entry = %{
-      timestamp: DateTime.utc_now() |> DateTime.to_iso8601(),
-      user: System.get_env("USER") || "unknown",
-      change_ticket: metadata[:change_ticket],
-      environment: Application.get_env(:myapp, :environment),
-      operation: operation,
-      command: metadata[:command],
-      outcome: "pending",
-      resources_affected: metadata[:resources] || [],
-      rollback_available: metadata[:rollback_available] || false
-    }
-
-    Logger.info("Operation started: #{Jason.encode!(log_entry)}")
-
-    try do
-      result = fun.()
-      duration = System.monotonic_time(:second) - start_time
-      Logger.info("Operation completed: #{Jason.encode!(Map.merge(log_entry, %{outcome: "success", duration_seconds: duration}))}")
-      result
-    rescue
-      error ->
-        duration = System.monotonic_time(:second) - start_time
-        Logger.error("Operation failed: #{Jason.encode!(Map.merge(log_entry, %{outcome: "failure", duration_seconds: duration, error_detail: Exception.message(error)}))}")
-        reraise error, __STACKTRACE__
-    end
-  end
-end
-```
+Audit logging implementation is handled by Claude Code Hooks.
 
 Log every database migration, GenServer state change, deployment op, configuration update, and supervision tree modification. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Configure Logger to forward structured logs to centralized logging system (Logflare, Datadog, Splunk) with `:logger` handlers. Set log retention policy in production to ≥90 days.
 

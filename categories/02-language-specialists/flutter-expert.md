@@ -111,49 +111,6 @@ Rules:
 - **Build flavors**: Alphanumeric + underscores only (`^[a-zA-Z][a-zA-Z0-9_]*$`, max 32 chars). No shell metacharacters
 - **Asset paths**: Must exist in `pubspec.yaml` assets declaration. Validate file existence before build
 
-Example validation:
-```dart
-class FlutterInputValidator {
-  static const _pathPattern = r'^(lib|test|android|ios|web|assets)/[a-zA-Z0-9_/.-]+$';
-  static const _packagePattern = r'^[a-z][a-z0-9_]*$';
-  static const _versionPattern = r'^[0-9]+\.[0-9]+\.[0-9]+([-+][a-zA-Z0-9.]+)?$';
-  static const _allowedPlatforms = {'android', 'ios', 'web', 'macos', 'windows', 'linux'};
-
-  static bool validateFilePath(String path) {
-    if (!RegExp(_pathPattern).hasMatch(path) || path.contains('..')) {
-      throw ValidationError('Invalid file path: $path');
-    }
-    return true;
-  }
-
-  static bool validatePackageName(String name) {
-    if (!RegExp(_packagePattern).hasMatch(name) || name.length > 64) {
-      throw ValidationError('Invalid package name: $name');
-    }
-    return true;
-  }
-
-  static bool validateVersion(String version) {
-    if (!RegExp(_versionPattern).hasMatch(version) || version.contains('*') || version.contains('any')) {
-      throw ValidationError('Invalid version: $version');
-    }
-    return true;
-  }
-
-  static bool validatePlatform(String platform) {
-    if (!_allowedPlatforms.contains(platform)) {
-      throw ValidationError('Invalid platform: $platform');
-    }
-    return true;
-  }
-}
-```
-
-```
-INPUT:  path="lib/screens/home_screen.dart", package="http", version="^1.1.0" → PASS
-INPUT:  path="../../etc/passwd", package="malicious-pkg", version="*" → REJECT, log, halt
-```
-
 ### Rollback Procedures
 
 All development operations MUST have a rollback path completing in <5 minutes. This agent manages Flutter development and local/staging environments only.
@@ -219,71 +176,7 @@ All Flutter operations MUST emit structured JSON logs before and after each oper
 }
 ```
 
-**Dart Logging:**
-```dart
-import 'dart:convert';
-import 'dart:io';
-
-class FlutterAuditLogger {
-  static const _logPath = 'logs/flutter_operations.jsonl';
-
-  static Future<void> logOperation({
-    required String user,
-    required String operation,
-    required String command,
-    required String outcome,
-    required List<String> resourcesAffected,
-    String? changeTicket,
-    String environment = 'development',
-    bool rollbackAvailable = true,
-    int? durationSeconds,
-    Map<String, dynamic>? metadata,
-    String? errorDetail,
-  }) async {
-    final logEntry = {
-      'timestamp': DateTime.now().toUtc().toIso8601String(),
-      'user': user,
-      'change_ticket': changeTicket ?? 'N/A',
-      'environment': environment,
-      'operation': operation,
-      'command': command,
-      'outcome': outcome,
-      'resources_affected': resourcesAffected,
-      'rollback_available': rollbackAvailable,
-      'duration_seconds': durationSeconds ?? 0,
-      if (metadata != null) 'metadata': metadata,
-      if (errorDetail != null) 'error_detail': errorDetail,
-    };
-
-    final logFile = File(_logPath);
-    await logFile.parent.create(recursive: true);
-    await logFile.writeAsString('${jsonEncode(logEntry)}\n', mode: FileMode.append);
-    if (environment == 'development') print('AUDIT: ${jsonEncode(logEntry)}');
-  }
-}
-
-// Usage
-await FlutterAuditLogger.logOperation(
-  user: Platform.environment['USER'] ?? 'unknown',
-  operation: 'dependency_add',
-  command: 'flutter pub add http',
-  outcome: 'success',
-  resourcesAffected: ['pubspec.yaml', 'pubspec.lock'],
-  metadata: {'package': 'http', 'version': '1.1.0'},
-);
-```
-
-**Bash Logging:**
-```bash
-log_flutter_op() {
-  local op=$1 cmd=$2 start=$(date +%s)
-  eval "$cmd" && outcome="success" || outcome="failure"
-  local duration=$(($(date +%s) - start))
-  echo "{\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"user\":\"${USER}\",\"operation\":\"${op}\",\"command\":\"${cmd}\",\"outcome\":\"${outcome}\",\"duration_seconds\":${duration}}" >> logs/flutter_operations.jsonl
-}
-
-# Usage: log_flutter_op "pub_get" "flutter pub get"
-```
+Audit logging implementation is handled by Claude Code Hooks.
 
 Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail`. Retain logs 90 days minimum. Forward to centralized logging *(if available)* (CloudWatch, Elasticsearch, Splunk). For CI/CD, capture logs in build artifacts for post-deployment audits.
 

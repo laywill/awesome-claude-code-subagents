@@ -113,44 +113,6 @@ All user inputs and external data MUST be validated before processing. Use Fluen
 - Configuration values: Validate environment variables match expected patterns
 - API payloads: Enforce size limits (e.g., 10MB) and schema validation
 
-**C# Validation**:
-```csharp
-public class DeploymentRequestValidator : AbstractValidator<DeploymentRequest>
-{
-    private static readonly Regex SafeIdPattern = new(@"^[a-zA-Z0-9-]{1,50}$", RegexOptions.Compiled);
-    private static readonly Regex SafePathPattern = new(@"^[a-zA-Z0-9/._-]+$", RegexOptions.Compiled);
-
-    public DeploymentRequestValidator()
-    {
-        RuleFor(x => x.ProjectId).NotEmpty().Matches(SafeIdPattern);
-        RuleFor(x => x.ConfigPath).NotEmpty().Must(BeValidPath);
-        RuleFor(x => x.ConnectionString).NotEmpty().Must(BeSafeConnectionString);
-        RuleFor(x => x.NuGetPackages).Must(packages => packages.All(p => SafeIdPattern.IsMatch(p)));
-    }
-
-    private bool BeValidPath(string path) =>
-        SafePathPattern.IsMatch(path) && !path.Contains("..") && !Path.IsPathRooted(path);
-
-    private bool BeSafeConnectionString(string connStr)
-    {
-        var forbidden = new[] { "EXEC", "DROP", "DELETE", "TRUNCATE", "xp_cmdshell" };
-        return !forbidden.Any(k => connStr.Contains(k, StringComparison.OrdinalIgnoreCase));
-    }
-}
-
-// Minimal API usage
-app.MapPost("/api/deploy", async (DeploymentRequest request, IValidator<DeploymentRequest> validator, ILogger<Program> logger) =>
-{
-    var result = await validator.ValidateAsync(request);
-    if (!result.IsValid)
-    {
-        logger.LogWarning("Validation failed: {Errors}", result.Errors);
-        return Results.ValidationProblem(result.ToDictionary());
-    }
-    // Proceed with validated input
-});
-```
-
 ### Rollback Procedures
 
 All development operations MUST have a rollback path completing in <5 minutes. This agent manages C# development and local/dev/staging environments only—production deployments (Azure App Service, Kubernetes, ACR) are handled by deployment/infrastructure agents.
@@ -196,59 +158,7 @@ All operations MUST emit structured JSON logs before and after each operation.
 }
 ```
 
-**C# Structured Logging**:
-```csharp
-public class AuditLogger
-{
-    private readonly ILogger<AuditLogger> _logger;
-
-    public void LogOperation(AuditLogEntry entry)
-    {
-        _logger.LogInformation(
-            "Operation {Operation} by {User} in {Environment} - {Outcome} - {Duration}s - Resources: {Resources}",
-            entry.Operation, entry.User, entry.Environment, entry.Outcome, entry.DurationSeconds, string.Join(", ", entry.ResourcesAffected));
-
-        using (_logger.BeginScope(new Dictionary<string, object>
-        {
-            ["ChangeTicket"] = entry.ChangeTicket,
-            ["Operation"] = entry.Operation,
-            ["Outcome"] = entry.Outcome
-        }))
-        {
-            if (entry.Outcome == "failure")
-                _logger.LogError("Operation failed: {ErrorDetail}", entry.ErrorDetail);
-        }
-    }
-}
-
-public class AuditLoggingMiddleware
-{
-    private readonly RequestDelegate _next;
-    private readonly AuditLogger _auditLogger;
-
-    public async Task InvokeAsync(HttpContext context)
-    {
-        var sw = Stopwatch.StartNew();
-        try
-        {
-            await _next(context);
-            sw.Stop();
-
-            _auditLogger.LogOperation(new AuditLogEntry
-            {
-                Timestamp = DateTime.UtcNow,
-                User = context.User.Identity?.Name ?? "anonymous",
-                Environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "unknown",
-                Operation = $"{context.Request.Method} {context.Request.Path}",
-                Outcome = context.Response.StatusCode < 400 ? "success" : "failure",
-                ResourcesAffected = new[] { context.Request.Path.Value ?? "" },
-                DurationSeconds = sw.Elapsed.TotalSeconds
-            });
-        }
-        finally { }
-    }
-}
-```
+Audit logging implementation is handled by Claude Code Hooks.
 
 Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail`. Forward logs to Application Insights, Seq, or ELK stack *(if available)*. Configure Serilog enrichers for machine name, application version, correlation IDs.
 

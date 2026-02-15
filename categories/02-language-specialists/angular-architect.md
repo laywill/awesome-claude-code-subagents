@@ -121,33 +121,6 @@ Validation rules:
 - **Package names**: Must exist in `package.json` dependencies; reject arbitrary `npm install` commands
 - **Bundle names**: `^[a-z0-9\-]+$`; validate against `angular.json` projects
 
-```typescript
-// validation.utils.ts
-export function validateComponentName(name: string): boolean {
-  if (!/^[A-Z][a-zA-Z0-9]+Component$/.test(name) || name.length > 50) {
-    throw new Error(`Invalid component name: ${name}`);
-  }
-  return true;
-}
-
-export function validateApiEndpoint(url: string, env: string): boolean {
-  if (env === 'production' && url.includes('localhost')) {
-    throw new Error('localhost URLs not allowed in production');
-  }
-  if (!/^https?:\/\/[a-zA-Z0-9\-\.]+\.[a-z]{2,}(\/[a-zA-Z0-9\-_\/]*)?$/.test(url)) {
-    throw new Error(`Invalid API endpoint: ${url}`);
-  }
-  return true;
-}
-
-export function validateEnvironment(env: string): boolean {
-  if (!['development', 'staging', 'production'].includes(env)) {
-    throw new Error(`Invalid environment: ${env}`);
-  }
-  return true;
-}
-```
-
 ### Rollback Procedures
 
 All development operations MUST have a rollback path completing in <5 minutes. Scope: Angular source, dependencies, builds, local/dev/staging environments only. Production deployments (Docker, Kubernetes, CDN) are outside this agent's scope.
@@ -188,60 +161,7 @@ All operations MUST emit structured JSON logs before and after each operation.
 }
 ```
 
-```typescript
-// audit-logger.service.ts
-import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-
-export interface AuditLog {
-  timestamp: string;
-  user: string;
-  change_ticket?: string;
-  environment: string;
-  operation: string;
-  command: string;
-  outcome: 'success' | 'failure';
-  resources_affected: string[];
-  rollback_available: boolean;
-  duration_seconds: number;
-  bundle_size_kb?: number;
-  error_detail?: string;
-}
-
-@Injectable({ providedIn: 'root' })
-export class AuditLoggerService {
-  constructor(private http: HttpClient) {}
-
-  logOperation(log: AuditLog): void {
-    const auditEntry = {
-      ...log,
-      timestamp: new Date().toISOString(),
-      user: this.getCurrentUser(),
-    };
-
-    if (log.environment === 'development') {
-      console.log('[AUDIT]', JSON.stringify(auditEntry, null, 2));
-    }
-
-    this.http.post('/api/audit-logs', auditEntry).subscribe({
-      error: (err) => console.error('Failed to send audit log:', err)
-    });
-
-    this.writeLocalAuditLog(auditEntry);
-  }
-
-  private getCurrentUser(): string {
-    return localStorage.getItem('user_email') || 'unknown';
-  }
-
-  private writeLocalAuditLog(entry: AuditLog): void {
-    const logs = JSON.parse(localStorage.getItem('audit_logs') || '[]');
-    logs.push(entry);
-    if (logs.length > 100) logs.shift();
-    localStorage.setItem('audit_logs', JSON.stringify(logs));
-  }
-}
-```
+Audit logging implementation is handled by Claude Code Hooks.
 
 Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. For production, forward logs to centralized logging (CloudWatch, Stackdriver, ELK) *(if available)*. Retain logs 90 days minimum. Track: component generation, builds, deployments, state changes, route modifications, dependency updates, configuration changes.
 

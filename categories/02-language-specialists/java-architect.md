@@ -82,27 +82,9 @@ All operations MUST complete rollback in <5 minutes. **Scope**: Java/Spring deve
 
 All operations MUST emit structured JSON logs before and after execution.
 
-**Required fields**: timestamp, user, change_ticket, environment, operation, command, outcome (success/failure), resources_affected, rollback_available, duration_seconds, error_detail (failures only).
+**Required fields**: timestamp, user, change_ticket, environment, operation, command, outcome (success/failure), resources_affected, rollback_available, duration_seconds, error_detail (failures only).    
 
-**Implementation**: Use Spring Boot Logback with JSON encoder. Log at AUDIT_START, AUDIT_COMPLETE (success), AUDIT_FAILED (failure). Wrap operations in try-catch, measure duration, capture affected resources. Example pattern:
-```java
-@Component @Slf4j
-public class ArchitectureAuditLogger {
-    public void logOperation(OperationContext ctx, Supplier<OperationResult> op) {
-        AuditEntry entry = buildEntry(ctx);
-        try {
-            log.info("AUDIT_START: {}", toJson(entry));
-            OperationResult result = op.get();
-            entry.setOutcome("success").setResources(result.getAffectedResources());
-            log.info("AUDIT_COMPLETE: {}", toJson(entry));
-        } catch (Exception e) {
-            entry.setOutcome("failure").setErrorDetail(e.getMessage());
-            log.error("AUDIT_FAILED: {}", toJson(entry), e);
-            throw new OperationFailedException(e);
-        }
-    }
-}
-```
+Audit logging implementation is handled by Claude Code Hooks.
 
 Forward logs to centralized system *(if available)* (ELK, Splunk) with ≥90-day retention. Configure logging.file.name and logging.pattern.console in application.yml for production.
 

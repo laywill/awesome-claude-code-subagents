@@ -124,38 +124,6 @@ All code modifications MUST validate:
 ^https://[\w\-\.]+(:\d+)?/[\w\-/]*$
 ```
 
-**C# Validation Example**:
-```csharp
-public class DotNetFrameworkValidator
-{
-    public static bool ValidateConfigValue(string key, string value)
-    {
-        if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(value))
-            return false;
-
-        if (!Regex.IsMatch(key, @"^[A-Za-z]+(\.[A-Za-z]+)+$"))
-            return false;
-
-        if (value.Contains("password=") && !value.Contains("Integrated Security"))
-            throw new SecurityException("Hardcoded passwords not allowed");
-
-        return true;
-    }
-
-    public static void ValidateUserInput(string input, string parameterName)
-    {
-        if (string.IsNullOrEmpty(input))
-            throw new ArgumentNullException(parameterName);
-
-        if (input.Contains("<script") || input.Contains("javascript:"))
-            throw new SecurityException($"Potential XSS detected in {parameterName}");
-
-        if (Regex.IsMatch(input, @"(--|\bOR\b|\bAND\b).*=", RegexOptions.IgnoreCase))
-            throw new SecurityException($"Potential SQL injection in {parameterName}");
-    }
-}
-```
-
 ### Rollback Procedures
 
 **Scope**: Local, dev, and staging environments only. Production deployments (IIS production servers, Windows Services, production databases) are handled by deployment/infrastructure agents.
@@ -194,80 +162,7 @@ All operations MUST emit structured JSON logs before and after each operation.
 }
 ```
 
-**C# Audit Logging Implementation**:
-```csharp
-public class DotNetFrameworkAuditLogger
-{
-    private static readonly string LogPath = ConfigurationManager.AppSettings["AuditLogPath"]
-        ?? @"C:\Logs\dotnet_framework_audit.json";
-
-    public static void LogOperation(string operation, string command,
-        string[] resourcesAffected, Func<string> executeOperation)
-    {
-        var startTime = DateTime.UtcNow;
-        var logEntry = new
-        {
-            timestamp = startTime.ToString("o"),
-            user = Environment.UserDomainName + "\\\\" + Environment.UserName,
-            change_ticket = Environment.GetEnvironmentVariable("CHANGE_TICKET") ?? "N/A",
-            environment = ConfigurationManager.AppSettings["Environment"] ?? "Development",
-            operation,
-            command,
-            outcome = "pending",
-            resources_affected = resourcesAffected,
-            rollback_available = true,
-            assembly_version = Assembly.GetExecutingAssembly().GetName().Version.ToString(),
-            dotnet_framework_version = Environment.Version.ToString()
-        };
-
-        WriteLog(logEntry);
-
-        try
-        {
-            var result = executeOperation();
-            var duration = (DateTime.UtcNow - startTime).TotalSeconds;
-
-            WriteLog(new
-            {
-                logEntry.timestamp, logEntry.user, logEntry.change_ticket,
-                logEntry.environment, logEntry.operation, logEntry.command,
-                outcome = "success",
-                logEntry.resources_affected, logEntry.rollback_available,
-                duration_seconds = (int)duration,
-                logEntry.assembly_version, logEntry.dotnet_framework_version,
-                result,
-                error_detail = (string)null
-            });
-        }
-        catch (Exception ex)
-        {
-            var duration = (DateTime.UtcNow - startTime).TotalSeconds;
-
-            WriteLog(new
-            {
-                logEntry.timestamp, logEntry.user, logEntry.change_ticket,
-                logEntry.environment, logEntry.operation, logEntry.command,
-                outcome = "failure",
-                logEntry.resources_affected, logEntry.rollback_available,
-                duration_seconds = (int)duration,
-                logEntry.assembly_version, logEntry.dotnet_framework_version,
-                error_detail = $"{ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}"
-            });
-            throw;
-        }
-    }
-
-    private static void WriteLog(object logEntry)
-    {
-        var json = JsonConvert.SerializeObject(logEntry);
-        File.AppendAllText(LogPath, json + Environment.NewLine);
-
-        // Also write to Windows Event Log
-        EventLog.WriteEntry("DotNetFramework48Expert", json,
-            EventLogEntryType.Information, 1000);
-    }
-}
-```
+Audit logging implementation is handled by Claude Code Hooks.
 
 Log every build/deploy/config change/database migration operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Forward logs to centralized logging system *(if available)* using log4net, NLog, or Serilog with JSON formatting. Retain local logs for 90 days minimum for compliance auditing.
 

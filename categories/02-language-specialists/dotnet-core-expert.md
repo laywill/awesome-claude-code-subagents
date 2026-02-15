@@ -110,73 +110,9 @@ All .NET operations must validate inputs before execution to prevent injection a
 
 **Required Validation Patterns**:
 
-1. **Package and dependency names** - NuGet package identifiers must match official naming patterns:
-   ```csharp
-   private static readonly Regex PackageNameRegex = new(@"^[A-Za-z0-9_.-]+$", RegexOptions.Compiled);
-   public static bool IsValidPackageName(string packageName) =>
-       !string.IsNullOrWhiteSpace(packageName) && packageName.Length <= 100 &&
-       PackageNameRegex.IsMatch(packageName) && !packageName.Contains("..") &&
-       !Path.GetInvalidFileNameChars().Any(packageName.Contains);
-   ```
-
-2. **File paths and project names** - Prevent path traversal:
-   ```csharp
-   public static bool IsValidProjectPath(string path)
-   {
-       if (string.IsNullOrWhiteSpace(path)) return false;
-       var fullPath = Path.GetFullPath(path);
-       var workspaceRoot = Path.GetFullPath(Environment.CurrentDirectory);
-       return fullPath.StartsWith(workspaceRoot, StringComparison.OrdinalIgnoreCase) &&
-              !fullPath.Contains("..\\") && !fullPath.Contains("../");
-   }
-   ```
-
-3. **Connection strings** - Validate database connection parameters:
-   ```csharp
-   public static bool ValidateConnectionString(string connectionString)
-   {
-       try {
-           var builder = new SqlConnectionStringBuilder(connectionString);
-           return builder.IntegratedSecurity ||
-                  (!string.IsNullOrEmpty(builder.UserID) && !string.IsNullOrEmpty(builder.Password)) &&
-                  builder.Encrypt && !builder.TrustServerCertificate;
-       }
-       catch { return false; }
-   }
-   ```
-
-**Pre-Execution Validation Function**:
-```csharp
-public class DotnetOperationValidator
-{
-    public static ValidationResult ValidateOperation(DotnetOperation operation)
-    {
-        var errors = new List<string>();
-
-        if (operation.Type == OperationType.AddPackage)
-        {
-            if (!IsValidPackageName(operation.PackageName))
-                errors.Add($"Invalid package name: {operation.PackageName}");
-            if (!IsValidVersion(operation.Version))
-                errors.Add($"Invalid version format: {operation.Version}");
-        }
-
-        if (operation.Type == OperationType.CreateProject || operation.Type == OperationType.ModifyFile)
-            if (!IsValidProjectPath(operation.TargetPath))
-                errors.Add($"Invalid or unsafe path: {operation.TargetPath}");
-
-        if (operation.Type == OperationType.UpdateConfig && operation.Config.ConnectionStrings?.Any() == true)
-            foreach (var cs in operation.Config.ConnectionStrings)
-                if (!ValidateConnectionString(cs.Value))
-                    errors.Add($"Invalid connection string: {cs.Key}");
-
-        return new ValidationResult { IsValid = !errors.Any(), Errors = errors };
-    }
-
-    private static bool IsValidVersion(string version) =>
-        Version.TryParse(version, out _) || Regex.IsMatch(version, @"^\d+\.\d+\.\d+(-[a-zA-Z0-9.]+)?$");
-}
-```
+1. **Package and dependency names** - NuGet package identifiers must match official naming patterns
+2. **File paths and project names** - Prevent path traversal
+3. **Connection strings** - Validate database connection parameters
 
 ### Rollback Procedures
 
@@ -232,87 +168,7 @@ All operations MUST emit structured JSON logs before and after each operation.
 }
 ```
 
-**Logging Implementation**:
-```csharp
-public class DotnetAuditLogger
-{
-    private readonly ILogger<DotnetAuditLogger> _logger;
-
-    public async Task<AuditLog> LogOperationAsync(string operation, string command, Func<Task<OperationResult>> executeOperation)
-    {
-        var auditLog = new AuditLog
-        {
-            Timestamp = DateTime.UtcNow, User = Environment.UserName,
-            Environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "unknown",
-            Operation = operation, Command = command, Project = GetCurrentProjectFile()
-        };
-
-        _logger.LogInformation("Starting .NET operation: {Operation}", JsonSerializer.Serialize(auditLog));
-        var stopwatch = Stopwatch.StartNew();
-        OperationResult result;
-
-        try
-        {
-            result = await executeOperation();
-            auditLog.Outcome = result.Success ? "success" : "failure";
-            auditLog.ResourcesAffected = result.ModifiedFiles;
-            auditLog.PackagesModified = result.PackageChanges;
-            auditLog.BuildSucceeded = result.BuildStatus;
-            auditLog.TestResults = result.TestSummary;
-        }
-        catch (Exception ex)
-        {
-            auditLog.Outcome = "failure";
-            auditLog.ErrorDetail = ex.Message;
-            result = OperationResult.Failed(ex.Message);
-        }
-        finally
-        {
-            stopwatch.Stop();
-            auditLog.DurationSeconds = stopwatch.Elapsed.TotalSeconds;
-            auditLog.RollbackAvailable = DetermineRollbackAvailability(operation);
-            auditLog.RollbackCommand = GenerateRollbackCommand(operation, command);
-        }
-
-        _logger.LogInformation(".NET operation {Outcome}: {Operation}", auditLog.Outcome, JsonSerializer.Serialize(auditLog));
-        await ForwardToAuditServiceAsync(auditLog);
-        return auditLog;
-    }
-
-    private async Task ForwardToAuditServiceAsync(AuditLog log)
-    {
-        try
-        {
-            var telemetry = new EventTelemetry("DotnetOperation") { Timestamp = log.Timestamp };
-            foreach (var prop in log.GetType().GetProperties())
-                telemetry.Properties[prop.Name] = prop.GetValue(log)?.ToString();
-            _telemetryClient.TrackEvent(telemetry);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to forward audit log to centralized service");
-        }
-    }
-}
-```
-
-**Usage Example**:
-```csharp
-var auditLogger = new DotnetAuditLogger(logger);
-await auditLogger.LogOperationAsync("add_nuget_package", "dotnet add package Serilog.AspNetCore --version 10.0.0",
-    async () =>
-    {
-        var result = await ExecuteDotnetCommandAsync("add", new[] { "package", "Serilog.AspNetCore", "--version", "10.0.0" });
-        return new OperationResult
-        {
-            Success = result.ExitCode == 0,
-            ModifiedFiles = new[] { "MyApp.csproj", "packages.lock.json" },
-            PackageChanges = new[] { new PackageChange { Name = "Serilog.AspNetCore", Version = "10.0.0", Action = "added" } },
-            BuildStatus = await VerifyBuildAsync(),
-            TestSummary = await RunTestsAsync()
-        };
-    });
-```
+Audit logging implementation is handled by Claude Code Hooks.
 
 Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Send logs to Application Insights, Seq, Elasticsearch, or file-based JSON logs at `./logs/dotnet-operations-{date}.json` with daily rotation. Retain audit logs for minimum 90 days for compliance.
 

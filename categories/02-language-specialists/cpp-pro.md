@@ -118,57 +118,6 @@ Always prioritize performance, safety, and zero-overhead abstractions while main
 
 Before using ANY user-provided value in shell commands, apply validation:
 
-```python
-import re, shlex
-from pathlib import Path
-
-def validate_cpp_filename(user_input):
-    """Validate C++ source/header filename."""
-    if not re.match(r'^[a-zA-Z0-9._-]+\.(cpp|hpp|cc|hh|cxx|hxx|h|c)$', user_input):
-        raise ValueError(f"Invalid C++ filename: {user_input}")
-    return user_input
-
-def validate_build_target(user_input):
-    """Validate CMake/Make target name."""
-    if not re.match(r'^[a-zA-Z0-9._-]+$', user_input):
-        raise ValueError(f"Invalid build target: {user_input}")
-    return user_input
-
-def validate_compiler_flag(user_input):
-    """Validate compiler flag (-Wflag, -std=c++xx patterns)."""
-    if not re.match(r'^-[a-zA-Z0-9=_-]+$', user_input):
-        raise ValueError(f"Invalid compiler flag: {user_input}")
-    return user_input
-
-def check_shell_metacharacters(user_input):
-    """Reject dangerous shell metacharacters."""
-    dangerous = [';', '|', '&', '$', '`', '\\', '"', "'", '<', '>', '(', ')', '{', '}', '\n', '\r']
-    if any(char in user_input for char in dangerous):
-        raise ValueError(f"Input contains dangerous character")
-    return user_input
-
-def validate_path(user_path, allowed_base="/workspace"):
-    """Ensure path doesn't escape workspace."""
-    abs_path = Path(user_path).resolve()
-    allowed = Path(allowed_base).resolve()
-    if not str(abs_path).startswith(str(allowed)):
-        raise ValueError(f"Path outside workspace: {abs_path}")
-    return abs_path
-
-# Complete validation pipeline
-def validate_cpp_input(user_input, input_type="filename"):
-    """Validate C++ development inputs before shell use."""
-    validators = {
-        "filename": validate_cpp_filename,
-        "target": validate_build_target,
-        "flag": validate_compiler_flag,
-    }
-    if input_type in validators:
-        user_input = validators[input_type](user_input)
-    user_input = check_shell_metacharacters(user_input)
-    return shlex.quote(user_input)
-```
-
 **Critical Rules**:
 - NEVER use user input directly in compilation commands
 - ALWAYS validate filenames match C++ source patterns
@@ -242,41 +191,7 @@ Log all C++ development operations in structured JSON format:
 }
 ```
 
-**Logging Implementation**:
-
-```python
-import json, logging
-from datetime import datetime
-
-def log_cpp_operation(operation, details, outcome, duration=None):
-    """Log C++ development operation with full context."""
-    log_entry = {
-        "timestamp": datetime.utcnow().isoformat() + "Z",
-        "agent": "cpp-pro",
-        "operation": operation,
-        "user": get_current_user(),
-        "details": details,
-        "outcome": outcome,
-        "duration_seconds": duration
-    }
-    logging.info(json.dumps(log_entry))
-    return log_entry
-
-# Usage examples
-log_cpp_operation(
-    operation="build_target",
-    details={"compiler": "clang++-18", "target": "test_suite", "flags": ["-std=c++23", "-Wall", "-fsanitize=address"]},
-    outcome="success",
-    duration=32.1
-)
-
-log_cpp_operation(
-    operation="run_tests",
-    details={"test_framework": "Google Test", "test_binary": "build/unit_tests", "tests_executed": 150},
-    outcome="partial_failure",
-    duration=8.7
-)
-```
+Audit logging implementation is handled by Claude Code Hooks.
 
 **Required Log Fields**: `timestamp` (ISO 8601 UTC), `agent` (always "cpp-pro"), `operation` (compile_project, build_target, run_tests, static_analysis, install_dependency), `user`, `details` (compiler, flags, files, targets), `outcome` (success, failure, partial_failure), `duration_seconds`.
 

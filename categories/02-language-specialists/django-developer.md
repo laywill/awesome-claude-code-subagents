@@ -122,44 +122,6 @@ All user-provided inputs MUST be validated before use in commands, database oper
 - **Environment variables**: Whitelist expected variables, reject unknown ones
 - **File paths**: Must be within project directory, reject `..` traversal
 
-**Validation function example**:
-```python
-import re
-from pathlib import Path
-
-def validate_django_input(input_type: str, value: str, project_root: Path) -> tuple[bool, str]:
-    """Validate Django-specific inputs before operations."""
-    validators = {
-        'model_name': (r'^[A-Z][a-zA-Z0-9]*$', 'Model names must be PascalCase alphanumeric'),
-        'app_name': (r'^[a-z][a-z0-9_]*$', 'App names must be lowercase with underscores'),
-        'table_name': (r'^[a-z][a-z0-9_]*$', 'Table names must be lowercase alphanumeric with underscores'),
-        'migration_file': (r'^[0-9]{4}_[a-z0-9_]+\.py$', 'Migration files must follow 0001_name.py format'),
-        'package_name': (r'^[a-z0-9][a-z0-9\-]*$', 'Package names must be lowercase with hyphens'),
-    }
-
-    if input_type == 'file_path':
-        try:
-            resolved_path = (project_root / value).resolve()
-            if not str(resolved_path).startswith(str(project_root)):
-                return False, f"Path traversal detected: {value}"
-            return True, "Valid file path"
-        except Exception as e:
-            return False, f"Invalid file path: {str(e)}"
-
-    if input_type in validators:
-        pattern, error_msg = validators[input_type]
-        if not re.match(pattern, value):
-            return False, error_msg
-        return True, f"Valid {input_type}"
-
-    return False, f"Unknown input type: {input_type}"
-
-# Usage
-is_valid, msg = validate_django_input('app_name', 'my-app', Path('/project'))
-if not is_valid:
-    raise ValueError(f"Input validation failed: {msg}")
-```
-
 ### Rollback Procedures
 
 All operations MUST complete rollback in <5 minutes. **Scope**: local/dev/staging environments only. Production deployments (gunicorn, celery, CDN, production databases) handled by deployment/infrastructure agents.
@@ -196,56 +158,7 @@ All operations MUST emit structured JSON logs before and after each operation.
 }
 ```
 
-**Django audit logging implementation**:
-```python
-import json
-import logging
-from datetime import datetime
-from typing import List
-from pathlib import Path
-
-class DjangoAuditLogger:
-    """Structured audit logging for Django operations."""
-    def __init__(self, log_file: Path = Path('/var/log/django/audit.log')):
-        self.logger = logging.getLogger('django_audit')
-        handler = logging.FileHandler(log_file)
-        handler.setFormatter(logging.Formatter('%(message)s'))
-        self.logger.addHandler(handler)
-        self.logger.setLevel(logging.INFO)
-
-    def log_operation(self, operation: str, command: str, outcome: str,
-                      resources_affected: List[str], user: str = None,
-                      change_ticket: str = None, environment: str = 'development',
-                      duration_seconds: int = 0, error_detail: str = None,
-                      rollback_available: bool = True) -> None:
-        """Log Django operation with structured JSON format."""
-        log_entry = {
-            'timestamp': datetime.utcnow().isoformat() + 'Z',
-            'user': user or 'unknown',
-            'change_ticket': change_ticket or 'N/A',
-            'environment': environment,
-            'operation': operation,
-            'command': command,
-            'outcome': outcome,
-            'resources_affected': resources_affected,
-            'rollback_available': rollback_available,
-            'duration_seconds': duration_seconds,
-            'error_detail': error_detail
-        }
-        self.logger.info(json.dumps(log_entry))
-
-# Usage
-audit_logger = DjangoAuditLogger()
-audit_logger.log_operation(
-    operation='create_migration',
-    command='python manage.py makemigrations app_name',
-    outcome='started',
-    resources_affected=['app_name.models'],
-    user='dev@example.com',
-    environment='development',
-    rollback_available=True
-)
-```
+Audit logging implementation is handled by Claude Code Hooks.
 
 Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Configure log rotation and retention (30 days minimum for production). Forward logs to centralized logging system *(if available)* (ELK stack, CloudWatch, Datadog).
 
