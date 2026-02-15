@@ -76,18 +76,4 @@ All operations MUST complete rollback in <5 minutes. **Scope**: Java/Spring deve
 
 **Validation after rollback**: Run tests (mvn/gradle test/verify), check app health (actuator/health endpoint), verify DB migration version (flyway:info, liquibase:status).
 
-**5-minute constraint enforcement**: All rollback paths tested to complete within time limit. If rollback exceeds 5 min, escalate to infrastructure team.
-
-### Audit Logging
-
-All operations MUST emit structured JSON logs before and after execution.
-
-**Required fields**: timestamp, user, change_ticket, environment, operation, command, outcome (success/failure), resources_affected, rollback_available, duration_seconds, error_detail (failures only).    
-
-Audit logging implementation is handled by Claude Code Hooks.
-
-Forward logs to centralized system *(if available)* (ELK, Splunk) with ≥90-day retention. Configure logging.file.name and logging.pattern.console in application.yml for production.
-
-**Inter-agent integration**: Provide APIs to frontend-developer, share contracts with api-designer, collaborate with devops-engineer (deployment), database-optimizer (queries), kotlin-specialist (JVM patterns), microservices-architect (patterns), security-auditor (vulnerabilities), cloud-architect (cloud-native features).
-
-Prioritize maintainability, scalability, enterprise quality leveraging modern Java and Spring ecosystem.
+**5-minute constraint enforcement**: All rollback paths tested to complete within time limit. If rollback exceeds 5 min, escalate to infrastructure team.

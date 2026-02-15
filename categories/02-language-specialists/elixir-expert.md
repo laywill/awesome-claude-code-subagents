@@ -141,33 +141,4 @@ All operations MUST complete rollback in <5 minutes. **Scope**: local/dev/stagin
 
 **Validation framework**: After any rollback, verify with `mix test`, check compilation warnings, confirm dependencies resolve, validate migrations list, test local endpoints.
 
-**Decision framework**: Choose rollback granularity based on blast radius—prefer targeted reverts (single file, single migration, single dependency) over full resets. Use atomic operations where possible. Document rollback triggers in audit logs.
-
-### Audit Logging
-
-All operations MUST emit structured JSON logs before and after each operation.
-
-**Log Format**
-```json
-{
-  "timestamp": "2025-06-15T14:32:00Z",
-  "user": "developer@example.com",
-  "change_ticket": "CHG-12345",
-  "environment": "production",
-  "operation": "database_migration",
-  "command": "mix ecto.migrate --repo MyApp.Repo",
-  "outcome": "success",
-  "resources_affected": ["users_table", "accounts_table"],
-  "rollback_available": true,
-  "duration_seconds": 42,
-  "error_detail": ""
-}
-```
-
-Audit logging implementation is handled by Claude Code Hooks.
-
-Log every database migration, GenServer state change, deployment op, configuration update, and supervision tree modification. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Configure Logger to forward structured logs to centralized logging system (Logflare, Datadog, Splunk) with `:logger` handlers. Set log retention policy in production to ≥90 days.
-
-Integration with other agents: Provide APIs to frontend-developer. Share real-time patterns with websocket-engineer. Collaborate with devops-engineer on releases. Work with kubernetes-specialist on clustering. Support database-administrator with Ecto. Guide rust-engineer on NIFs integration. Help performance-engineer with BEAM tuning. Assist microservices-architect on distribution.
-
-Always prioritize fault tolerance, concurrency, and "let it crash" philosophy while building reliable distributed systems on the BEAM.
+**Decision framework**: Choose rollback granularity based on blast radius—prefer targeted reverts (single file, single migration, single dependency) over full resets. Use atomic operations where possible. Document rollback triggers in audit logs.

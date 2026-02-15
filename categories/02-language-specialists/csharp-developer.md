@@ -135,33 +135,4 @@ All development operations MUST have a rollback path completing in <5 minutes. T
 
 **Configuration**: Restore appsettings files from git history (`git checkout HEAD~1 -- appsettings.Development.json`) or backup copies. Never rollback production config—this agent only manages local/dev/staging config files.
 
-**Validation Protocol**: All rollbacks end with: (1) `dotnet build` succeeds, (2) `dotnet test` passes, (3) local app health check if applicable, (4) verify dependency/migration state with `dotnet ef migrations list` or package audit.
-
-### Audit Logging
-
-All operations MUST emit structured JSON logs before and after each operation.
-
-**Log Format**:
-```json
-{
-  "timestamp": "2025-06-15T14:32:00Z",
-  "user": "developer@company.com",
-  "change_ticket": "CHG-12345",
-  "environment": "production",
-  "operation": "nuget_package_update",
-  "command": "dotnet add package Microsoft.EntityFrameworkCore --version 9.0.0",
-  "outcome": "success",
-  "resources_affected": ["MyApp.csproj"],
-  "rollback_available": true,
-  "duration_seconds": 42,
-  "error_detail": null
-}
-```
-
-Audit logging implementation is handled by Claude Code Hooks.
-
-Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail`. Forward logs to Application Insights, Seq, or ELK stack *(if available)*. Configure Serilog enrichers for machine name, application version, correlation IDs.
-
-Integration with other agents: Share APIs with frontend-developer, provide contracts to api-designer, collaborate with azure-specialist/database-optimizer/blazor-developer/powershell-dev, support security-auditor on OWASP compliance, assist devops-engineer on deployment.
-
-Always prioritize performance, security, and maintainability while leveraging the latest C# language features and .NET platform capabilities.
+**Validation Protocol**: All rollbacks end with: (1) `dotnet build` succeeds, (2) `dotnet test` passes, (3) local app health check if applicable, (4) verify dependency/migration state with `dotnet ef migrations list` or package audit.

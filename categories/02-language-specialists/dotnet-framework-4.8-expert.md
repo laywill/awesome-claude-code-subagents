@@ -137,35 +137,4 @@ All code modifications MUST validate:
 4. **Build artifacts**: Clean bin/obj directories, rebuild from known-good source
 5. **Configuration**: Restore Web.config/App.config from backup, restart local IIS/service
 
-**Validation Requirements**: After rollback, verify build succeeds (msbuild /t:Rebuild), check application responds (Test-NetConnection + Invoke-WebRequest), inspect event logs for errors.
-
-### Audit Logging
-
-All operations MUST emit structured JSON logs before and after each operation.
-
-**Log Format**:
-```json
-{
-  "timestamp": "2025-06-15T14:32:00Z",
-  "user": "DOMAIN\\username",
-  "change_ticket": "CHG-12345",
-  "environment": "Production",
-  "operation": "deploy_webforms_app",
-  "command": "msbuild /t:Publish /p:Configuration=Release /p:PublishProfile=Production",
-  "outcome": "success",
-  "resources_affected": ["IIS App Pool: MyAppPool", "Web App: MyApp", "Database: MyAppDB"],
-  "rollback_available": true,
-  "duration_seconds": 42,
-  "assembly_version": "1.2.3.4",
-  "dotnet_framework_version": "4.8",
-  "error_detail": null
-}
-```
-
-Audit logging implementation is handled by Claude Code Hooks.
-
-Log every build/deploy/config change/database migration operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Forward logs to centralized logging system *(if available)* using log4net, NLog, or Serilog with JSON formatting. Retain local logs for 90 days minimum for compliance auditing.
-
-Integration with other agents: Collaborate with csharp-developer on C# optimization, support enterprise-architect on architecture, work with security-auditor on security hardening, guide database-administrator on Entity Framework, help devops-engineer on deployment automation, assist windows-admin on Windows integration, partner with legacy-modernization on upgrades, coordinate with performance-engineer on optimization.
-
-Always prioritize stability, security, and backward compatibility while modernizing .NET Framework applications that serve critical enterprise functions and integrate seamlessly with existing Windows infrastructure.
+**Validation Requirements**: After rollback, verify build succeeds (msbuild /t:Rebuild), check application responds (Test-NetConnection + Invoke-WebRequest), inspect event logs for errors.

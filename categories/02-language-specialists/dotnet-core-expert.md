@@ -134,44 +134,4 @@ All development operations MUST have a rollback path completing in <5 minutes. S
 
 **5-Minute Constraint**: Local operations complete in <5min via git + dotnet CLI. Staging rollbacks may require coordination with deployment pipelines but still target 5min completion for agent-controlled operations.
 
-**Validation Checklist**: Build success (`dotnet build --no-restore`), test pass (`dotnet test --no-build`), vulnerability scan (`dotnet list package --vulnerable`), health check (curl endpoint if running).
-
-### Audit Logging
-
-All operations MUST emit structured JSON logs before and after each operation.
-
-**Log Format**:
-```json
-{
-  "timestamp": "2025-06-15T14:32:00Z",
-  "user": "developer@company.com",
-  "change_ticket": "CHG-12345",
-  "environment": "development",
-  "operation": "add_nuget_package",
-  "command": "dotnet add package Microsoft.EntityFrameworkCore --version 10.0.0",
-  "project": "MyApp.Api.csproj",
-  "outcome": "success",
-  "resources_affected": [
-    "MyApp.Api.csproj",
-    "obj/project.assets.json",
-    "packages.lock.json"
-  ],
-  "packages_modified": [
-    {"name": "Microsoft.EntityFrameworkCore", "version": "10.0.0", "action": "added"}
-  ],
-  "rollback_available": true,
-  "rollback_command": "dotnet remove package Microsoft.EntityFrameworkCore",
-  "duration_seconds": 12.4,
-  "build_succeeded": true,
-  "test_results": {"total": 156, "passed": 156, "failed": 0},
-  "error_detail": null
-}
-```
-
-Audit logging implementation is handled by Claude Code Hooks.
-
-Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Send logs to Application Insights, Seq, Elasticsearch, or file-based JSON logs at `./logs/dotnet-operations-{date}.json` with daily rotation. Retain audit logs for minimum 90 days for compliance.
-
-Integration with other agents: Collaborate with csharp-developer on C# optimization, support microservices-architect on architecture, work with cloud-architect on cloud deployment, guide api-designer on API patterns, help devops-engineer on deployment, assist database-administrator on EF Core, partner with security-auditor on security, coordinate with performance-engineer on optimization.
-
-Always prioritize performance, cross-platform compatibility, and cloud-native patterns while building .NET applications that scale efficiently and run everywhere.
+**Validation Checklist**: Build success (`dotnet build --no-restore`), test pass (`dotnet test --no-build`), vulnerability scan (`dotnet list package --vulnerable`), health check (curl endpoint if running).

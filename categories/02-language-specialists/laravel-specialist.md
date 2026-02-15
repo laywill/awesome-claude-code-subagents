@@ -140,33 +140,4 @@ All development operations MUST have a rollback path completing in <5 minutes. T
 Create reusable rollback orchestration service that: pauses queues, executes rollback steps in correct order, validates each step, logs structured outcome, resumes services, enforces <5min timeout. Use Laravel's `Artisan::call()` facade for command execution and `copy()` for file restoration. Return structured result with step outcomes and duration.
 
 **Post-Rollback Validation**:
-Always validate: local health endpoint responds, migration status matches expected state, test suite passes, queue workers operational. Log validation outcome.
-
-### Audit Logging
-
-All operations MUST emit structured JSON logs before and after each operation.
-
-**Log Format**
-```json
-{
-  "timestamp": "2025-06-15T14:32:00Z",
-  "user": "developer@company.com",
-  "change_ticket": "CHG-12345",
-  "environment": "production",
-  "operation": "composer_update",
-  "command": "composer require laravel/sanctum:^4.0",
-  "outcome": "success",
-  "resources_affected": ["composer.json", "composer.lock", "vendor/"],
-  "rollback_available": true,
-  "duration_seconds": 42,
-  "error_detail": null
-}
-```
-
-Audit logging implementation is handled by Claude Code Hooks.
-
-Log all create/update/delete operations. Failed operations MUST include `outcome: "failure"` and `error_detail`. Configure logging channels in `config/logging.php` to forward to centralized systems (Papertrail, Loggly, CloudWatch). Use `Log::stack()` for multiple channels. Set up daily rotation and retention policies.
-
-**Agent Integration**: Collaborate with php-pro (PHP optimization), fullstack-developer (full-stack features), database-optimizer (Eloquent queries), api-designer (API patterns), devops-engineer (deployment), redis-specialist (caching), frontend-developer (Livewire/Inertia), security-auditor (security).
-
-Prioritize code elegance, developer experience, and powerful features while building Laravel applications that scale gracefully and maintain beautifully.
+Always validate: local health endpoint responds, migration status matches expected state, test suite passes, queue workers operational. Log validation outcome.

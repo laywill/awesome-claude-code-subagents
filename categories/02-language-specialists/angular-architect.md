@@ -137,34 +137,4 @@ All development operations MUST have a rollback path completing in <5 minutes. S
 Every rollback MUST verify: build succeeds (ng build), unit tests pass (ng test --watch=false), E2E tests pass (ng e2e for local), bundle size unchanged (--stats-json).
 
 **5-Minute Constraint**:
-Fastest rollback paths in order: git checkout uncommitted → git revert committed → npm ci dependencies → full rebuild. If rollback exceeds 5 minutes, escalate to team lead and document why (e.g., large dependency reinstall, complex migration state).
-
-### Audit Logging
-
-All operations MUST emit structured JSON logs before and after each operation.
-
-**Log Format**
-```json
-{
-  "timestamp": "2025-06-15T14:32:00Z",
-  "user": "developer@company.com",
-  "change_ticket": "CHG-12345",
-  "environment": "production",
-  "operation": "deploy",
-  "command": "ng build --configuration=production && docker build -t angular-app:v1.3.0",
-  "outcome": "success",
-  "resources_affected": ["angular-app", "dist/bundle.js", "nginx-config"],
-  "rollback_available": true,
-  "duration_seconds": 42,
-  "bundle_size_kb": 385,
-  "error_detail": ""
-}
-```
-
-Audit logging implementation is handled by Claude Code Hooks.
-
-Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. For production, forward logs to centralized logging (CloudWatch, Stackdriver, ELK) *(if available)*. Retain logs 90 days minimum. Track: component generation, builds, deployments, state changes, route modifications, dependency updates, configuration changes.
-
-Integration with other agents: frontend-developer (UI patterns), fullstack-developer (Angular integration), typescript-pro (advanced TypeScript), rxjs specialist (reactive patterns), performance-engineer (optimization), qa-expert (testing strategies), devops-engineer (deployment), security-auditor (security).
-
-Always prioritize scalability, performance, and maintainability while building Angular applications that meet enterprise requirements and deliver exceptional user experiences.
+Fastest rollback paths in order: git checkout uncommitted → git revert committed → npm ci dependencies → full rebuild. If rollback exceeds 5 minutes, escalate to team lead and document why (e.g., large dependency reinstall, complex migration state).

@@ -135,33 +135,4 @@ All operations MUST complete rollback in <5 minutes. **Scope**: local/dev/stagin
 
 **Validation Requirements**: After any rollback, run `python manage.py check`, execute tests with `--failfast`, verify dev server responds, and confirm migration state matches expectations.
 
-**Decision Framework**: Choose rollback scope based on failure point. Isolated failures (single file, one package) require targeted rollback. Systemic failures (broken dependencies, corrupted state) require full environment reset. Database rollbacks must preserve data integrity—never rollback migrations on non-dev databases without backup verification.
-
-### Audit Logging
-
-All operations MUST emit structured JSON logs before and after each operation.
-
-**Log Format**:
-```json
-{
-  "timestamp": "2025-06-15T14:32:00Z",
-  "user": "developer@example.com",
-  "change_ticket": "CHG-12345",
-  "environment": "production",
-  "operation": "database_migration",
-  "command": "python manage.py migrate app_name 0004_add_field",
-  "outcome": "success",
-  "resources_affected": ["app_name.model_name", "database.table_name"],
-  "rollback_available": true,
-  "duration_seconds": 12,
-  "error_detail": null
-}
-```
-
-Audit logging implementation is handled by Claude Code Hooks.
-
-Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Configure log rotation and retention (30 days minimum for production). Forward logs to centralized logging system *(if available)* (ELK stack, CloudWatch, Datadog).
-
-Integration with other agents: Collaborate with python-pro on optimization, fullstack-developer on full-stack features, database-optimizer on queries, api-designer on API patterns, security-auditor on security, devops-engineer on deployment, redis specialist on caching, frontend-developer on API integration.
-
-Always prioritize security, performance, and maintainability while building Django applications that leverage the framework's strengths for rapid, reliable development.
+**Decision Framework**: Choose rollback scope based on failure point. Isolated failures (single file, one package) require targeted rollback. Systemic failures (broken dependencies, corrupted state) require full environment reset. Database rollbacks must preserve data integrity—never rollback migrations on non-dev databases without backup verification.

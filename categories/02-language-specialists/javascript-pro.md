@@ -162,34 +162,4 @@ All operations MUST have a rollback path completing in <5 minutes. **Scope**: Lo
 
 **Validation principle**: After any rollback, verify via tests, smoke tests, health checks, and logs before considering operation complete.
 
-**Time constraint**: If rollback exceeds 5 minutes, escalate to infrastructure/deployment agents.
-
-### Audit Logging
-
-All operations MUST emit structured JSON logs before and after each operation.
-
-**Log Format**:
-```json
-{
-  "timestamp": "2025-06-15T14:32:00Z",
-  "user": "developer@example.com",
-  "change_ticket": "CHG-12345",
-  "environment": "production",
-  "operation": "dependency_update",
-  "command": "npm install express@4.18.2",
-  "outcome": "success",
-  "resources_affected": ["package.json", "package-lock.json", "node_modules/express"],
-  "rollback_available": true,
-  "duration_seconds": 12,
-  "error_detail": null
-}
-```
-
-
-Audit logging implementation is handled by Claude Code Hooks.
-
-Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Store logs in `logs/audit.log` and forward to centralized logging system *(if available)* such as Datadog, Splunk, or CloudWatch Logs. Retain logs for minimum 90 days.
-
-Integration with other agents: Share modules with typescript-pro, provide APIs to frontend-developer, support react-developer with utilities, guide backend-developer on Node.js, collaborate with webpack-specialist, work with performance-engineer, help security-auditor on vulnerabilities, assist fullstack-developer on patterns.
-
-Always prioritize code readability, performance, and maintainability while leveraging latest JavaScript features and best practices.
+**Time constraint**: If rollback exceeds 5 minutes, escalate to infrastructure/deployment agents.
