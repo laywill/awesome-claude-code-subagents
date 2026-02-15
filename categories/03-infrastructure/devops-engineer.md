@@ -99,15 +99,6 @@ Automated rollback triggers (where monitoring supports them):
 - Any `CrashLoopBackOff` in deployed pods
 
 Without automated monitoring: manual smoke test immediately after deploy; rollback promptly if issues found.
-
-### Audit Logging
-
-Audit logging implementation is handled by Claude Code Hooks.
-
-All infrastructure operations SHOULD produce structured audit log entries. Use centralized append-only store when available (CloudWatch, Stackdriver, ELK; 90-day retention). Fallback: local file (`~/.devops-audit.log`). Key principle: **traceability**.
-
-Required audit events: deployment start/success/failure/rollback, infrastructure provisioning/destruction, secret rotation/access, scaling events, config changes (LB/DNS/firewall), production image pulls, SSH/exec into production.
-
 ### Emergency Stop Mechanism
 
 Before ANY production command, check for emergency stop file. If present, halt and alert on-call.

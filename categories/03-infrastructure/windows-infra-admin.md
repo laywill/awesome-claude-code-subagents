@@ -110,31 +110,6 @@ Import-Clixml "C:\ChangeBackups\CHG-00012345\dns-zone-backup.xml" |
 Import-GPO -BackupId $backupGuid -Path "C:\ChangeBackups\CHG-00012345\GPOBackups" -TargetName "Security Baseline v2" -CreateIfNeeded
 Remove-GPLink -Guid $gpoGuid -Target "OU=Workstations,DC=contoso,DC=com"
 ```
-
-### Audit Logging
-
-Audit logging implementation is handled by Claude Code Hooks.
-
-All operations MUST produce structured JSON audit entries written before and after each change.
-
-```json
-{
-  "timestamp": "2025-01-22T14:30:00Z",
-  "changeTicket": "CHG-00012345",
-  "operator": "admin@contoso.com",
-  "agent": "windows-infra-admin",
-  "environment": "PROD",
-  "domain": "contoso.com",
-  "operation": "Remove-ADUser",
-  "target": "CN=jsmith,OU=Users,DC=contoso,DC=com",
-  "parameters": {"Identity": "jsmith"},
-  "preChangeState": "C:\\ChangeBackups\\CHG-00012345\\user-jsmith-pre.xml",
-  "outcome": "Success",
-  "rollbackAvailable": true,
-  "durationMs": 1250
-}
-```
-
 ### Emergency Stop Mechanism
 
 Before bulk/enterprise-wide changes (>10 objects), check for emergency stop file `C:\InfraLogs\EMERGENCY_STOP`. If exists, ALL operations halt immediately.

@@ -124,46 +124,6 @@ verify_or_rollback() {
   return 0
 }
 ```
-
-### Audit Logging
-
-Audit logging implementation is handled by Claude Code Hooks.
-
-Every network configuration change MUST be logged in structured JSON format for compliance, forensics, and operational review.
-
-Log format:
-```json
-{
-  "timestamp": "2025-03-15T14:23:01.456Z",
-  "agent": "network-engineer",
-  "user": "engineer@company.com",
-  "change_ticket": "NET-4521",
-  "environment": "production",
-  "action": "route_add",
-  "target": {
-    "resource_type": "route_table",
-    "resource_id": "rtb-abc123",
-    "region": "us-east-1"
-  },
-  "command": "aws ec2 create-route --route-table-id rtb-abc123 --destination-cidr-block 10.20.0.0/16 --gateway-id igw-xyz789",
-  "parameters": {
-    "destination_cidr": "10.20.0.0/16",
-    "gateway": "igw-xyz789"
-  },
-  "outcome": "success",
-  "rollback_available": true,
-  "rollback_command": "aws ec2 delete-route --route-table-id rtb-abc123 --destination-cidr-block 10.20.0.0/16",
-  "pre_state_snapshot": "/var/log/network-audit/snapshots/rtb-abc123-20250315-142258.json",
-  "validation": {
-    "connectivity_check": "passed",
-    "latency_check": "passed",
-    "security_scan": "passed"
-  }
-}
-```
-
-Audit log retention: retain all network change logs minimum 1 year, untracked changes trigger immediate alert to security team, weekly audit review of all production network changes, log integrity protected via append-only storage and checksums.
-
 ## Communication Protocol
 
 ### Network Assessment

@@ -109,32 +109,6 @@ function Watch-RollbackTrigger {
     }
 }
 ```
-
-### Audit Logging
-
-Audit logging implementation is handled by Claude Code Hooks.
-
-All M365 operations MUST produce structured JSON audit records. Logs written before and after every change.
-
-**Log Format**:
-```json
-{
-    "timestamp": "2025-01-15T14:32:00Z",
-    "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    "changeTicket": "CHG0012345",
-    "operator": "admin@contoso.com",
-    "environment": "PROD",
-    "tenantId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-    "workload": "ExchangeOnline",
-    "command": "Set-Mailbox -Identity user@contoso.com -RetentionPolicy 'Legal-Hold-365'",
-    "targetObject": "user@contoso.com",
-    "previousState": { "RetentionPolicy": "Default-MRM-Policy" },
-    "newState": { "RetentionPolicy": "Legal-Hold-365" },
-    "outcome": "Success",
-    "duration_ms": 1230
-}
-```
-
 ## Integration with Other Agents
 
 **azure-infra-engineer**: Identity/hybrid alignment

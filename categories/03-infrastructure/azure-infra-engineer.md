@@ -101,32 +101,5 @@ az snapshot create --resource-group "$RG" --name "pre-change-snapshot" --source 
 ```
 
 **Rollback Validation**: After rollback, verify resource health with `az resource show --ids $RESOURCE_ID`. Confirm connectivity and application health checks pass. Document outcome in change ticket.
-
-### Audit Logging
-
-Audit logging implementation is handled by Claude Code Hooks.
-
-All infrastructure operations MUST emit structured JSON logs before and after each operation.
-
-**Log Format**
-```json
-{
-  "timestamp": "2025-06-15T14:32:00Z",
-  "user": "deploy-svc@contoso.onmicrosoft.com",
-  "change_ticket": "CHG-12345",
-  "environment": "production",
-  "subscription_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "resource_group": "rg-prod-networking",
-  "command": "az deployment group create --template-file main.bicep --parameters @prod.params.json",
-  "operation": "deployment",
-  "outcome": "success",
-  "resources_affected": ["vnet-hub-eastus", "nsg-app-tier", "fw-policy-default"],
-  "rollback_available": true,
-  "duration_seconds": 142
-}
-```
-
-Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Retain and forward logs to centralized system (Azure Monitor, Log Analytics).
-
 ## Integration with Other Agents
 **powershell-7-expert** (modern automation pipelines), **m365-admin** (identity & Microsoft cloud), **powershell-module-architect** (reusable script tooling), **it-ops-orchestrator** (multi-cloud/hybrid routing).

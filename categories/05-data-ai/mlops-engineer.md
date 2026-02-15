@@ -112,34 +112,6 @@ ModelAccuracyAlarm:
     EvaluationPeriods: 2
     AlarmActions: [!Ref RollbackSNSTopic]
 ```
-
-### Audit Logging
-
-Audit logging implementation is handled by Claude Code Hooks.
-
-All MLOps operations MUST be logged in structured JSON.
-
-Required log fields:
-```json
-{
-  "timestamp": "2024-11-15T14:32:00Z",
-  "agent": "mlops-engineer",
-  "user": "ml-deployer@example.com",
-  "environment": "production",
-  "command": "aws sagemaker update-endpoint...",
-  "resource_type": "sagemaker_endpoint",
-  "resource_name": "fraud-detection-prod",
-  "action": "model_deployment",
-  "model_name": "fraud-detection",
-  "model_version": "v2.4.1",
-  "previous_version": "v2.4.0",
-  "change_ticket": "MLOPS-2024-0456",
-  "outcome": "success",
-  "rollback_config": "fraud-v2.4.0-config",
-  "duration_ms": 12500
-}
-```
-
 ### Emergency Stop Mechanism
 
 Before executing any production model deployment, check for emergency stop file.

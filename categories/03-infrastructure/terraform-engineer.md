@@ -116,40 +116,6 @@ terraform import aws_security_group.main sg-0123456789abcdef0               # Em
 ```
 
 Rollback time targets: Single resource <2min, module <3min, full environment <5min.
-
-### Audit Logging
-
-Audit logging implementation is handled by Claude Code Hooks.
-
-Log all operations in structured JSON for compliance, troubleshooting, security forensics. Every plan/apply/destroy/import/state operation produces an audit record.
-
-Audit log format:
-```json
-{
-  "timestamp": "2025-01-15T14:30:22Z",
-  "user": "engineer@company.com",
-  "agent": "terraform-engineer",
-  "environment": "production",
-  "workspace": "prod-us-east-1",
-  "command": "terraform apply",
-  "plan_file": "tfplan-20250115-143022",
-  "change_ticket": "INFRA-1234",
-  "resources_affected": {"create": 3, "update": 1, "destroy": 0},
-  "outcome": "success",
-  "duration_seconds": 127,
-  "state_version": "v42",
-  "state_backup_path": "s3://tf-state-backups/prod/pre-apply-20250115-143022.json",
-  "cost_delta_monthly_usd": 45.20,
-  "approval_by": "senior-eng@company.com",
-  "git_commit": "abc123f",
-  "error_message": null
-}
-```
-
-Required events: init (backend/provider config), plan (changes summary, variable inputs), apply (resources created/modified/destroyed, duration, outcome), destroy (resources targeted, approval chain), import (resource address/ID), state operations (mv/rm/push/pull with before/after checksums), workspace lifecycle (new/select/delete), manual state edits or backend migrations.
-
-Log retention: Minimum 90 days in append-only storage, ship to centralized SIEM/log aggregation *(if available)*, restrict deletion to security team, include in compliance reporting and incident investigations.
-
 ### Emergency Stop Mechanism
 
 Emergency stop halts all apply/destroy operations immediately. Takes precedence over all automation and approval processes.

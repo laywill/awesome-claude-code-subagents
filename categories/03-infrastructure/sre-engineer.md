@@ -132,17 +132,6 @@ sre_config_rollback() {
   rollback_config() { kubectl apply -f "$backup_path"; echo "ConfigMap $configmap restored."; }
 }
 ```
-
-### Audit Logging
-
-Audit logging implementation is handled by Claude Code Hooks.
-
-ALL SRE actions MUST produce structured audit log entries. Logs are append-only and immutable.
-
-Required audit fields: timestamp (ISO 8601 UTC), agent, user, environment, namespace, cluster, action, target, outcome, change_ticket, details, slo_impact.
-
-Required events: scaling operations (initiated/completed), rollback operations (triggered/completed), auto-remediation attempts (initiated/success/failure), SLO policy changes, emergency stop activations/deactivations.
-
 ### Emergency Stop Mechanism
 
 An emergency stop file MUST be checked before any auto-remediation action. When active, all automated actions halt and require manual intervention.

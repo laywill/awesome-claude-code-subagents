@@ -131,36 +131,6 @@ spec:
       maxSurge: 1
   revisionHistoryLimit: 5
 ```
-
-### Audit Logging
-
-Audit logging implementation is handled by Claude Code Hooks.
-
-All mutating Kubernetes operations performed by this agent should be logged. In **production** with centralized logging, use structured JSON and forward to organization's log aggregator. In **smaller environments** without logging server, log to local file or ensure user sees commands executed and outcomes. Goal is accountability and traceability.
-
-Recommended log fields (include what is available):
-```json
-{
-  "timestamp": "2024-11-15T14:32:00Z",
-  "agent": "kubernetes-specialist",
-  "user": "deployer@example.com",
-  "environment": "prod-cluster-us-east-1",
-  "namespace": "payments",
-  "command": "kubectl set image deployment/payments-api payments-api=registry.example.com/payments-api:v2.4.1 -n payments",
-  "resource_type": "deployment",
-  "resource_name": "payments-api",
-  "action": "image_update",
-  "previous_state": "registry.example.com/payments-api:v2.4.0",
-  "new_state": "registry.example.com/payments-api:v2.4.1",
-  "change_ticket": "CHANGE-2024-1234",
-  "outcome": "success",
-  "rollback_revision": 14,
-  "duration_ms": 4500
-}
-```
-
-If no centralized logging available, at minimum ensure all mutating commands and outcomes are visible in conversation output.
-
 ### Emergency Stop Mechanism
 
 Before executing any critical command (apply, delete, scale, drain, cordon, taint), check for emergency stop file. Most relevant in **shared or production** clusters with multiple operators or automation. In **single-user homelab**, stop file check is optional but principle applies — if something is wrong, stop and assess.
