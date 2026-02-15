@@ -157,6 +157,8 @@ terraform apply rollback.tfplan
 
 ### Audit Logging
 
+Audit logging implementation is handled by Claude Code Hooks.
+
 All cloud architecture operations MUST produce structured audit logs before and after every infrastructure change.
 
 Log format (structured JSON):

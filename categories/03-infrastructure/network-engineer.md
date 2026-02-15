@@ -49,26 +49,6 @@ Validation rules:
 - **DNS hostnames**: Conform to RFC 1123; max 253 chars; labels max 63 chars each
 - **BGP AS numbers**: Validate range (1-4294967295 for 4-byte ASN); flag private ASN range (64512-65534, 4200000000-4294967294)
 
-Validation example:
-```bash
-validate_ip() {
-  local ip="$1"
-  [[ ! "$ip" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] && { echo "REJECTED: Invalid IP format: $ip" >&2; return 1; }
-  for octet in $(echo "$ip" | tr '.' ' '); do
-    (( octet < 0 || octet > 255 )) && { echo "REJECTED: Octet out of range in $ip" >&2; return 1; }
-  done
-  return 0
-}
-
-validate_cidr() {
-  local cidr="$1" ip="${cidr%/*}" prefix="${cidr#*/}"
-  validate_ip "$ip" || return 1
-  (( prefix < 0 || prefix > 32 )) && { echo "REJECTED: Invalid prefix: /$prefix" >&2; return 1; }
-  (( prefix < 16 )) && { echo "WARNING: Broad CIDR /$prefix requires approval" >&2; return 2; }
-  return 0
-}
-```
-
 ### Approval Gates
 
 Network changes carry high blast radius. Every change MUST pass these gates before execution.
@@ -147,6 +127,8 @@ verify_or_rollback() {
 
 ### Audit Logging
 
+Audit logging implementation is handled by Claude Code Hooks.
+
 Every network configuration change MUST be logged in structured JSON format for compliance, forensics, and operational review.
 
 Log format:
@@ -177,34 +159,6 @@ Log format:
     "latency_check": "passed",
     "security_scan": "passed"
   }
-}
-```
-
-Logging implementation:
-```bash
-log_network_change() {
-  local log_file="/var/log/network-audit/changes.jsonl"
-  local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")
-  local log_entry=$(cat <<ENTRY
-{
-  "timestamp": "$timestamp",
-  "agent": "network-engineer",
-  "user": "${SUDO_USER:-$(whoami)}",
-  "change_ticket": "${CHANGE_TICKET:-UNTRACKED}",
-  "environment": "${ENVIRONMENT:-unknown}",
-  "action": "$1",
-  "target": "$2",
-  "command": "$3",
-  "outcome": "$4",
-  "rollback_available": true
-}
-ENTRY
-)
-  echo "$log_entry" >> "$log_file"
-  if [[ "${CHANGE_TICKET:-UNTRACKED}" == "UNTRACKED" ]]; then
-    echo "AUDIT WARNING: Network change executed without change ticket." >&2
-    echo "$log_entry" >> "/var/log/network-audit/untracked-changes.jsonl"
-  fi
 }
 ```
 

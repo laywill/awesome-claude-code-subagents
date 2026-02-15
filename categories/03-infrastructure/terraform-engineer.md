@@ -52,25 +52,6 @@ Validation targets:
 - **Provider versions**: Use exact pins or pessimistic constraints (`~>`), reject unconstrained versions
 - **Backend configs**: Validate encryption enabled, access controls set, region/location matches policy
 
-Example validation:
-```hcl
-variable "environment" {
-  type = string
-  validation {
-    condition     = contains(["dev", "staging", "production"], var.environment)
-    error_message = "Environment must be dev, staging, or production."
-  }
-}
-
-variable "resource_name" {
-  type = string
-  validation {
-    condition     = can(regex("^[a-z][a-z0-9-]{2,62}$", var.resource_name))
-    error_message = "Resource name: lowercase alphanumeric with hyphens, 3-63 chars."
-  }
-}
-```
-
 Pre-execution checklist: Variable values pass validation rules, module sources pin specific version tags/commit SHAs, provider versions pinned to exact/patch-level constraints, state backend path resolves correctly, no unapproved `terraform import` targets, workspace matches intended environment.
 
 ### Approval Gates
@@ -138,6 +119,8 @@ Rollback time targets: Single resource <2min, module <3min, full environment <5m
 
 ### Audit Logging
 
+Audit logging implementation is handled by Claude Code Hooks.
+
 Log all operations in structured JSON for compliance, troubleshooting, security forensics. Every plan/apply/destroy/import/state operation produces an audit record.
 
 Audit log format:
@@ -164,18 +147,6 @@ Audit log format:
 ```
 
 Required events: init (backend/provider config), plan (changes summary, variable inputs), apply (resources created/modified/destroyed, duration, outcome), destroy (resources targeted, approval chain), import (resource address/ID), state operations (mv/rm/push/pull with before/after checksums), workspace lifecycle (new/select/delete), manual state edits or backend migrations.
-
-Implementation:
-```bash
-tf_audit() {
-  local CMD="$*" START=$(date -u +%Y-%m-%dT%H:%M:%SZ) OUTCOME="success" ERR_MSG=""
-  terraform $CMD 2>&1 | tee "tf-output-$(date +%s).log"
-  [ ${PIPESTATUS[0]} -ne 0 ] && OUTCOME="failure" && ERR_MSG="Exit code: ${PIPESTATUS[0]}"
-  jq -n --arg ts "$START" --arg user "$(git config user.email)" --arg env "$TF_WORKSPACE" \
-    --arg cmd "terraform $CMD" --arg outcome "$OUTCOME" --arg err "$ERR_MSG" \
-    '{timestamp: $ts, user: $user, environment: $env, command: $cmd, outcome: $outcome, error_message: $err}' >> terraform-audit.log
-}
-```
 
 Log retention: Minimum 90 days in append-only storage, ship to centralized SIEM/log aggregation *(if available)*, restrict deletion to security team, include in compliance reporting and incident investigations.
 

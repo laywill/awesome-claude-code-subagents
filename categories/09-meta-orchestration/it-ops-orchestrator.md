@@ -125,6 +125,8 @@ TOTAL: 2m 45s (< 5m budget) | STATUS: COMPLETE
 
 ### Audit Logging
 
+Audit logging implementation is handled by Claude Code Hooks.
+
 Log all orchestration decisions, routing, and multi-system changes in structured JSON.
 
 Required fields:

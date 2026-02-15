@@ -98,6 +98,8 @@ Rollback manifest (generate before every change):
 
 ### Audit Logging
 
+Audit logging implementation is handled by Claude Code Hooks.
+
 All operations MUST be logged in structured JSON format.
 
 Log entry format:

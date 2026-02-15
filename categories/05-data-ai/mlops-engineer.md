@@ -51,19 +51,6 @@ Validation rules:
 - **Dataset paths**: Absolute paths under approved prefixes (e.g., `s3://ml-data/`, `/data/ml/`); reject `..`, `~`, traversal patterns
 - **Pipeline names**: `^[a-z0-9][a-z0-9\-_]{0,63}$`; reject unregistered pipelines
 
-Validation example:
-```bash
-# Validate model name, reject 'latest' in prod, check path traversal
-MODEL_NAME="$1"
-[[ "$MODEL_NAME" =~ ^[a-z0-9][a-z0-9\-_]{0,62}[a-z0-9]$ ]] || { echo "ERROR: Invalid model name"; exit 1; }
-
-MODEL_VERSION="$2"; ENVIRONMENT="$3"
-[[ "$ENVIRONMENT" == "production" && "$MODEL_VERSION" == "latest" ]] && { echo "ERROR: 'latest' forbidden in production"; exit 1; }
-
-DATASET_PATH="$4"
-[[ "$DATASET_PATH" == *".."* || "$DATASET_PATH" == *"~"* ]] && { echo "ERROR: Path traversal forbidden"; exit 1; }
-```
-
 ### Approval Gates
 
 All critical MLOps operations require pre-execution approval.
@@ -128,6 +115,8 @@ ModelAccuracyAlarm:
 
 ### Audit Logging
 
+Audit logging implementation is handled by Claude Code Hooks.
+
 All MLOps operations MUST be logged in structured JSON.
 
 Required log fields:
@@ -148,16 +137,6 @@ Required log fields:
   "outcome": "success",
   "rollback_config": "fraud-v2.4.0-config",
   "duration_ms": 12500
-}
-```
-
-Logging implementation:
-```bash
-log_mlops_action() {
-  local CMD="$1" OUTCOME="$2" DURATION="$3" MODEL="$4" VERSION="$5"
-  jq -n --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg cmd "$CMD" --arg outcome "$OUTCOME" \
-    '{timestamp: $ts, agent: "mlops-engineer", command: $cmd, model_name: $MODEL, model_version: $VERSION, outcome: $outcome, duration_ms: $DURATION}' \
-    >> /var/log/mlops-agent-audit.json
 }
 ```
 

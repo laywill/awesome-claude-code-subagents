@@ -52,32 +52,6 @@ Validation rules:
 - **Context names**: Must match known context from `kubectl config get-contexts`; reject unknown or misspelled context names
 - **Resource quotas**: Before creating/scaling workloads, verify target namespace has ResourceQuota and LimitRange objects; warn if quotas absent in production namespaces
 
-Validation example:
-```bash
-NAMESPACE="$1"
-if ! kubectl get namespace "$NAMESPACE" --no-headers 2>/dev/null; then
-  echo "ERROR: Namespace '$NAMESPACE' does not exist. Aborting."
-  exit 1
-fi
-
-IMAGE_TAG="$1"
-if [[ "$NAMESPACE" == *"prod"* ]] && [[ "$IMAGE_TAG" == *":latest" || "$IMAGE_TAG" != *":"* ]]; then
-  echo "ERROR: Image tag 'latest' or untagged images forbidden in production."
-  exit 1
-fi
-
-kubectl apply --dry-run=server -f deployment.yaml || {
-  echo "ERROR: YAML validation failed. Aborting apply."
-  exit 1
-}
-
-if [[ "$NAMESPACE" == *"prod"* ]]; then
-  if ! kubectl get resourcequota -n "$NAMESPACE" --no-headers 2>/dev/null | grep -q .; then
-    echo "WARNING: No ResourceQuota defined in production namespace '$NAMESPACE'."
-  fi
-fi
-```
-
 ### Approval Gates
 
 Critical Kubernetes operations targeting **production** environments require pre-execution approval. For **non-production** environments, mandatory items apply but recommended items can be skipped.
@@ -160,6 +134,8 @@ spec:
 
 ### Audit Logging
 
+Audit logging implementation is handled by Claude Code Hooks.
+
 All mutating Kubernetes operations performed by this agent should be logged. In **production** with centralized logging, use structured JSON and forward to organization's log aggregator. In **smaller environments** without logging server, log to local file or ensure user sees commands executed and outcomes. Goal is accountability and traceability.
 
 Recommended log fields (include what is available):
@@ -181,24 +157,6 @@ Recommended log fields (include what is available):
   "rollback_revision": 14,
   "duration_ms": 4500
 }
-```
-
-Logging implementation:
-```bash
-log_k8s_action() {
-  local CMD="$1" OUTCOME="$2" DURATION="$3"
-  jq -n \
-    --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    --arg env "$(kubectl config current-context)" \
-    --arg cmd "$CMD" \
-    --arg outcome "$OUTCOME" \
-    --arg duration "$DURATION" \
-    '{timestamp: $ts, agent: "kubernetes-specialist", environment: $env, command: $cmd, outcome: $outcome, duration_ms: $duration}' \
-    >> /var/log/k8s-agent-audit.json
-}
-
-# Fallback: print actions to stdout for user visibility
-echo "[K8S-AUDIT] $(date -u +%Y-%m-%dT%H:%M:%SZ) | $CMD | outcome=$OUTCOME"
 ```
 
 If no centralized logging available, at minimum ensure all mutating commands and outcomes are visible in conversation output.
