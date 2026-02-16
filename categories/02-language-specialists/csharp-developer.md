@@ -135,4 +135,4 @@ All development operations MUST have a rollback path completing in <5 minutes. T
 
 **Configuration**: Restore appsettings files from git history (`git checkout HEAD~1 -- appsettings.Development.json`) or backup copies. Never rollback production config—this agent only manages local/dev/staging config files.
 
-**Validation Protocol**: All rollbacks end with: (1) `dotnet build` succeeds, (2) `dotnet test` passes, (3) local app health check if applicable, (4) verify dependency/migration state with `dotnet ef migrations list` or package audit.
+**Validation Protocol**: All rollbacks end with: (1) `dotnet build` succeeds, (2) `dotnet test` passes, (3) local app health check if applicable, (4) verify dependency/migration state with `dotnet ef migrations list` or package audit.

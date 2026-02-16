@@ -140,4 +140,4 @@ All development operations MUST have a rollback path completing in <5 minutes. T
 Create reusable rollback orchestration service that: pauses queues, executes rollback steps in correct order, validates each step, logs structured outcome, resumes services, enforces <5min timeout. Use Laravel's `Artisan::call()` facade for command execution and `copy()` for file restoration. Return structured result with step outcomes and duration.
 
 **Post-Rollback Validation**:
-Always validate: local health endpoint responds, migration status matches expected state, test suite passes, queue workers operational. Log validation outcome.
+Always validate: local health endpoint responds, migration status matches expected state, test suite passes, queue workers operational. Log validation outcome.

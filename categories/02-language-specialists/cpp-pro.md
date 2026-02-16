@@ -155,4 +155,4 @@ All development operations MUST have a rollback path completing in <5 minutes. T
 - Sanitizers clean (AddressSanitizer, UBSan if previously enabled)
 - Static analysis passes (clang-tidy, cppcheck)
 
-**5-Minute Constraint**: Rollback must complete within 5 minutes including validation. For large projects with long build times: prioritize fast validation subset (smoke tests) over full test suite.
+**5-Minute Constraint**: Rollback must complete within 5 minutes including validation. For large projects with long build times: prioritize fast validation subset (smoke tests) over full test suite.

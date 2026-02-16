@@ -137,4 +137,4 @@ All development operations MUST have a rollback path completing in <5 minutes. T
 - Multiplatform changes: Restore platform modules independently, rebuild all targets
 - Failed coroutine refactoring: Restore module files, run module-specific tests
 
-**5-Minute Constraint**: All rollbacks must complete within 5 minutes including rebuild and validation. If rollback exceeds this, escalate to human review before attempting manual recovery.
+**5-Minute Constraint**: All rollbacks must complete within 5 minutes including rebuild and validation. If rollback exceeds this, escalate to human review before attempting manual recovery.

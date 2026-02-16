@@ -76,4 +76,4 @@ All operations MUST complete rollback in <5 minutes. **Scope**: Java/Spring deve
 
 **Validation after rollback**: Run tests (mvn/gradle test/verify), check app health (actuator/health endpoint), verify DB migration version (flyway:info, liquibase:status).
 
-**5-minute constraint enforcement**: All rollback paths tested to complete within time limit. If rollback exceeds 5 min, escalate to infrastructure team.
+**5-minute constraint enforcement**: All rollback paths tested to complete within time limit. If rollback exceeds 5 min, escalate to infrastructure team.

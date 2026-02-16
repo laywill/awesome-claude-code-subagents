@@ -141,4 +141,4 @@ All operations MUST complete rollback in <5 minutes. **Scope**: local/dev/stagin
 
 **Validation framework**: After any rollback, verify with `mix test`, check compilation warnings, confirm dependencies resolve, validate migrations list, test local endpoints.
 
-**Decision framework**: Choose rollback granularity based on blast radius—prefer targeted reverts (single file, single migration, single dependency) over full resets. Use atomic operations where possible. Document rollback triggers in audit logs.
+**Decision framework**: Choose rollback granularity based on blast radius—prefer targeted reverts (single file, single migration, single dependency) over full resets. Use atomic operations where possible. Document rollback triggers in audit logs.

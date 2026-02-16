@@ -137,4 +137,4 @@ All development operations MUST have a rollback path completing in <5 minutes. S
 Every rollback MUST verify: build succeeds (ng build), unit tests pass (ng test --watch=false), E2E tests pass (ng e2e for local), bundle size unchanged (--stats-json).
 
 **5-Minute Constraint**:
-Fastest rollback paths in order: git checkout uncommitted → git revert committed → npm ci dependencies → full rebuild. If rollback exceeds 5 minutes, escalate to team lead and document why (e.g., large dependency reinstall, complex migration state).
+Fastest rollback paths in order: git checkout uncommitted → git revert committed → npm ci dependencies → full rebuild. If rollback exceeds 5 minutes, escalate to team lead and document why (e.g., large dependency reinstall, complex migration state).

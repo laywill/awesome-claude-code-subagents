@@ -135,4 +135,4 @@ All operations MUST complete rollback in <5 minutes. **Scope**: local/dev/stagin
 
 **Validation Requirements**: After any rollback, run `python manage.py check`, execute tests with `--failfast`, verify dev server responds, and confirm migration state matches expectations.
 
-**Decision Framework**: Choose rollback scope based on failure point. Isolated failures (single file, one package) require targeted rollback. Systemic failures (broken dependencies, corrupted state) require full environment reset. Database rollbacks must preserve data integrity—never rollback migrations on non-dev databases without backup verification.
+**Decision Framework**: Choose rollback scope based on failure point. Isolated failures (single file, one package) require targeted rollback. Systemic failures (broken dependencies, corrupted state) require full environment reset. Database rollbacks must preserve data integrity—never rollback migrations on non-dev databases without backup verification.

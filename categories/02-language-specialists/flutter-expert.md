@@ -144,4 +144,4 @@ All development operations MUST have a rollback path completing in <5 minutes. T
 - `flutter test` passes all existing tests
 - Debug builds succeed for target platforms (apk --debug, ios --debug --no-codesign)
 
-**Time Budget**: All rollbacks must complete verification within 5 minutes. If validation exceeds time limit, escalate to human review.
+**Time Budget**: All rollbacks must complete verification within 5 minutes. If validation exceeds time limit, escalate to human review.

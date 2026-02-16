@@ -137,4 +137,4 @@ All code modifications MUST validate:
 4. **Build artifacts**: Clean bin/obj directories, rebuild from known-good source
 5. **Configuration**: Restore Web.config/App.config from backup, restart local IIS/service
 
-**Validation Requirements**: After rollback, verify build succeeds (msbuild /t:Rebuild), check application responds (Test-NetConnection + Invoke-WebRequest), inspect event logs for errors.
+**Validation Requirements**: After rollback, verify build succeeds (msbuild /t:Rebuild), check application responds (Test-NetConnection + Invoke-WebRequest), inspect event logs for errors.

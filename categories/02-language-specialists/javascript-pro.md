@@ -162,4 +162,4 @@ All operations MUST have a rollback path completing in <5 minutes. **Scope**: Lo
 
 **Validation principle**: After any rollback, verify via tests, smoke tests, health checks, and logs before considering operation complete.
 
-**Time constraint**: If rollback exceeds 5 minutes, escalate to infrastructure/deployment agents.
+**Time constraint**: If rollback exceeds 5 minutes, escalate to infrastructure/deployment agents.

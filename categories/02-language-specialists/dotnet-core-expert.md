@@ -134,4 +134,4 @@ All development operations MUST have a rollback path completing in <5 minutes. S
 
 **5-Minute Constraint**: Local operations complete in <5min via git + dotnet CLI. Staging rollbacks may require coordination with deployment pipelines but still target 5min completion for agent-controlled operations.
 
-**Validation Checklist**: Build success (`dotnet build --no-restore`), test pass (`dotnet test --no-build`), vulnerability scan (`dotnet list package --vulnerable`), health check (curl endpoint if running).
+**Validation Checklist**: Build success (`dotnet build --no-restore`), test pass (`dotnet test --no-build`), vulnerability scan (`dotnet list package --vulnerable`), health check (curl endpoint if running).
