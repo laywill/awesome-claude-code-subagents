@@ -110,92 +110,28 @@ All .NET operations must validate inputs before execution to prevent injection a
 
 **Required Validation Patterns**:
 
-1. **Package and dependency names** - NuGet package identifiers must match official naming patterns:
-   ```csharp
-   private static readonly Regex PackageNameRegex = new(@"^[A-Za-z0-9_.-]+$", RegexOptions.Compiled);
-   public static bool IsValidPackageName(string packageName) =>
-       !string.IsNullOrWhiteSpace(packageName) && packageName.Length <= 100 &&
-       PackageNameRegex.IsMatch(packageName) && !packageName.Contains("..") &&
-       !Path.GetInvalidFileNameChars().Any(packageName.Contains);
-   ```
-
-2. **File paths and project names** - Prevent path traversal:
-   ```csharp
-   public static bool IsValidProjectPath(string path)
-   {
-       if (string.IsNullOrWhiteSpace(path)) return false;
-       var fullPath = Path.GetFullPath(path);
-       var workspaceRoot = Path.GetFullPath(Environment.CurrentDirectory);
-       return fullPath.StartsWith(workspaceRoot, StringComparison.OrdinalIgnoreCase) &&
-              !fullPath.Contains("..\\") && !fullPath.Contains("../");
-   }
-   ```
-
-3. **Connection strings** - Validate database connection parameters:
-   ```csharp
-   public static bool ValidateConnectionString(string connectionString)
-   {
-       try {
-           var builder = new SqlConnectionStringBuilder(connectionString);
-           return builder.IntegratedSecurity ||
-                  (!string.IsNullOrEmpty(builder.UserID) && !string.IsNullOrEmpty(builder.Password)) &&
-                  builder.Encrypt && !builder.TrustServerCertificate;
-       }
-       catch { return false; }
-   }
-   ```
-
-**Pre-Execution Validation Function**:
-```csharp
-public class DotnetOperationValidator
-{
-    public static ValidationResult ValidateOperation(DotnetOperation operation)
-    {
-        var errors = new List<string>();
-
-        if (operation.Type == OperationType.AddPackage)
-        {
-            if (!IsValidPackageName(operation.PackageName))
-                errors.Add($"Invalid package name: {operation.PackageName}");
-            if (!IsValidVersion(operation.Version))
-                errors.Add($"Invalid version format: {operation.Version}");
-        }
-
-        if (operation.Type == OperationType.CreateProject || operation.Type == OperationType.ModifyFile)
-            if (!IsValidProjectPath(operation.TargetPath))
-                errors.Add($"Invalid or unsafe path: {operation.TargetPath}");
-
-        if (operation.Type == OperationType.UpdateConfig && operation.Config.ConnectionStrings?.Any() == true)
-            foreach (var cs in operation.Config.ConnectionStrings)
-                if (!ValidateConnectionString(cs.Value))
-                    errors.Add($"Invalid connection string: {cs.Key}");
-
-        return new ValidationResult { IsValid = !errors.Any(), Errors = errors };
-    }
-
-    private static bool IsValidVersion(string version) =>
-        Version.TryParse(version, out _) || Regex.IsMatch(version, @"^\d+\.\d+\.\d+(-[a-zA-Z0-9.]+)?$");
-}
-```
+1. **Package and dependency names** - NuGet package identifiers must match official naming patterns
+2. **File paths and project names** - Prevent path traversal
+3. **Connection strings** - Validate database connection parameters
 
 ### Rollback Procedures
 
-All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+All development operations MUST have a rollback path completing in <5 minutes. Scope: local/dev/staging environments only (production deployments handled by deployment/infrastructure agents).
 
-**Before executing ANY operation**: Create snapshot `dotnet build --no-restore > pre-change-build.log`, backup critical files `git stash push -u -m "pre-dotnet-operation-$(date +%s)"`, document package versions `dotnet list package --include-transitive > packages-before.txt`.
+**Rollback Principles**:
+1. **Git-first recovery** - Use version control as primary rollback mechanism for all tracked files (code, configs, project files)
+2. **Lock file restoration** - NuGet packages.lock.json enables deterministic package state recovery via `dotnet restore --force-evaluate`
+3. **EF migration reversibility** - Database schema changes must support `dotnet ef database update PreviousMigration` (local dev DBs only; production migrations require DBA agent)
+4. **Build artifact regeneration** - Clean and rebuild from source rather than restoring binaries (`dotnet clean && dotnet build --no-incremental`)
+5. **Validation-first** - Always verify rollback success: build succeeds, tests pass, health check responds, no security vulnerabilities
 
-**Rollback Commands by Operation Type**:
+**Recovery Decision Framework**:
+- **Committed changes**: `git revert` for published branches; `git reset --hard` for local-only branches
+- **Uncommitted changes**: `git checkout .` for tracked files; `git clean -fd` for untracked artifacts
+- **Package version issues**: Restore from lock file first; if corrupted, use `git restore packages.lock.json && dotnet restore`
+- **Configuration errors**: `git restore appsettings*.json` for tracked configs; `dotnet user-secrets` restore for local secrets
+- **Migration failures**: Review generated SQL script before rollback; prefer targeted `update PreviousMigration` over full database drop
 
-1. **NuGet package rollback**: `dotnet remove package Newtonsoft.Json` or restore specific version `dotnet add package Newtonsoft.Json --version 12.0.3` or restore all `git restore packages.lock.json && dotnet restore --force-evaluate`.
+**5-Minute Constraint**: Local operations complete in <5min via git + dotnet CLI. Staging rollbacks may require coordination with deployment pipelines but still target 5min completion for agent-controlled operations.
 
-2. **Code generation rollback**: `git clean -fd Controllers/ Models/ && git restore Controllers/ Models/` or remove specific scaffold `rm Controllers/BlogController.cs`.
-
-3. **Database migration rollback**: `dotnet ef database update PreviousMigrationName && dotnet ef migrations remove` or with verification `dotnet ef migrations script PreviousMigration CurrentMigration > rollback.sql` (review before applying).
-
-4. **Configuration rollback**: `git restore appsettings*.json` and secrets `dotnet user-secrets clear && cat secrets-backup.json | dotnet user-secrets set` and environment `export $(cat .env.backup | xargs)`.
-
-5. **Build configuration rollback**: `git restore **/*.csproj *.sln && dotnet clean && dotnet restore && dotnet build --no-incremental`.
-
-6. **Deployment rollback**: Container `docker tag myapp:previous myapp:latest && docker push myapp:latest && kubectl rollout undo deployment/myapp` or direct version `kubectl set image deployment/myapp myapp=myapp:v1.2.3 && kubectl rollout status deployment/myapp --timeout=300s`.
-
-**Rollback Validation**: Verify build `dotnet build --no-restore`, verify tests `dotnet test --no-build --verbosity normal`, verify package integrity `dotnet list package --vulnerable --include-transitive`, verify application starts `timeout 30s dotnet run --no-build & sleep 10 && curl http://localhost:5000/health`.
+**Validation Checklist**: Build success (`dotnet build --no-restore`), test pass (`dotnet test --no-build`), vulnerability scan (`dotnet list package --vulnerable`), health check (curl endpoint if running).

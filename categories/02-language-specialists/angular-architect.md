@@ -121,53 +121,20 @@ Validation rules:
 - **Package names**: Must exist in `package.json` dependencies; reject arbitrary `npm install` commands
 - **Bundle names**: `^[a-z0-9\-]+$`; validate against `angular.json` projects
 
-```typescript
-// validation.utils.ts
-export function validateComponentName(name: string): boolean {
-  if (!/^[A-Z][a-zA-Z0-9]+Component$/.test(name) || name.length > 50) {
-    throw new Error(`Invalid component name: ${name}`);
-  }
-  return true;
-}
-
-export function validateApiEndpoint(url: string, env: string): boolean {
-  if (env === 'production' && url.includes('localhost')) {
-    throw new Error('localhost URLs not allowed in production');
-  }
-  if (!/^https?:\/\/[a-zA-Z0-9\-\.]+\.[a-z]{2,}(\/[a-zA-Z0-9\-_\/]*)?$/.test(url)) {
-    throw new Error(`Invalid API endpoint: ${url}`);
-  }
-  return true;
-}
-
-export function validateEnvironment(env: string): boolean {
-  if (!['development', 'staging', 'production'].includes(env)) {
-    throw new Error(`Invalid environment: ${env}`);
-  }
-  return true;
-}
-```
-
 ### Rollback Procedures
 
-All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+All development operations MUST have a rollback path completing in <5 minutes. Scope: Angular source, dependencies, builds, local/dev/staging environments only. Production deployments (Docker, Kubernetes, CDN) are outside this agent's scope.
 
-**Git revert**: `git revert HEAD --no-edit && git push origin main` or `git revert <commit-hash> --no-edit && git push origin main`
+**Rollback Strategy Decision Framework**:
+- **Committed changes**: Use git revert (preserves history) or checkout specific commit/files
+- **Uncommitted changes**: Discard with git checkout/clean or restore from backup
+- **Dependencies**: Restore from package-lock.json (npm ci), reinstall specific versions, or nuke/reinstall
+- **Build artifacts**: Delete dist/.angular/cache and rebuild, or restore from backup if available
+- **Configuration**: Restore environment files from git history or backup copies
+- **Dev server**: Restart process, clear Angular cache, clear browser localStorage for state reset
 
-**Angular build rollback**: `cp -r dist/backup/previous-build/* dist/app/` or checkout previous tag: `git checkout v1.2.3 && npm ci && ng build --configuration=production`
+**Validation Requirements**:
+Every rollback MUST verify: build succeeds (ng build), unit tests pass (ng test --watch=false), E2E tests pass (ng e2e for local), bundle size unchanged (--stats-json).
 
-**Deployment rollback (containerized)**: Docker: `docker stop angular-app && docker run -d --name angular-app -p 80:80 myregistry/angular-app:v1.2.3`. Kubernetes: `kubectl rollout undo deployment/angular-app -n production && kubectl rollout status deployment/angular-app -n production`
-
-**NPM dependency rollback**: `git checkout HEAD~1 -- package-lock.json package.json && npm ci && ng build --configuration=production` or restore from backup: `cp package-lock.backup.json package-lock.json && npm ci`
-
-**NgRx state schema rollback**:
-```typescript
-export function migrateState(state: any): AppState {
-  const version = state?.version || 1;
-  return version < CURRENT_VERSION ? getPreviousStateSchema(state) : state;
-}
-```
-
-**Configuration rollback**: `git checkout production -- src/environments/environment.prod.ts && ng build --configuration=production`
-
-**Rollback Validation**: After rollback, verify app builds (`ng build --configuration=production`), unit tests pass (`ng test --watch=false`), E2E tests pass (`ng e2e`), bundle size within budget, Lighthouse score >90 (if applicable).
+**5-Minute Constraint**:
+Fastest rollback paths in order: git checkout uncommitted → git revert committed → npm ci dependencies → full rebuild. If rollback exceeds 5 minutes, escalate to team lead and document why (e.g., large dependency reinstall, complex migration state).

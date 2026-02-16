@@ -150,42 +150,16 @@ All user inputs, file paths, and external data MUST be validated before processi
 
 ### Rollback Procedures
 
-All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing.
+All operations MUST have a rollback path completing in <5 minutes. **Scope**: Local/dev/staging environments only. Production deployments (PM2 production, AWS services, production databases, CDN) are handled by deployment/infrastructure agents.
 
-**Code Changes**:
-```bash
-git log --oneline -5 && git revert HEAD --no-edit && npm test && git push
-git revert abc1234 --no-edit  # Specific commit
-```
+**Rollback decision framework**:
+1. Uncommitted changes: Discard via git checkout/clean
+2. Committed changes: Git revert (preserves history) or reset (destructive, dev-only)
+3. Dependencies: Restore from lock file (`npm ci`) or backup, or pin specific version
+4. Database: Rollback migrations (dev DB only) or restore from backup
+5. Build artifacts: Clean and rebuild from source, or restore from backup
+6. Configuration: Restore from git history or backup, validate before restart
 
-**Dependency Changes**:
-```bash
-cp package*.json.backup . && rm -rf node_modules && npm ci
-npm install package-name@1.2.3 --save-exact  # Specific package
-```
+**Validation principle**: After any rollback, verify via tests, smoke tests, health checks, and logs before considering operation complete.
 
-**Build Artifacts**:
-```bash
-cp -r dist.backup dist/
-aws s3 cp s3://builds/app-v1.2.3.tar.gz . && tar -xzf app-v1.2.3.tar.gz  # Or restore from storage
-```
-
-**Configuration Changes**:
-```bash
-git checkout HEAD~1 -- config/production.json && npm run validate-config
-cp .env.backup .env && npm run restart
-```
-
-**Database Migrations** (Node.js apps with DB):
-```bash
-npx knex migrate:rollback --env production
-pg_restore -d mydb backup_20250609.dump  # Or restore DB backup
-```
-
-**Deployment Rollback**:
-```bash
-pm2 reload ecosystem.config.js --update-env
-ln -sfn /apps/releases/v1.2.3 /apps/current && pm2 restart all  # Via symlink
-```
-
-**Rollback Validation**: Run `npm test`, execute `npm run smoke-test`, check logs with `pm2 logs --lines 100`, verify bundle integrity with `npm run build && npm run validate-bundle`, confirm health endpoint responds `curl http://localhost:3000/health`.
+**Time constraint**: If rollback exceeds 5 minutes, escalate to infrastructure/deployment agents.

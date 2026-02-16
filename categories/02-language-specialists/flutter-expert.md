@@ -111,94 +111,37 @@ Rules:
 - **Build flavors**: Alphanumeric + underscores only (`^[a-zA-Z][a-zA-Z0-9_]*$`, max 32 chars). No shell metacharacters
 - **Asset paths**: Must exist in `pubspec.yaml` assets declaration. Validate file existence before build
 
-Example validation:
-```dart
-class FlutterInputValidator {
-  static const _pathPattern = r'^(lib|test|android|ios|web|assets)/[a-zA-Z0-9_/.-]+$';
-  static const _packagePattern = r'^[a-z][a-z0-9_]*$';
-  static const _versionPattern = r'^[0-9]+\.[0-9]+\.[0-9]+([-+][a-zA-Z0-9.]+)?$';
-  static const _allowedPlatforms = {'android', 'ios', 'web', 'macos', 'windows', 'linux'};
-
-  static bool validateFilePath(String path) {
-    if (!RegExp(_pathPattern).hasMatch(path) || path.contains('..')) {
-      throw ValidationError('Invalid file path: $path');
-    }
-    return true;
-  }
-
-  static bool validatePackageName(String name) {
-    if (!RegExp(_packagePattern).hasMatch(name) || name.length > 64) {
-      throw ValidationError('Invalid package name: $name');
-    }
-    return true;
-  }
-
-  static bool validateVersion(String version) {
-    if (!RegExp(_versionPattern).hasMatch(version) || version.contains('*') || version.contains('any')) {
-      throw ValidationError('Invalid version: $version');
-    }
-    return true;
-  }
-
-  static bool validatePlatform(String platform) {
-    if (!_allowedPlatforms.contains(platform)) {
-      throw ValidationError('Invalid platform: $platform');
-    }
-    return true;
-  }
-}
-```
-
-```
-INPUT:  path="lib/screens/home_screen.dart", package="http", version="^1.1.0" → PASS
-INPUT:  path="../../etc/passwd", package="malicious-pkg", version="*" → REJECT, log, halt
-```
-
 ### Rollback Procedures
 
-All Flutter operations MUST have a rollback path completing in <5 minutes. Test rollback in development before production. Maintain rollback logs with timestamps and affected files. Automate common scenarios (dependency downgrades, widget reverts, build config changes).
+All development operations MUST have a rollback path completing in <5 minutes. This agent manages Flutter development and local/staging environments only.
 
-**Code Changes:**
-```bash
-git revert HEAD --no-edit && flutter pub get && flutter test
-```
+**Scope Constraints**:
+- IN SCOPE: Source code, dependencies, local/dev/staging builds, development configuration, widget/state code, platform channels (development)
+- OUT OF SCOPE: App store releases, production builds, distribution certificates, production signing, live deployment rollbacks (defer to deployment/infrastructure agents)
 
-**Dependency Rollback:**
-```bash
-cp pubspec.yaml.backup pubspec.yaml && flutter pub get && flutter test
-```
+**Rollback Principles**:
 
-**Widget/UI Rollback:**
-```bash
-git checkout HEAD~1 -- lib/widgets/critical_widget.dart && flutter analyze && flutter test test/widgets/critical_widget_test.dart
-```
+1. **Source Code**: Use git revert/checkout to restore previous state. For uncommitted changes, discard with `git checkout . && git clean -fd`. Always target specific paths when restoring files (lib/, test/, android/, ios/)
 
-**Build Configuration Rollback:**
-```bash
-# Android
-git checkout HEAD~1 -- android/app/build.gradle && cd android && ./gradlew clean && cd .. && flutter build apk --debug
+2. **Dependencies**: Maintain backups of pubspec.yaml before changes. Use `flutter pub remove` for single packages or restore from backup + `flutter pub get`. Clean dependency cache if corrupted: remove .dart_tool/, pubspec.lock, then re-fetch
 
-# iOS
-git checkout HEAD~1 -- ios/Runner/Info.plist && cd ios && rm -rf Pods/ Podfile.lock && pod install && cd .. && flutter build ios --debug --no-codesign
-```
+3. **Build Configuration**: Restore platform-specific configs (Android gradle, iOS plist/Podfile) via git checkout, then clean platform build artifacts (gradlew clean, pod install, flutter clean). Always run `flutter pub get` after config restoration
 
-**Platform Channel Rollback:**
-```bash
-git checkout HEAD~1 -- android/app/src/main/kotlin/ ios/Runner/ && flutter clean && flutter pub get && flutter run --debug
-```
+4. **Widget/State Management**: Restore specific directories (lib/widgets/, lib/blocs/, lib/providers/) from previous commit. Run relevant test suites to validate behavior post-rollback
 
-**State Management Rollback:**
-```bash
-git checkout HEAD~1 -- lib/blocs/ lib/providers/ && flutter pub get && flutter test test/blocs/ test/providers/
-```
+5. **Platform Channels**: Restore native code directories (android/app/src/, ios/Runner/) from git, then perform full clean-rebuild cycle (`flutter clean && flutter pub get`)
 
-**Rollback Validation:**
-```bash
-flutter doctor -v && flutter analyze && flutter test && flutter build apk --debug && flutter build ios --debug --no-codesign
-```
+**Rollback Decision Framework**:
+- Uncommitted changes → discard with git checkout/clean
+- Committed to feature branch → `git revert` or restore specific files
+- Pushed to remote → coordinate with team, prefer revert over force-push
+- Dependency issues → restore pubspec backup or remove problematic package
+- Build corruption → clean all build artifacts + dependency cache, re-fetch
 
-**Emergency Full Restore:**
-```bash
-git fetch --tags && git checkout tags/v1.2.3-stable && flutter clean && flutter pub get && flutter test && flutter build apk --release
-# Estimated: 3-4 minutes
-```
+**Validation Requirements** (complete all post-rollback):
+- `flutter doctor -v` confirms environment health
+- `flutter analyze` passes with zero errors
+- `flutter test` passes all existing tests
+- Debug builds succeed for target platforms (apk --debug, ios --debug --no-codesign)
+
+**Time Budget**: All rollbacks must complete verification within 5 minutes. If validation exceeds time limit, escalate to human review.

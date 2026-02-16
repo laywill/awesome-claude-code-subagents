@@ -113,93 +113,26 @@ All user inputs and external data MUST be validated before processing. Use Fluen
 - Configuration values: Validate environment variables match expected patterns
 - API payloads: Enforce size limits (e.g., 10MB) and schema validation
 
-**C# Validation**:
-```csharp
-public class DeploymentRequestValidator : AbstractValidator<DeploymentRequest>
-{
-    private static readonly Regex SafeIdPattern = new(@"^[a-zA-Z0-9-]{1,50}$", RegexOptions.Compiled);
-    private static readonly Regex SafePathPattern = new(@"^[a-zA-Z0-9/._-]+$", RegexOptions.Compiled);
-
-    public DeploymentRequestValidator()
-    {
-        RuleFor(x => x.ProjectId).NotEmpty().Matches(SafeIdPattern);
-        RuleFor(x => x.ConfigPath).NotEmpty().Must(BeValidPath);
-        RuleFor(x => x.ConnectionString).NotEmpty().Must(BeSafeConnectionString);
-        RuleFor(x => x.NuGetPackages).Must(packages => packages.All(p => SafeIdPattern.IsMatch(p)));
-    }
-
-    private bool BeValidPath(string path) =>
-        SafePathPattern.IsMatch(path) && !path.Contains("..") && !Path.IsPathRooted(path);
-
-    private bool BeSafeConnectionString(string connStr)
-    {
-        var forbidden = new[] { "EXEC", "DROP", "DELETE", "TRUNCATE", "xp_cmdshell" };
-        return !forbidden.Any(k => connStr.Contains(k, StringComparison.OrdinalIgnoreCase));
-    }
-}
-
-// Minimal API usage
-app.MapPost("/api/deploy", async (DeploymentRequest request, IValidator<DeploymentRequest> validator, ILogger<Program> logger) =>
-{
-    var result = await validator.ValidateAsync(request);
-    if (!result.IsValid)
-    {
-        logger.LogWarning("Validation failed: {Errors}", result.Errors);
-        return Results.ValidationProblem(result.ToDictionary());
-    }
-    // Proceed with validated input
-});
-```
-
 ### Rollback Procedures
 
-All operations MUST have rollback path completing in <5 minutes. Write and test rollback scripts before executing.
+All development operations MUST have a rollback path completing in <5 minutes. This agent manages C# development and local/dev/staging environments only—production deployments (Azure App Service, Kubernetes, ACR) are handled by deployment/infrastructure agents.
 
-**Rollback Commands**:
-```bash
-# Revert NuGet package
-dotnet add package Microsoft.EntityFrameworkCore --version 8.0.1
+**Rollback Decision Framework**:
+1. **Scope validation**: Confirm rollback targets only local/dev/staging environments (NEVER production infrastructure)
+2. **Time constraint**: Choose rollback method completing in <5 min (git revert > manual restore > full rebuild)
+3. **State preservation**: Identify what must persist (dev database data vs test data) vs what can reset
+4. **Validation requirement**: Every rollback MUST end with build verification (`dotnet build`) and test execution (`dotnet test`)
 
-# Roll back EF migration
-dotnet ef database update PreviousMigrationName --project src/Infrastructure
+**Rollback Categories & Principles**:
 
-# Restore Azure App Service deployment slot
-az webapp deployment slot swap --resource-group MyRG --name MyApp --slot staging --target-slot production
+**Source Code**: Use git revert for committed changes (preserves history), git checkout for uncommitted (destructive). For feature branches, revert + push maintains audit trail. For local uncommitted work, discard with checkout/clean.
 
-# Revert Docker image
-docker pull myregistry.azurecr.io/myapp:v1.2.3
-kubectl set image deployment/myapp myapp=myregistry.azurecr.io/myapp:v1.2.3
+**Dependencies**: NuGet package rollback via `dotnet add package <name> --version <previous>` or restore from committed .csproj. Always run `dotnet restore` after package changes. For corrupted state, `dotnet clean && dotnet restore` rebuilds dependency graph.
 
-# Git revert
-git revert HEAD~1 --no-edit && git push origin main
+**Local Database**: EF Core migrations roll back with `dotnet ef database update <TargetMigration>` (targets previous migration by name). For dev environments, destructive reset via `dotnet ef database drop --force && dotnet ef database update` acceptable when data is test/seed data. Verify final state with `dotnet ef migrations list`.
 
-# Restore config backup
-cp appsettings.json.backup appsettings.json && dotnet publish -c Release
-```
+**Build Artifacts**: Clean via `dotnet clean` or manual removal of bin/obj directories. Rebuilding from source (`dotnet build`) is fast and deterministic.
 
-**Automated Rollback**:
-```csharp
-public class RollbackService
-{
-    public async Task<RollbackResult> RollbackDeploymentAsync(string deploymentId)
-    {
-        var sw = Stopwatch.StartNew();
-        try
-        {
-            await ExecuteCommandAsync("az webapp deployment slot swap --slot staging --target-slot production");
-            await ExecuteCommandAsync("dotnet ef database update PreviousMigrationName");
-            await _cache.RemoveAsync($"deployment:{deploymentId}");
+**Configuration**: Restore appsettings files from git history (`git checkout HEAD~1 -- appsettings.Development.json`) or backup copies. Never rollback production config—this agent only manages local/dev/staging config files.
 
-            _logger.LogInformation("Rollback completed in {Duration}ms", sw.ElapsedMilliseconds);
-            return new RollbackResult { Success = true, Duration = sw.Elapsed };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Rollback failed after {Duration}ms", sw.ElapsedMilliseconds);
-            throw;
-        }
-    }
-}
-```
-
-**Rollback Validation**: Check health endpoints (`GET /health`), confirm database schema version matches expected state, validate previous application version serves traffic.
+**Validation Protocol**: All rollbacks end with: (1) `dotnet build` succeeds, (2) `dotnet test` passes, (3) local app health check if applicable, (4) verify dependency/migration state with `dotnet ef migrations list` or package audit.

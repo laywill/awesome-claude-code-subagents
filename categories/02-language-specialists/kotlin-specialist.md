@@ -108,35 +108,9 @@ Ensure idiomatic Kotlin and cross-platform compatibility.
 
 Before modifying Kotlin code or configuration, validate ALL inputs with domain-specific rules:
 
-**File Path Validation**
-```kotlin
-fun validateKotlinFilePath(path: String): Result<Path> {
-    val normalizedPath = Paths.get(path).normalize()
-    return when {
-        !normalizedPath.toString().matches(Regex("^[a-zA-Z0-9_/\\-\\.]+(\\.(kt|kts|gradle\\.kts))$")) ->
-            Result.failure(IllegalArgumentException("Invalid Kotlin file path format"))
-        normalizedPath.toString().contains("..") ->
-            Result.failure(SecurityException("Path traversal attempt detected"))
-        !Files.exists(normalizedPath) ->
-            Result.failure(FileNotFoundException("File does not exist: $path"))
-        else -> Result.success(normalizedPath)
-    }
-}
-```
-
-**Dependency Validation**
-```kotlin
-fun validateDependency(dependency: String): Result<Dependency> {
-    val depRegex = Regex("^[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+:[0-9.]+(-(alpha|beta|RC|SNAPSHOT))?$")
-    return when {
-        !dependency.matches(depRegex) ->
-            Result.failure(IllegalArgumentException("Invalid dependency format"))
-        dependency.contains("..") || dependency.contains("/") ->
-            Result.failure(SecurityException("Suspicious dependency notation"))
-        else -> Result.success(Dependency.parse(dependency))
-    }
-}
-```
+**Validation Rules**:
+- **File paths**: Must match Kotlin file extensions (`.kt`, `.kts`, `.gradle.kts`), reject path traversal (`..`), validate existence
+- **Dependencies**: Must match `group:artifact:version` format, reject traversal characters
 
 **Coroutine Dispatcher Validation:** Reject unbounded `Dispatchers.Default` in production without timeout. Validate custom dispatcher thread counts against system resources. Ensure database/IO operations use `Dispatchers.IO`, not `Dispatchers.Main`.
 
@@ -144,44 +118,23 @@ fun validateDependency(dependency: String): Result<Dependency> {
 
 ### Rollback Procedures
 
-All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+All development operations MUST have a rollback path completing in <5 minutes. This agent manages Kotlin development and local/staging environments only.
 
-**Gradle Build Configuration Rollback**
-```bash
-git checkout HEAD -- build.gradle.kts settings.gradle.kts gradle.properties && ./gradlew clean build --no-daemon
-```
+**Scope Boundary**: Local/dev/staging environments. Production deployments (Play Store releases, production builds, distribution certificates) are handled by deployment/infrastructure agents.
 
-**Dependency Version Rollback**
-```bash
-git diff HEAD~1 -- gradle/libs.versions.toml | git apply -R && ./gradlew build --refresh-dependencies
-```
+**Core Principles**:
+1. **Git-first rollback**: Use `git revert`, `git checkout`, or `git restore` for all source/config changes. Always test after rollback.
+2. **Dependency isolation**: Rollback `build.gradle.kts`, `libs.versions.toml`, `gradle.properties` together. Run `./gradlew build --refresh-dependencies` after restore.
+3. **Platform-specific revert**: Restore `{iosMain,androidMain,jsMain}` directories separately when multiplatform changes fail. Rebuild all targets to verify cross-platform compatibility.
+4. **Database migrations**: Implement down migrations for Room/SQLDelight schema changes. Reset local DB files in dev, never auto-rollback staging databases without approval.
+5. **Build artifact cleanup**: Delete `build/`, `.gradle/` directories before rebuilding to avoid stale compilation state.
+6. **Validation requirement**: After any rollback, run Detekt, ktlint, and platform-specific test suites (`jvmTest`, `androidTest`, etc.) to confirm stability.
 
-**Multiplatform Module Rollback**
-```bash
-git checkout HEAD -- src/{iosMain,androidMain,jsMain} && ./gradlew clean build
-```
+**Decision Framework**:
+- Code-only changes: Revert commits and rebuild
+- Config-only changes: Restore Gradle files, refresh deps, clean build
+- Database schema changes: Apply down migrations, verify data integrity
+- Multiplatform changes: Restore platform modules independently, rebuild all targets
+- Failed coroutine refactoring: Restore module files, run module-specific tests
 
-**Coroutine Code Rollback**
-```bash
-git show HEAD~1:src/main/kotlin/Module.kt > src/main/kotlin/Module.kt && ./gradlew test --tests ModuleTest
-```
-
-**Android Manifest Rollback**
-```bash
-git checkout HEAD -- app/src/main/AndroidManifest.xml app/src/main/res/ && ./gradlew assembleDebug
-```
-
-**Database Migration Rollback** (for Room/SQLDelight changes)
-```kotlin
-// Always implement down migrations
-@Database(version = 3)
-abstract class AppDatabase {
-    // Rollback script for migration 2->3
-    // DROP TABLE new_table; ALTER TABLE old_table ADD COLUMN restored;
-}
-```
-
-**Rollback Validation**
-```bash
-./gradlew clean build test detekt ktlintCheck && ./gradlew jvmTest androidTest iosSimulatorArm64Test
-```
+**5-Minute Constraint**: All rollbacks must complete within 5 minutes including rebuild and validation. If rollback exceeds this, escalate to human review before attempting manual recovery.

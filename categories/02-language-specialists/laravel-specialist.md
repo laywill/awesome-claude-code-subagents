@@ -106,109 +106,38 @@ All user inputs and external data MUST be validated before processing. Use Larav
 - Artisan command arguments: Laravel's argument validation
 - Queue job payloads: Validate serialized data integrity
 
-**Laravel Validation Implementation**:
-```php
-<?php
-namespace App\Http\Requests;
-
-use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rules\File;
-
-class DeploymentRequest extends FormRequest
-{
-    public function authorize(): bool { return $this->user()->can('deploy', $this->project); }
-
-    public function rules(): array
-    {
-        return [
-            'project_id' => ['required', 'string', 'regex:/^[a-zA-Z0-9-]{1,50}$/'],
-            'environment' => ['required', 'in:development,staging,production'],
-            'config_file' => ['required', File::types(['json', 'yaml'])->max(10 * 1024)],
-            'migration_files' => ['array', 'max:50'],
-            'migration_files.*' => ['string', 'regex:/^[a-zA-Z0-9_]+\.php$/'],
-            'database_host' => ['required', 'string', 'max:255'],
-            'composer_packages.*' => ['string', 'regex:/^[a-z0-9-]+\/[a-z0-9-]+$/'],
-        ];
-    }
-
-    protected function prepareForValidation(): void
-    {
-        if ($this->has('config_path')) {
-            $this->merge(['config_path' => str_replace(['..', '\\'], '', $this->config_path)]);
-        }
-    }
-}
-
-// Custom rule: safe SQL table names
-class SafeTableName implements Rule
-{
-    public function passes($attribute, $value): bool
-    {
-        return preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $value) === 1
-            && !in_array(strtoupper($value), ['DROP', 'DELETE', 'TRUNCATE']);
-    }
-    public function message(): string { return 'The :attribute contains invalid characters or reserved keywords.'; }
-}
-
-// Controller usage with runtime validation
-public function deploy(DeploymentRequest $request)
-{
-    $validated = $request->validated();
-    $forbiddenKeywords = ['EXEC', 'DROP', 'xp_cmdshell', 'SCRIPT'];
-    foreach ($forbiddenKeywords as $keyword) {
-        if (stripos(config('database.connections.mysql.host'), $keyword) !== false) {
-            throw ValidationException::withMessages(['database' => 'Connection string contains forbidden keywords']);
-        }
-    }
-}
-```
-
 ### Rollback Procedures
 
-All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+All development operations MUST have a rollback path completing in <5 minutes. This agent manages Laravel development and local/staging environments only.
 
-**Laravel Rollback Commands**:
-```bash
-composer require laravel/sanctum:3.2.1  # Revert package
-php artisan migrate:rollback --step=1    # Roll back migration
-dep rollback production                  # Deployer/Envoyer rollback
-git revert HEAD~1 --no-edit && git push origin main  # Git revert
-cp config/queue.php.backup config/queue.php && php artisan config:cache  # Queue config
-cp .env.backup .env && php artisan config:clear && php artisan cache:clear  # Env restore
-php artisan horizon:pause && cp config/horizon.php.backup config/horizon.php && php artisan horizon:terminate && php artisan horizon:continue  # Horizon
-```
+**Scope Constraints**:
+- **In scope**: Local development, dev/staging databases, feature branches, local queue workers, development caches, uncommitted changes
+- **Out of scope**: Production deployments, production databases, production queues, Deployer/Envoyer operations (handled by deployment/infrastructure agents)
 
-**Automated Rollback Service**:
-```php
-<?php
-namespace App\Services;
+**Rollback Decision Framework**:
+1. **Assess blast radius**: Files changed? Database migrations run? Dependencies updated? Caches modified? Queue state altered?
+2. **Select rollback strategy**: Git revert (committed), Git checkout (uncommitted), Composer lock (dependencies), Artisan rollback (migrations), cache clear (compiled state), config restore (settings)
+3. **Execute in dependency order**: Pause queues first → rollback database → revert code → restore config → clear caches → resume queues
+4. **Validate**: Health checks, migration status, test suite, queue status
+5. **Log outcome**: Change ID, steps completed, duration, success/failure
 
-use Illuminate\Support\Facades\{Artisan, Log};
+**Rollback Principles by Asset Type**:
+- **Source code**: Use Git (revert commits, checkout files, discard changes). Never manually edit to "undo" changes.
+- **Dependencies**: Use `composer.lock` as source of truth. Restore with `composer install` or pin specific versions.
+- **Database (local/dev only)**: Use `php artisan migrate:rollback` with `--step` or `--path`. Never use `migrate:fresh` in staging. Never touch production databases.
+- **Caches**: Clear all Laravel caches (config, route, view, application) after config/code rollback. Rebuild with `php artisan cache` commands.
+- **Configuration**: Restore from backup files (`.env.backup`, `config/*.backup`). Always clear caches after restoration.
+- **Queue state**: Pause before rollback, restore Horizon config, resume after validation. Check failed jobs queue.
 
-class RollbackService
-{
-    public function rollbackDeployment(string $deploymentId): array
-    {
-        $startTime = microtime(true);
-        $steps = [];
+**Time Constraint Enforcement**:
+- Target: <5 minutes from rollback decision to validation complete
+- Automate common rollback sequences (see example service pattern)
+- Pre-create backup files for critical configs before changes
+- Use `--step=1` for incremental migration rollback (faster than full rollback)
+- Skip unnecessary steps (e.g., don't restart services if config unchanged)
 
-        try {
-            Artisan::call('horizon:pause'); $steps[] = 'Queue paused';
-            $steps[] = "Migration: " . (Artisan::call('migrate:rollback', ['--step' => 1]) === 0 ? 'success' : 'failed');
-            Artisan::call('config:clear'); Artisan::call('cache:clear'); Artisan::call('view:clear'); $steps[] = 'Caches cleared';
-            copy(base_path('.env.backup'), base_path('.env')); Artisan::call('config:cache'); $steps[] = 'Config restored';
-            Artisan::call('horizon:continue'); $steps[] = 'Queue resumed';
+**Rollback Service Pattern** (development):
+Create reusable rollback orchestration service that: pauses queues, executes rollback steps in correct order, validates each step, logs structured outcome, resumes services, enforces <5min timeout. Use Laravel's `Artisan::call()` facade for command execution and `copy()` for file restoration. Return structured result with step outcomes and duration.
 
-            $duration = microtime(true) - $startTime;
-            Log::info('Rollback completed', ['deployment_id' => $deploymentId, 'duration_seconds' => $duration, 'steps' => $steps]);
-            return ['success' => true, 'duration_seconds' => $duration, 'steps' => $steps];
-
-        } catch (\Exception $e) {
-            Log::error('Rollback failed', ['deployment_id' => $deploymentId, 'error' => $e->getMessage(), 'duration_seconds' => microtime(true) - $startTime, 'completed_steps' => $steps]);
-            throw $e;
-        }
-    }
-}
-```
-
-**Rollback Validation**: Check health endpoint (`GET /health`), confirm migration version (`php artisan migrate:status`), test critical API endpoints, validate queue workers (`php artisan horizon:status`).
+**Post-Rollback Validation**:
+Always validate: local health endpoint responds, migration status matches expected state, test suite passes, queue workers operational. Log validation outcome.

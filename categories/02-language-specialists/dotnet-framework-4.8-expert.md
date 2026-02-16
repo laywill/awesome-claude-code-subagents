@@ -124,85 +124,17 @@ All code modifications MUST validate:
 ^https://[\w\-\.]+(:\d+)?/[\w\-/]*$
 ```
 
-**C# Validation Example**:
-```csharp
-public class DotNetFrameworkValidator
-{
-    public static bool ValidateConfigValue(string key, string value)
-    {
-        if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(value))
-            return false;
-
-        if (!Regex.IsMatch(key, @"^[A-Za-z]+(\.[A-Za-z]+)+$"))
-            return false;
-
-        if (value.Contains("password=") && !value.Contains("Integrated Security"))
-            throw new SecurityException("Hardcoded passwords not allowed");
-
-        return true;
-    }
-
-    public static void ValidateUserInput(string input, string parameterName)
-    {
-        if (string.IsNullOrEmpty(input))
-            throw new ArgumentNullException(parameterName);
-
-        if (input.Contains("<script") || input.Contains("javascript:"))
-            throw new SecurityException($"Potential XSS detected in {parameterName}");
-
-        if (Regex.IsMatch(input, @"(--|\bOR\b|\bAND\b).*=", RegexOptions.IgnoreCase))
-            throw new SecurityException($"Potential SQL injection in {parameterName}");
-    }
-}
-```
-
 ### Rollback Procedures
 
-All operations MUST have rollback path completing in <5 minutes. Write and test rollback scripts before executing.
+**Scope**: Local, dev, and staging environments only. Production deployments (IIS production servers, Windows Services, production databases) are handled by deployment/infrastructure agents.
 
-**Code Rollback**:
-```powershell
-git revert HEAD --no-edit && git push origin main
-git checkout HEAD~1 -- packages.config && nuget restore && msbuild /t:Rebuild /p:Configuration=Release
-```
+**Time Constraint**: All rollbacks MUST complete in <5 minutes.
 
-**Web Forms Deployment Rollback**:
-```powershell
-Stop-WebAppPool -Name "MyAppPool"
-Remove-Item C:\inetpub\wwwroot\MyApp\* -Recurse -Force
-Copy-Item C:\Backups\MyApp_Previous\* C:\inetpub\wwwroot\MyApp\ -Recurse
-Start-WebAppPool -Name "MyAppPool"
-```
+**Rollback Decision Framework**:
+1. **Source code changes**: Use git revert for pushed commits, git checkout for local changes, git clean for untracked files
+2. **Dependency changes**: Restore packages.config from previous commit, run nuget restore + msbuild rebuild
+3. **Database changes**: Use EF migration rollback (Update-Database -TargetMigration) for dev databases only; restore from backup script if migration unavailable
+4. **Build artifacts**: Clean bin/obj directories, rebuild from known-good source
+5. **Configuration**: Restore Web.config/App.config from backup, restart local IIS/service
 
-**WCF Service Rollback**:
-```powershell
-net stop "MyWcfService"
-Copy-Item C:\Backups\MyWcfService_v1.0\* C:\Services\MyWcfService\ -Recurse -Force
-net start "MyWcfService" && sc query "MyWcfService"
-```
-
-**Entity Framework Migration Rollback**:
-```powershell
-Update-Database -TargetMigration PreviousMigrationName -Force
-# Or restore database: sqlcmd -S localhost -d MyDatabase -i C:\Backups\restore_script.sql
-```
-
-**App Configuration Rollback**:
-```powershell
-Copy-Item C:\Backups\Web.config.backup C:\inetpub\wwwroot\MyApp\Web.config -Force
-Restart-WebAppPool -Name "MyAppPool"
-```
-
-**Windows Service Rollback**:
-```powershell
-sc stop "MyWindowsService"
-Copy-Item C:\Backups\MyService_v1.0\MyService.exe C:\Services\MyWindowsService\ -Force
-sc start "MyWindowsService" && Get-Service "MyWindowsService" | Select-Object Status, DisplayName
-```
-
-**Rollback Validation**:
-```powershell
-Test-NetConnection -ComputerName localhost -Port 443
-Invoke-WebRequest -Uri "https://localhost/MyApp/health" -UseBasicParsing
-Get-EventLog -LogName Application -Source "MyApp" -Newest 10
-```
+**Validation Requirements**: After rollback, verify build succeeds (msbuild /t:Rebuild), check application responds (Test-NetConnection + Invoke-WebRequest), inspect event logs for errors.

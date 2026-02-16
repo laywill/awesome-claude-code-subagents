@@ -98,6 +98,7 @@ All user inputs and external data MUST be validated before processing. Use struc
 
 **Required Validation Rules**: API route parameters validated with regex (e.g., `^[a-zA-Z0-9-]{1,50}$` for resource IDs), database inputs ONLY via parameterized queries/prepared statements (never string concatenation), file paths reject traversal attempts (`..`, absolute paths outside allowed dirs), package names match `^[a-zA-Z0-9._/-]{1,200}$`, environment variables validated before use, HTTP bodies enforce size limits (e.g., 10MB) and schema validation (go-playground/validator), command execution never passes unsanitized user input to `exec.Command` (use allowlists).
 
+<<<<<<< HEAD
 **Go Validation Implementation**:
 ```go
 package validation
@@ -231,4 +232,18 @@ func (s *RollbackService) clearCache(ctx context.Context, deploymentID string) e
 }
 ```
 
-**Rollback Validation**: Verify via `kubectl get pods -n production`, check DB schema version `SELECT version FROM schema_migrations`, validate app serving traffic via `curl http://app/health`.
+**Rollback Validation**: Verify via `kubectl get pods -n production`, check DB schema version `SELECT version FROM schema_migrations`, validate app serving traffic via `curl http://app/health`.
+=======
+### Rollback Procedures
+
+**Scope & Constraints**: All operations MUST have rollback path completing in <5 minutes. This agent manages Go development and local/dev/staging environments only. Production deployments (Kubernetes, Docker registries, production databases) are handled by deployment/infrastructure agents.
+
+**Rollback Categories**:
+- **Source code**: Use git revert for pushed commits, git checkout for file restoration, git clean for uncommitted changes
+- **Go modules**: Restore from go.sum via `go mod download`, pin specific versions with `go get package@version`, reset state with `go mod tidy`
+- **Local databases** (dev only): Use migration tool down commands, recreate from schema if needed
+- **Build artifacts**: Clear caches (`go clean -cache -modcache -testcache`), remove build outputs, rebuild from clean state
+- **Configs/environment**: Restore from backups (.backup files), verify against templates
+
+**Validation Principles**: After rollback, verify build succeeds (`go build ./...`), tests pass (`go test ./...`), local services respond (health checks), database schema matches expected version. Each rollback category must include validation step appropriate to the change type.
+>>>>>>> origin/main

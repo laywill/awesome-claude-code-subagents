@@ -129,30 +129,16 @@ Pre-execution checklist: All user inputs validated through Ecto changesets, Mix 
 
 ### Rollback Procedures
 
-All operations MUST have rollback path completing in <5 minutes. Write and test rollback scripts before executing.
+All operations MUST complete rollback in <5 minutes. **Scope**: local/dev/staging environments only. Production deployments (releases, hot code upgrades, clusters) are handled by infrastructure agents.
 
-Rollback strategies: **Database migrations** (always implement `down/0`, test rollback in dev: `mix ecto.rollback --step 1`), **Schema changes** (keep previous version, create adapter functions for dual-read during transition), **GenServer state changes** (store previous state in ETS backup: `:ets.insert(:state_backup, {module, old_state})`), **Release deployments** (use hot code upgrades or keep previous release: `bin/myapp stop && tar -xzf previous-release.tar.gz && bin/myapp start`), **Configuration changes** (store previous config in application env: `Application.put_env(:myapp, :rollback_config, current_config)`), **Process tree changes** (keep old supervision tree specs in module attributes, implement feature flags for gradual rollout).
+**Rollback Principles**:
+- **Source code**: Use git operations (revert commits, restore files, discard changes). Validate with tests and compilation checks.
+- **Dependencies**: Restore from `mix.lock` via `mix deps.get`. For clean state: remove `deps/` and `_build/`, re-fetch, recompile.
+- **Database** (local/dev only): Use `mix ecto.rollback` with `--step` or `--to` flags. For dev environments, `mix ecto.reset` is acceptable.
+- **Build artifacts**: Clean with `mix clean`, remove `_build/`, rebuild. Verify with `mix compile --warnings-as-errors`.
+- **Configuration**: Restore config files from git or backups. Restart local Phoenix server to apply changes.
+- **GenServer state** (dev only): Use `:sys.replace_state/2` for development testing. Store backups in ETS for quick recovery.
 
-Command reference:
-```bash
-# Database rollback
-mix ecto.rollback --step 1 --repo MyApp.Repo
+**Validation framework**: After any rollback, verify with `mix test`, check compilation warnings, confirm dependencies resolve, validate migrations list, test local endpoints.
 
-# Release rollback
-_build/prod/rel/myapp/bin/myapp stop
-cp -r _build/prod/rel/myapp.backup/* _build/prod/rel/myapp/
-_build/prod/rel/myapp/bin/myapp start
-
-# Hot code upgrade rollback
-:release_handler.which_releases()
-:release_handler.install_release("1.2.3")
-:release_handler.make_permanent("1.2.3")
-
-# GenServer state rollback
-:sys.replace_state(MyApp.Worker, fn _state ->
-  [{_, backup_state}] = :ets.lookup(:state_backup, MyApp.Worker)
-  backup_state
-end)
-```
-
-Rollback validation: After rollback, verify with `mix test`, check supervision tree health with `:observer.start()`, validate database schema with `mix ecto.migrations`, confirm no error logs in `Logger`, test critical paths with integration tests.
+**Decision framework**: Choose rollback granularity based on blast radius—prefer targeted reverts (single file, single migration, single dependency) over full resets. Use atomic operations where possible. Document rollback triggers in audit logs.

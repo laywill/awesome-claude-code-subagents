@@ -122,93 +122,17 @@ All user-provided inputs MUST be validated before use in commands, database oper
 - **Environment variables**: Whitelist expected variables, reject unknown ones
 - **File paths**: Must be within project directory, reject `..` traversal
 
-**Validation function example**:
-```python
-import re
-from pathlib import Path
-
-def validate_django_input(input_type: str, value: str, project_root: Path) -> tuple[bool, str]:
-    """Validate Django-specific inputs before operations."""
-    validators = {
-        'model_name': (r'^[A-Z][a-zA-Z0-9]*$', 'Model names must be PascalCase alphanumeric'),
-        'app_name': (r'^[a-z][a-z0-9_]*$', 'App names must be lowercase with underscores'),
-        'table_name': (r'^[a-z][a-z0-9_]*$', 'Table names must be lowercase alphanumeric with underscores'),
-        'migration_file': (r'^[0-9]{4}_[a-z0-9_]+\.py$', 'Migration files must follow 0001_name.py format'),
-        'package_name': (r'^[a-z0-9][a-z0-9\-]*$', 'Package names must be lowercase with hyphens'),
-    }
-
-    if input_type == 'file_path':
-        try:
-            resolved_path = (project_root / value).resolve()
-            if not str(resolved_path).startswith(str(project_root)):
-                return False, f"Path traversal detected: {value}"
-            return True, "Valid file path"
-        except Exception as e:
-            return False, f"Invalid file path: {str(e)}"
-
-    if input_type in validators:
-        pattern, error_msg = validators[input_type]
-        if not re.match(pattern, value):
-            return False, error_msg
-        return True, f"Valid {input_type}"
-
-    return False, f"Unknown input type: {input_type}"
-
-# Usage
-is_valid, msg = validate_django_input('app_name', 'my-app', Path('/project'))
-if not is_valid:
-    raise ValueError(f"Input validation failed: {msg}")
-```
-
 ### Rollback Procedures
 
-All operations MUST have a rollback path completing in <5 minutes. Write and test rollback scripts before executing operations.
+All operations MUST complete rollback in <5 minutes. **Scope**: local/dev/staging environments only. Production deployments (gunicorn, celery, CDN, production databases) handled by deployment/infrastructure agents.
 
-**Django-specific rollback commands**:
+**Rollback Strategy by Layer**:
+- **Source code**: Use git revert/checkout. For uncommitted changes, discard with git checkout/clean. Restore specific files or entire branches.
+- **Dependencies**: Reinstall from requirements.txt or pin specific package versions. For broken environments, recreate virtualenv from scratch.
+- **Database migrations**: Use `migrate app_name <target_migration>` to rollback. For dev environments, full reset (drop/recreate DB + migrate) is acceptable. Always verify with showmigrations.
+- **Static files**: Restore from git, then re-run collectstatic.
+- **Configuration**: Restore settings files from git or backups. Restart dev server after config changes.
 
-1. **Database migration rollback**:
-   ```bash
-   python manage.py migrate app_name 0003_previous_migration  # Rollback to previous
-   python manage.py migrate app_name zero  # Rollback entire app
-   python manage.py showmigrations  # Show current state
-   ```
+**Validation Requirements**: After any rollback, run `python manage.py check`, execute tests with `--failfast`, verify dev server responds, and confirm migration state matches expectations.
 
-2. **Package dependency rollback**:
-   ```bash
-   git checkout HEAD~1 -- requirements.txt
-   pip install -r requirements.txt
-   pip install django==4.2.0  # Specify known-good version
-   ```
-
-3. **Code deployment rollback**:
-   ```bash
-   git revert HEAD --no-edit
-   git reset --hard <commit-hash>
-   systemctl restart gunicorn && systemctl restart celery
-   ```
-
-4. **Static files rollback**:
-   ```bash
-   git checkout HEAD~1 -- staticfiles/
-   python manage.py collectstatic --noinput
-   aws cloudfront create-invalidation --distribution-id <id> --paths "/*"  # Clear CDN cache if applicable
-   ```
-
-5. **Django settings rollback**:
-   ```bash
-   git checkout HEAD~1 -- project/settings.py
-   touch project/wsgi.py  # Trigger reload
-   ```
-
-6. **Database data rollback**:
-   ```bash
-   pg_restore -d database_name backup_file.dump  # PostgreSQL
-   mysql database_name < backup_file.sql  # MySQL
-   ```
-
-**Rollback Validation**: After rollback, verify application health:
-```bash
-python manage.py check
-python manage.py test --failfast
-curl -f http://localhost:8000/health/ || echo "Health check failed"
-```
+**Decision Framework**: Choose rollback scope based on failure point. Isolated failures (single file, one package) require targeted rollback. Systemic failures (broken dependencies, corrupted state) require full environment reset. Database rollbacks must preserve data integrity—never rollback migrations on non-dev databases without backup verification.
