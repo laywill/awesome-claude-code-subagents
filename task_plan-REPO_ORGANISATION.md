@@ -1,69 +1,73 @@
 # Task Plan: Repository Organisation Restructure
 
 ## Goal
-Reorganise the repository so every category provides a clear, cohesive set of capabilities. Standardise agent naming conventions. Eliminate duplicates. Update all references.
+Reorganise the repository so every category provides a clear, cohesive set of capabilities. Standardise agent naming conventions. Eliminate duplicates. Update all references including cross-references and install scripts.
 
-## Decisions Made
-- All language/framework agents in cat 02 → use `-specialist` suffix
-- Create new "Architecture & Design" category
-- Merge duplicate agents (pick best, consolidate)
-- Full restructure scope: new categories + renames + moves + dedup + README updates
+## Decisions Locked In
+1. **graphql-architect** → move to `00-architecture-design` (pure design agent)
+2. **microservices-architect** → stays in `01-general-development` (tightly coupled to implementation agents)
+3. **cloud-architect** → stays in `03-infrastructure` (infra teams expect it)
+4. **wordpress-master** → `wordpress-specialist` in cat 02 (framework specialist, NOT architect)
+5. **powershell-module-architect** → `powershell-module-specialist` in cat 02 (writes code, framework dev agent)
+6. **powershell-ui-architect** → `powershell-ui-specialist` in cat 02 (writes code, framework dev agent)
+7. **embedded-systems** → rename to `embedded-systems-engineer`, keep in cat 07 (no split — zero HDL content)
+8. **error-detective** → `error-diagnostics-engineer` (distinct from debugger — keep both)
+9. **postgres-pro** → `postgresql-admin` in cat 03 (naming consistent with cat 03 convention)
+10. **database-optimizer** → `database-performance-engineer` in cat 03 (was missing from plan)
+11. Cross-references and install scripts get dedicated execution phases
 
 ---
 
-## Phase 1: Create New Category - Architecture & Design
+## Phase 1: Create `00-architecture-design`
 
-Create `categories/XX-architecture-design/` (number TBD based on ordering preference).
-
-### Agents to move INTO this category:
-| Agent | Current Location | Rationale |
-|-------|-----------------|-----------|
-| microservices-architect | 01-core-development | System design, not implementation |
-| graphql-architect | 01-core-development | API architecture, not implementation |
-| api-designer | 01-core-development | API design/specs, not implementation |
-| ui-designer | 01-core-development | Visual/interaction design, not coding |
-| architect-reviewer | 04-quality-security | Architecture review fits with architects |
-| cloud-architect | 03-infrastructure | System design role |
-| wordpress-master | 08-business-product | Line 8 says "WordPress architect" - rename to `wordpress-architect` |
-| embedded-systems-architect | NEW (split from embedded-systems) | Firmware architecture, system design for embedded platforms |
+### Agents (4):
+| Agent | Source | Action |
+|-------|--------|--------|
+| api-designer | 01-core-development | Move |
+| ui-designer | 01-core-development | Move |
+| graphql-architect | 01-core-development | Move |
+| architect-reviewer | 04-quality-security | Move |
 
 ### Tasks:
-- [ ] 1.1 Create `categories/11-architecture-design/` directory
-- [ ] 1.2 Move agent files to new category
-- [ ] 1.3 Create category README.md
+- [ ] 1.1 Create `categories/00-architecture-design/` directory
+- [ ] 1.2 Move 4 agent files to new category
+- [ ] 1.3 Create category `README.md`
 - [ ] 1.4 Create `.claude-plugin/plugin.json`
-- [ ] 1.5 Update main README.md with new category section
-- [ ] 1.6 Remove moved agents from old category READMEs
-- [ ] 1.7 Update frontmatter in moved agent files if needed
+- [ ] 1.5 Update cat 01 README (remove 3 agents)
+- [ ] 1.6 Update cat 04 README (remove architect-reviewer)
+- [ ] 1.7 Update main README.md with new category section
+- [ ] 1.8 Update frontmatter `name:` in moved agent files if needed
 
 ---
 
-## Phase 2: Rename 01-core-development → 01-general-development
+## Phase 2: Reorganise `01-core-development` → `01-general-development`
 
-After removing architecture/design agents, cat 01 becomes focused on hands-on development.
+### After Phase 1 removals, cat 01 has 7 agents. Move out 1 more:
+| Agent | Action | Destination |
+|-------|--------|-------------|
+| electron-pro | Move + rename → `electron-specialist` | 02-language-specialists |
 
-### Remaining agents after moves:
-- frontend-developer
-- backend-developer
-- fullstack-developer
-- mobile-developer
-- websocket-engineer (keep - it's an implementation role)
+### Also fix pre-existing discrepancy:
+| Agent | Action | Notes |
+|-------|--------|-------|
+| wordpress-master | Move + rename → `wordpress-specialist` | Physically in cat 08, listed in cat 01 README. Move file from cat 08 to cat 02. |
 
-### Agents moved OUT:
-- electron-pro → `electron-specialist` in cat 02 (it's a framework specialist like Laravel, React, etc.)
+### Remaining agents (6):
+frontend-developer, backend-developer, fullstack-developer, mobile-developer, microservices-architect, websocket-engineer
 
 ### Tasks:
 - [ ] 2.1 Move `electron-pro` → cat 02 as `electron-specialist` (file + frontmatter)
-- [ ] 2.2 Update category README title/description to "General Development"
-- [ ] 2.3 Update main README.md references
+- [ ] 2.2 Move `wordpress-master` from cat 08 → cat 02 as `wordpress-specialist` (file + frontmatter)
+- [ ] 2.3 Rename category directory `01-core-development` → `01-general-development`
+- [ ] 2.4 Update cat 01 README title/description
+- [ ] 2.5 Update cat 08 README (remove wordpress-master)
+- [ ] 2.6 Update main README.md references
 
 ---
 
-## Phase 3: Standardise Category 02 Naming (Language Specialists)
+## Phase 3: Standardise cat 02 naming + additions
 
-All agents get `-specialist` suffix.
-
-### Renames needed:
+### All 23 renames (existing agents → `-specialist`):
 | Current Name | New Name |
 |-------------|----------|
 | python-pro | python-specialist |
@@ -89,79 +93,73 @@ All agents get `-specialist` suffix.
 | powershell-7-expert | powershell-7-specialist |
 | haskell-expert | haskell-specialist |
 | vue-expert | vue-specialist |
-| rails-expert | rails-specialist |
-| laravel-specialist | (no change) |
-| react-specialist | (no change) |
-| kotlin-specialist | (no change) |
+
+**Already `-specialist` (no change):** rails-expert → rails-specialist (was missed — needs rename), laravel-specialist, react-specialist, kotlin-specialist
+
+### Additions from other phases:
+| Agent | Source | New Name |
+|-------|--------|----------|
+| electron-pro | cat 01 (Phase 2) | electron-specialist |
+| wordpress-master | cat 08 (Phase 2) | wordpress-specialist |
+| powershell-module-architect | cat 06 | powershell-module-specialist |
+| powershell-ui-architect | cat 06 | powershell-ui-specialist |
 
 ### Tasks:
-- [ ] 3.1 Rename all 24 agent files (filename + `name:` in frontmatter)
-- [ ] 3.2 Update category 02 README.md with new names/links
-- [ ] 3.3 Update main README.md with new names/links
+- [ ] 3.1 Rename all 24 agent files (filename + `name:` in frontmatter) — 23 existing + rails-expert
+- [ ] 3.2 Move powershell-module-architect from cat 06 → cat 02 as `powershell-module-specialist`
+- [ ] 3.3 Move powershell-ui-architect from cat 06 → cat 02 as `powershell-ui-specialist`
+- [ ] 3.4 Update cat 02 README.md with all new names/links
+- [ ] 3.5 Update cat 06 README.md (remove 2 powershell agents)
+- [ ] 3.6 Update main README.md with new names/links
 
 ---
 
-## Phase 4: Standardise Category 03 Naming (Infrastructure)
+## Phase 4: Standardise cat 03 + add database agents
 
 ### Renames:
 | Current | New | Rationale |
 |---------|-----|-----------|
 | kubernetes-specialist | kubernetes-engineer | Align with rest of category |
-| database-administrator | database-admin | Shorten to match windows-infra-admin |
+| database-administrator | database-admin | Match windows-infra-admin pattern |
 
-### Note: `cloud-architect` moved to architecture category in Phase 1
+### Moves IN:
+| Agent | Source | New Name |
+|-------|--------|----------|
+| m365-admin | 07-specialized-domains | m365-admin (no rename) |
+| postgres-pro | 05-data-ai | postgresql-admin |
+| database-optimizer | 05-data-ai | database-performance-engineer |
 
 ### Tasks:
 - [ ] 4.1 Rename kubernetes-specialist → kubernetes-engineer
 - [ ] 4.2 Rename database-administrator → database-admin
-- [ ] 4.3 Update category 03 README.md
-- [ ] 4.4 Update main README.md
+- [ ] 4.3 Move m365-admin from cat 07 → cat 03
+- [ ] 4.4 Move postgres-pro → cat 03 as `postgresql-admin`
+- [ ] 4.5 Move database-optimizer → cat 03 as `database-performance-engineer`
+- [ ] 4.6 Update cat 03 README.md
+- [ ] 4.7 Update cat 05 README.md (remove 2 agents)
+- [ ] 4.8 Update cat 07 README.md (remove m365-admin)
+- [ ] 4.9 Update main README.md
 
 ---
 
-## Phase 5: Fix Category 04 Naming (Quality & Security)
+## Phase 5: Fix cat 04 naming
 
 ### Renames:
 | Current | New | Rationale |
 |---------|-----|-----------|
 | powershell-security-hardening | powershell-security-reviewer | Follow naming convention |
 
-### Note: `architect-reviewer` moved to architecture category in Phase 1
+### Already handled in Phase 1:
+- `architect-reviewer` moved to cat 00
 
 ### Tasks:
 - [ ] 5.1 Rename powershell-security-hardening → powershell-security-reviewer
-- [ ] 5.2 Update category 04 README.md (remove architect-reviewer, update rename)
+- [ ] 5.2 Update cat 04 README.md (rename + confirm architect-reviewer removed)
 - [ ] 5.3 Update main README.md
 
 ---
 
-## Phase 5b: Split embedded-systems Agent
-
-The current `embedded-systems` agent (cat 07) covers too much ground. Split into:
-
-### New agents for cat 02 (Language Specialists):
-| New Agent | Focus |
-|-----------|-------|
-| vhdl-specialist | VHDL hardware description language for FPGA/ASIC design |
-| verilog-specialist | Verilog HDL for digital circuit design and simulation |
-| systemverilog-specialist | SystemVerilog for verification and advanced hardware design |
-
-### New agent for cat 11 (Architecture & Design):
-| New Agent | Focus |
-|-----------|-------|
-| embedded-systems-architect | Firmware architecture, RTOS design, hardware abstraction, power management strategy |
-
-### Tasks:
-- [ ] 5b.1 Create `vhdl-specialist.md` in cat 02 (extract HDL content from embedded-systems)
-- [ ] 5b.2 Create `verilog-specialist.md` in cat 02
-- [ ] 5b.3 Create `systemverilog-specialist.md` in cat 02
-- [ ] 5b.4 Create `embedded-systems-architect.md` in cat 11 (architecture/design content)
-- [ ] 5b.5 Delete original `embedded-systems.md` from cat 07
-- [ ] 5b.6 Update cat 02, cat 07, cat 11 READMEs and main README
-
----
-
-## Phase 6: Merge Duplicate Agents
+## Phase 6: Merge duplicate agents
 
 ### 6a: ml-engineer + machine-learning-engineer → ml-engineer (cat 05)
 - Merge best content from both into single `ml-engineer.md`
@@ -183,66 +181,107 @@ The current `embedded-systems` agent (cat 07) covers too much ground. Split into
 
 ---
 
-## Phase 7: Move Misplaced Agents
+## Phase 7: Move remaining misplaced agents
 
-| Agent | From | To | Rationale |
-|-------|------|----|-----------|
-| m365-admin | 07-specialized-domains | 03-infrastructure | It's infra admin, not a "specialised domain" |
-| postgres-pro | 05-data-ai | 03-infrastructure | Database belongs with infra; rename to `postgresql-specialist` |
-| api-documenter | 07-specialized-domains | 06-developer-experience | Docs tooling belongs with DX; consolidate scope with documentation-engineer |
-| slack-expert | 06-developer-experience | 07-specialized-domains | Integration platform, not DX; rename to `slack-specialist` |
-
-Note: `wordpress-master` → `wordpress-architect` already handled in Phase 1 (moved to cat 11).
-Note: `electron-pro` → `electron-specialist` already handled in Phase 2 (moved to cat 02).
+| Agent | From | To | Rename? |
+|-------|------|----|---------|
+| api-documenter | 07-specialized-domains | 06-developer-experience | No |
+| slack-expert | 06-developer-experience | 07-specialized-domains | → slack-specialist |
+| seo-specialist | 07-specialized-domains | 08-business-product | No |
 
 ### Tasks:
-- [ ] 7.1 Move + rename postgres-pro → postgresql-specialist (to cat 03)
-- [ ] 7.2 Move m365-admin → cat 03
-- [ ] 7.3 Move api-documenter → cat 06
-- [ ] 7.4 Move + rename slack-expert → slack-specialist (to cat 07)
-- [ ] 7.5 Update all affected READMEs
+- [ ] 7.1 Move api-documenter → cat 06
+- [ ] 7.2 Move + rename slack-expert → slack-specialist (to cat 07)
+- [ ] 7.3 Move seo-specialist → cat 08
+- [ ] 7.4 Update all affected READMEs (cat 06, 07, 08, main)
 
 ---
 
-## Phase 8: Fix Remaining Naming Oddities
+## Phase 8: Remaining renames
 
-| Current | New | Category | Rationale |
-|---------|-----|----------|-----------|
-| error-detective | error-analyst | 04 | Consistent with analyst pattern |
-| postgres-pro | (handled in Phase 7) | | |
+| Current | New | Category |
+|---------|-----|----------|
+| error-detective | error-diagnostics-engineer | 04 |
+| embedded-systems | embedded-systems-engineer | 07 |
+
+### Also:
+- Add `unreal-specialist` to cat 07 README and plugin.json (already exists on branch as untracked file)
 
 ### Tasks:
-- [ ] 8.1 Rename error-detective → error-analyst (cat 04)
-- [ ] 8.2 Update cat 04 README and main README
+- [ ] 8.1 Rename error-detective → error-diagnostics-engineer
+- [ ] 8.2 Rename embedded-systems → embedded-systems-engineer
+- [ ] 8.3 Add unreal-specialist to cat 07 README and plugin.json
+- [ ] 8.4 Update cat 04, cat 07 READMEs and main README
 
 ---
 
-## Phase 9: Update All Plugin JSON Files
+## Phase 9: Cross-reference updates
 
-Each category has `.claude-plugin/plugin.json` that lists agents. These must be updated for any category that had agents added, removed, or renamed.
+Dedicated phase — grep for every old agent name across ALL `.md` files and update references.
+
+### High-priority cross-references (agents referenced by many others):
+- it-ops-orchestrator (referenced by infra agents)
+- azure-infra-engineer, platform-engineer, terraform-engineer
+- fullstack-developer (referenced by cat 01 agents)
+- All renamed cat 02 agents (referenced in collaboration sections)
+
+### Tasks:
+- [ ] 9.1 Grep for ALL old agent names across all `.md` files
+- [ ] 9.2 Update references in agent collaboration/integration sections
+- [ ] 9.3 Verify zero stale references remain
+
+---
+
+## Phase 10: Install script & README example updates
+
+### Files to update:
+- `install-agents.sh` — GitHub raw URLs with category paths and agent filenames
+- `agent-installer.md` (cat 09) — URL patterns and templates
+- Main `README.md` — install examples (e.g., "php-pro" → "php-specialist")
+
+### Tasks:
+- [ ] 10.1 Update `install-agents.sh` URLs for renamed categories and agents
+- [ ] 10.2 Update `agent-installer.md` URL patterns
+- [ ] 10.3 Update main README install examples
+
+---
+
+## Phase 11: Update all plugin.json files
 
 ### Affected categories:
-- 01 (agents removed + added + renamed)
-- 03 (agents removed + added + renamed)
-- 04 (agents removed + renamed)
-- 05 (agent merged)
-- 06 (agent added)
-- 07 (agents removed + added + renamed)
-- 08 (agent removed)
-- 11 (new category)
+| Category | Changes |
+|----------|---------|
+| 00 (NEW) | Create new plugin.json |
+| 01 | Agents removed + category renamed |
+| 02 | 24 renames + 4 additions |
+| 03 | 2 renames + 3 additions |
+| 04 | 1 rename + 1 removal |
+| 05 | 2 removals + 1 merge |
+| 06 | 2 removals + 1 addition |
+| 07 | 3 removals + 1 addition + 1 rename + unreal-specialist |
+| 08 | 1 removal + 1 addition |
+
+### Fix pre-existing discrepancies:
+- wordpress-master dual listing (will be resolved by moves)
+- m365-admin missing from cat 07 README (will be moot after move)
+- Cat 06 Quick Selection Guide missing agents (fix during update)
 
 ### Tasks:
-- [ ] 9.1 Update all affected plugin.json files
+- [ ] 11.1 Update all affected plugin.json files (categories 00-08)
+- [ ] 11.2 Fix any remaining pre-existing discrepancies in READMEs
 
 ---
 
-## Phase 10: Final Validation
+## Phase 12: Final validation
 
-- [ ] 10.1 Verify all agent files have correct `name:` in frontmatter matching filename
-- [ ] 10.2 Verify all README links resolve correctly
-- [ ] 10.3 Verify main README lists all agents in correct categories
-- [ ] 10.4 Verify no orphaned files
-- [ ] 10.5 Run a grep for old agent names to catch stale references
+- [ ] 12.1 Verify all agent `.md` filenames match `name:` in frontmatter
+- [ ] 12.2 Verify all README links resolve correctly
+- [ ] 12.3 Verify main README lists all agents in correct categories
+- [ ] 12.4 Verify no orphaned files (agent files not listed in any README)
+- [ ] 12.5 Grep for ALL old agent names — zero matches expected
+- [ ] 12.6 Verify install-agents.sh URLs match actual file paths
+- [ ] 12.7 Document decisions on agent-installer and it-ops-orchestrator placement
+- [ ] 12.8 Verify agent count: should be 126 (129 - 3 merges)
 
 ---
 
@@ -250,16 +289,20 @@ Each category has `.claude-plugin/plugin.json` that lists agents. These must be 
 
 | Metric | Count |
 |--------|-------|
-| New categories created | 1 (11-architecture-design) |
-| Agents renamed | ~36 |
-| Agents moved between categories | ~13 |
-| Agents split | 1 (embedded-systems → 3 language specialists + 1 architect) |
-| Duplicate agents merged | 3 pairs → 3 agents removed |
-| Net new agent files | +3 (split) - 3 (merges) = 0 |
+| New categories created | 1 (00-architecture-design) |
+| Categories renamed | 1 (01-core-development → 01-general-development) |
+| Agents renamed | ~30 |
+| Agents moved between categories | ~12 |
+| Agents split | 0 |
+| Duplicate agents merged | 3 pairs → 3 removed |
+| Net new agent files | -3 |
 | READMEs updated | 12 (10 category + 1 main + 1 new) |
-| Plugin JSONs updated | 9 |
+| Plugin JSONs updated | 10 |
+| Cross-references updated | TBD (grep-driven) |
+| Install scripts updated | 2 |
 
 ## Execution Order
-Phases 1-5 can be done somewhat independently. Phase 6-7 depend on category structure being settled. Phase 8-9 are cleanup. Phase 10 is validation.
 
-Recommended: Execute in numbered order. Each phase should be a separate commit or PR for reviewability.
+Phases 1-5 establish the new structure and can be executed sequentially as a batch. Phase 6 (merges) depends on category structure being settled. Phases 7-8 are remaining moves/renames. Phases 9-10 are cross-cutting updates that must happen after all renames are complete. Phase 11 is plugin.json cleanup. Phase 12 is validation.
+
+Recommended: Execute in numbered order. Each phase (or batch of related phases) should be a separate commit for reviewability.

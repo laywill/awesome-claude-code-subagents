@@ -2,13 +2,13 @@
 
 ## Current State Summary
 
-128+ agents across 10 categories. Several categories lack cohesion, naming is inconsistent, and some agents are clearly miscategorized.
+129 agent files across 10 categories (10 + 26 + 14 + 14 + 12 + 13 + 13 + 11 + 10 + 6). Several categories lack cohesion, naming is inconsistent, and some agents are miscategorized. Three duplicate pairs exist.
 
 ---
 
 ## Category-by-Category Analysis
 
-### 01-core-development (11 agents) - PROBLEMATIC
+### 01-core-development (10 agents) — PROBLEMATIC
 **Stated purpose:** Essential development tasks
 **Actual contents:**
 - **Implementation roles:** frontend-developer, backend-developer, fullstack-developer, mobile-developer, electron-pro, websocket-engineer
@@ -16,149 +16,187 @@
 
 **Problems:**
 1. Mixes hands-on coding agents with architecture/design agents
-2. `api-designer` is really API architecture, not implementation
+2. `api-designer` is API architecture, not implementation
 3. `ui-designer` is visual design, not code development
-4. `microservices-architect` and `graphql-architect` are system design, not "core development"
-5. `electron-pro` and `websocket-engineer` are specialised tech, not "core"
+4. `graphql-architect` is pure API design — no implementation
+5. `electron-pro` is a framework specialist — belongs in cat 02
+6. `wordpress-master` appears in cat 01 README but physically lives in cat 08 (pre-existing discrepancy)
 
-**Naming inconsistency:** Uses 5 different suffixes: -developer, -designer, -architect, -pro, -engineer
+**Naming inconsistency:** 5 different suffixes: -developer, -designer, -architect, -pro, -engineer
 
-### 02-language-specialists (26+ agents) - MOSTLY COHERENT
+**Decision:** `microservices-architect` stays here — tightly coupled to cat 01 implementation agents (frontend, backend, fullstack). `graphql-architect` moves to architecture category (pure design).
+
+### 02-language-specialists (26 agents) — MOSTLY COHERENT
 **Stated purpose:** Language/framework experts
-**Actual contents:** All language or framework specialists - good cohesion
+**Actual contents:** All language or framework specialists — good cohesion
 
 **Problems:**
-1. **Naming chaos** - 6 different suffixes for the same role type:
-   - `-pro`: python, typescript, javascript, golang, php, sql, cpp
-   - `-specialist`: react, kotlin, laravel
-   - `-expert`: dotnet-core, dotnet-framework-4.8, elixir, flutter, swift, powershell-5.1, powershell-7, haskell, vue
-   - `-developer`: csharp, django, nextjs
-   - `-architect`: java, angular
-   - `-engineer`: rust, spring-boot
-2. No logic to suffix choice - why is Python "pro" but Java "architect"? Why is React "specialist" but Angular "architect"?
+1. **Naming chaos** — 6 different suffixes for the same role type:
+   - `-pro`: python, typescript, javascript, golang, php, sql, cpp (7)
+   - `-specialist`: react, kotlin, laravel (3)
+   - `-expert`: dotnet-core, dotnet-framework-4.8, elixir, flutter, swift, powershell-5.1, powershell-7, haskell, vue, rails (10)
+   - `-developer`: csharp, django, nextjs (3)
+   - `-architect`: java, angular (2)
+   - `-engineer`: rust, spring-boot (2)
+2. No logic to suffix choice — Python is "pro" but Java is "architect"; React is "specialist" but Angular is "architect"
 
-### 03-infrastructure (14 agents) - MOSTLY COHERENT
+### 03-infrastructure (14 agents) — MOSTLY COHERENT
 **Stated purpose:** DevOps, cloud, Kubernetes, etc.
-**Actual contents:** All infrastructure-related - good cohesion
+**Actual contents:** All infrastructure-related — good cohesion
 
 **Problems:**
-1. `kubernetes-specialist` is the ONLY `-specialist` - everything else is `-engineer`, `-architect`, `-administrator`, or `-admin`
+1. `kubernetes-specialist` is the ONLY `-specialist` — everything else is `-engineer`, `-architect`, `-administrator`, or `-admin`
 2. `incident-responder` and `devops-incident-responder` overlap significantly
-3. `database-administrator` vs `database-optimizer` (in cat 05) - split across categories
+3. `database-administrator` vs `database-optimizer` (in cat 05) and `postgres-pro` (in cat 05) — database agents split across categories
 4. `security-engineer` straddles infra security and app security
 
-### 04-quality-security (14 agents) - REASONABLE
+**Decision:** `cloud-architect` stays here — infra teams expect it; the architecture category is for cross-cutting design agents, not cloud-specific infra design.
+
+### 04-quality-security (14 agents) — REASONABLE
 **Stated purpose:** Testing, security auditing, code review
 **Actual contents:** Mix of quality assurance and security agents
 
 **Problems:**
-1. `architect-reviewer` does system design review - belongs with architecture agents
-2. `performance-engineer` and `chaos-engineer` could be infrastructure
-3. `debugger` and `error-detective` - unclear differentiation
-4. `powershell-security-hardening` doesn't follow naming convention (should be `powershell-security-specialist` or similar)
+1. `architect-reviewer` does system design review — belongs with architecture agents
+2. `performance-engineer` and `chaos-engineer` could be infrastructure (but testing-focused, so keep)
+3. `debugger` and `error-detective` — **distinct roles**: debugger handles single-service/local debugging; error-detective analyses distributed cascade failures and multi-service error propagation
+4. `powershell-security-hardening` doesn't follow naming convention (should be `-reviewer`)
 5. `ad-security-reviewer` is very niche (Active Directory specific)
 
-### 05-data-ai (12 agents) - REASONABLE
+### 05-data-ai (12 agents) — REASONABLE
 **Stated purpose:** ML, data engineering, AI specialists
 
 **Problems:**
-1. `ml-engineer` and `machine-learning-engineer` - essentially duplicates
+1. `ml-engineer` and `machine-learning-engineer` — essentially duplicates
 2. `postgres-pro` belongs in infrastructure (database), not data-ai
-3. `database-optimizer` overlaps with `postgres-pro` and `database-administrator` (cat 03)
+3. `database-optimizer` overlaps with `database-administrator` (cat 03) and should move there
 
-### 06-developer-experience (13 agents) - GOOD COHESION
+### 06-developer-experience (13 agents) — GOOD COHESION
 **Stated purpose:** Tooling, documentation, DX optimization
 
 **Problems:**
-1. `powershell-module-architect` and `powershell-ui-architect` are language-specific - could be in cat 02
-2. `slack-expert` feels out of place - it's integration development, not DX
-3. `mcp-developer` is very specific to Claude ecosystem
+1. `powershell-module-architect` and `powershell-ui-architect` are framework development agents — write code, belong in cat 02 as `-specialist`
+2. `slack-expert` is integration development, not DX — belongs in cat 07
+3. `mcp-developer` is very specific to Claude ecosystem (keep — it's tooling/DX)
 
-### 07-specialized-domains (12 agents) - CATCH-ALL
+**PowerShell scatter:** Currently 5 PowerShell agents across 3 categories (cat 02: 2, cat 04: 1, cat 06: 2). After reorganisation: cat 02: 4, cat 04: 1.
+
+### 07-specialized-domains (13 agents) — CATCH-ALL
 **Stated purpose:** Blockchain, IoT, fintech, gaming
+**Includes:** unreal-specialist (untracked, on branch)
 
 **Problems:**
-1. This is a "miscellaneous" bucket - no unifying theme beyond "specialised"
-2. `api-documenter` overlaps with `documentation-engineer` (cat 06) and `technical-writer` (cat 08)
-3. `mobile-app-developer` overlaps with `mobile-developer` (cat 01)
-4. `quant-analyst` and `risk-manager` are finance-specific - belong together
-5. `m365-admin` is infrastructure, not a "specialised domain"
-6. `seo-specialist` is marketing-adjacent
+1. This is a "miscellaneous" bucket — no unifying theme beyond "specialised"
+2. `api-documenter` overlaps with `documentation-engineer` (cat 06) and `technical-writer` (cat 08) — move to cat 06
+3. `mobile-app-developer` overlaps with `mobile-developer` (cat 01) — merge
+4. `quant-analyst` and `risk-manager` are finance-specific — keep together, they belong here
+5. `m365-admin` is infrastructure, not a "specialised domain" — move to cat 03
+6. `seo-specialist` is business/marketing — move to cat 08
 
-### 08-business-product (11 agents) - REASONABLE
+### 08-business-product (11 agents) — REASONABLE
 **Stated purpose:** Product management, business analysis
 
 **Problems:**
-1. `wordpress-master` is development, not business/product
-2. `technical-writer` overlaps with documentation agents elsewhere
-3. Naming: `wordpress-master` is unique suffix
+1. `wordpress-master` is development, not business/product — move to cat 02 as `wordpress-specialist`
+2. `technical-writer` overlaps with documentation agents elsewhere (keep — different audience: business stakeholders vs developers)
 
-### 09-meta-orchestration (11 agents) - GOOD COHESION
+### 09-meta-orchestration (10 agents) — GOOD COHESION
 **Stated purpose:** Multi-agent coordination
 
 **Problems:**
-1. `it-ops-orchestrator` feels more like infrastructure
-2. `agent-installer` is a utility, not orchestration
+1. `it-ops-orchestrator` could be infrastructure, but its core purpose is orchestrating other agents — keep here
+2. `agent-installer` is a utility, not orchestration — keep here (no better home; it installs agents)
 
-### 10-research-analysis (6 agents) - GOOD COHESION
+**Cross-reference risk:** `it-ops-orchestrator` is referenced by many infrastructure agents. Renames in cat 03 will break these cross-references.
+
+### 10-research-analysis (6 agents) — GOOD COHESION
 **Stated purpose:** Research and analysis specialists
-**Minimal issues** - well-defined and consistent
+**Minimal issues** — well-defined and consistent
 
 ---
 
 ## Cross-Cutting Issues
 
-### 1. Documentation Agent Sprawl
-Three agents across three categories all write documentation:
-- `documentation-engineer` (06)
-- `api-documenter` (07)
-- `technical-writer` (08)
+### 1. Documentation Agent Boundaries
+Three agents across three categories write documentation — but they serve different audiences:
+- `documentation-engineer` (06) — developer-facing technical docs, API refs, READMEs
+- `api-documenter` (07 → 06) — OpenAPI/Swagger specs, endpoint documentation
+- `technical-writer` (08) — business/stakeholder-facing docs, user guides, release notes
+
+**Decision:** Move `api-documenter` to cat 06 (developer docs tooling). Keep all three — they're distinct.
 
 ### 2. Database Agent Sprawl
 Three database agents across two categories:
-- `database-administrator` (03)
-- `database-optimizer` (05)
-- `postgres-pro` (05)
+- `database-administrator` (03) → rename `database-admin`
+- `database-optimizer` (05) → move to cat 03 as `database-performance-engineer`
+- `postgres-pro` (05) → move to cat 03 as `postgresql-admin`
+
+After reorganisation: all three in cat 03 (infrastructure), distinct roles.
 
 ### 3. Mobile Developer Duplication
-- `mobile-developer` (01) - cross-platform mobile
-- `mobile-app-developer` (07) - also mobile apps
+- `mobile-developer` (01) — cross-platform mobile
+- `mobile-app-developer` (07) — also mobile apps
+**Decision:** Merge into `mobile-developer` (cat 01)
 
 ### 4. Incident Response Duplication
 - `incident-responder` (03)
 - `devops-incident-responder` (03)
+**Decision:** Merge into `incident-responder` (cat 03)
 
 ### 5. ML Engineer Duplication
 - `ml-engineer` (05)
 - `machine-learning-engineer` (05)
+**Decision:** Merge into `ml-engineer` (cat 05)
+
+### 6. Cross-Reference Breakage Risk
+Many agents reference other agents by name in collaboration/integration sections. Every rename risks breaking these. Key high-reference agents:
+- `it-ops-orchestrator` (referenced by infra agents)
+- `azure-infra-engineer`, `platform-engineer`, `terraform-engineer` (infrastructure cross-refs)
+- `fullstack-developer` (referenced by many cat 01 agents)
+
+**Mitigation:** Dedicated cross-reference update phase using grep.
+
+### 7. Install Script URL Breakage
+`install-agents.sh` and `agent-installer.md` contain GitHub raw URLs with category paths. Category renames (01-core-development → 01-general-development) and agent renames will break these URLs.
+
+### 8. Pre-Existing Discrepancies
+- `wordpress-master` listed in cat 01 README but physically in cat 08
+- `m365-admin` missing from cat 07 README (but physically present)
+- Cat 06 Quick Selection Guide missing several agents
 
 ---
 
 ## Proposed New Category Structure
 
-### Option A: Minimal Reorganisation (recommended)
-Keep most categories, but create 1-2 new ones and move misplaced agents.
-
-**New category: `XX-architecture-design`**
-Move from 01: `microservices-architect`, `graphql-architect`, `api-designer`
+### New category: `00-architecture-design` (slim — 4 agents)
+Move from 01: `api-designer`, `ui-designer`, `graphql-architect`
 Move from 04: `architect-reviewer`
-Move from 01: `ui-designer`
 
-**Rename 01 to `01-general-development`**
-Keep: `frontend-developer`, `backend-developer`, `fullstack-developer`, `mobile-developer`
-Move in: `wordpress-master` (from 08)?
+**NOT moved** (decision rationale):
+- `microservices-architect` — stays in 01 (tightly coupled to implementation agents)
+- `cloud-architect` — stays in 03 (infra teams expect it; cloud-specific, not cross-cutting design)
 
-**Clean up 07-specialized-domains**
-Move `m365-admin` → 03-infrastructure
-Move `mobile-app-developer` → consolidate with `mobile-developer` or delete
-Move `api-documenter` → 06-developer-experience (with other docs agents)
+### Rename 01 → `01-general-development` (6 agents remaining)
+Keep: frontend-developer, backend-developer, fullstack-developer, mobile-developer, microservices-architect, websocket-engineer
+Move out: electron-pro → cat 02, api-designer/ui-designer/graphql-architect → cat 00
 
-### Option B: Larger Reorganisation
-More aggressive restructuring - potentially disruptive but cleaner.
+### Cat 02 additions (4 new agents)
+- `electron-specialist` (from cat 01, was electron-pro)
+- `wordpress-specialist` (from cat 08, was wordpress-master)
+- `powershell-module-specialist` (from cat 06, was powershell-module-architect)
+- `powershell-ui-specialist` (from cat 06, was powershell-ui-architect)
+
+### Cat 03 additions (3 agents moved in)
+- `m365-admin` (from cat 07, no rename)
+- `postgresql-admin` (from cat 05, was postgres-pro)
+- `database-performance-engineer` (from cat 05, was database-optimizer)
+
+### Cat 07 → cat 08 move
+- `seo-specialist` → cat 08 (business/marketing, not specialised domain)
 
 ---
 
-## Naming Convention Proposal
+## Naming Convention
 
 ### By Role Type
 | Role Type | Standard Suffix | Examples |
@@ -172,46 +210,41 @@ More aggressive restructuring - potentially disruptive but cleaner.
 | Research/analysis | `-analyst` | data-analyst, trend-analyst |
 | Administration | `-admin` | database-admin, windows-infra-admin |
 
-### Specific Renames Needed (cat 02 - Language Specialists)
-All should use `-specialist`:
-- python-pro → python-specialist
-- typescript-pro → typescript-specialist
-- javascript-pro → javascript-specialist
-- golang-pro → golang-specialist
-- php-pro → php-specialist
-- sql-pro → sql-specialist
-- cpp-pro → cpp-specialist
-- java-architect → java-specialist
-- angular-architect → angular-specialist
-- rust-engineer → rust-specialist
-- spring-boot-engineer → spring-boot-specialist
-- csharp-developer → csharp-specialist
-- django-developer → django-specialist
-- nextjs-developer → nextjs-specialist
-- dotnet-core-expert → dotnet-core-specialist
-- dotnet-framework-4.8-expert → dotnet-framework-specialist
-- elixir-expert → elixir-specialist
-- flutter-expert → flutter-specialist
-- swift-expert → swift-specialist
-- powershell-5.1-expert → powershell-5.1-specialist
-- powershell-7-expert → powershell-7-specialist
-- haskell-expert → haskell-specialist
-- vue-expert → vue-specialist
+### Key Renames (non-cat-02)
+| Current | New | Category | Rationale |
+|---------|-----|----------|-----------|
+| kubernetes-specialist | kubernetes-engineer | 03 | Align with rest of infra category |
+| database-administrator | database-admin | 03 | Match windows-infra-admin pattern |
+| postgres-pro | postgresql-admin | 03 | Admin role, consistent naming |
+| database-optimizer | database-performance-engineer | 03 | Engineering role, descriptive |
+| powershell-security-hardening | powershell-security-reviewer | 04 | Follow -reviewer convention |
+| error-detective | error-diagnostics-engineer | 04 | Distinct from debugger; engineering role |
+| embedded-systems | embedded-systems-engineer | 07 | No split (zero HDL content); -engineer suffix |
+| wordpress-master | wordpress-specialist | 02 | Framework specialist, not architect |
+| slack-expert | slack-specialist | 07 | Consistent with cat 07 naming |
 
-### Specific Renames Needed (cat 03 - Infrastructure)
-- `kubernetes-specialist` → `kubernetes-engineer` (align with rest of category)
+---
 
-### Specific Renames Needed (cat 04 - Quality & Security)
-- `powershell-security-hardening` → `powershell-security-reviewer`
+## Installability Assessment
 
-### Specific Renames Needed (cat 05 - Data & AI)
-- `postgres-pro` → move to infrastructure OR rename `postgresql-specialist`
+| Component | Breakage Risk | Notes |
+|-----------|---------------|-------|
+| install-agents.sh | HIGH | Contains hardcoded GitHub raw URLs with category paths |
+| agent-installer.md | HIGH | Contains URL templates referencing category names |
+| Main README examples | MEDIUM | Install examples reference agent names like "php-pro" |
+| plugin.json files | LOW | Local to each category, straightforward update |
+| Cross-references in agents | MEDIUM | ~30 agents reference other agents by name |
 
-### Specific Renames Needed (cat 07)
-- `embedded-systems` → `embedded-systems-engineer`
+---
 
-### Specific Renames Needed (cat 08)
-- `wordpress-master` → `wordpress-specialist` (and consider moving)
+## Future Category Candidates
+
+These could warrant their own categories if the agent count grows:
+- **Fintech** — currently quant-analyst, risk-manager, fintech-engineer, payment-integration (4 agents in cat 07)
+- **Gaming** — currently game-developer, unreal-specialist (2 agents in cat 07)
+- **Compliance/Governance** — currently compliance-auditor (cat 04), legal-advisor (cat 08)
+
+Not actionable now — too few agents per potential category.
 
 ---
 
@@ -219,9 +252,11 @@ All should use `-specialist`:
 
 Each rename/move requires updating:
 1. The agent `.md` file (filename + `name:` in frontmatter)
-2. The category `README.md` (remove from old, add to new)
-3. The main `README.md` (update link path and description)
-4. Any cross-references in other agent files
-5. Plugin JSON files if category changes
+2. The source category `README.md` (remove agent)
+3. The target category `README.md` (add agent)
+4. The main `README.md` (update link path and description)
+5. Cross-references in other agent `.md` files
+6. Plugin JSON files for affected categories
+7. Install script URLs (if category changed)
 
-This is a significant undertaking but will dramatically improve discoverability and consistency.
+Estimated: ~30 renames, ~12 moves, 3 merges, 12 READMEs, 10 plugin.json files, 2 install scripts.
