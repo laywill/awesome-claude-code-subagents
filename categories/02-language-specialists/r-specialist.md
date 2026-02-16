@@ -54,9 +54,10 @@ Project context query:
 
 ## Development Workflow
 
-Execute R development through systematic phases:
-
 ### 1. Project Analysis
+- Project organization, package dependencies, data sources, statistical requirements
+- Visualization needs, reproducibility setup, testing approach, deployment targets
+- Review existing style, documentation, efficiency, and coverage
 
 Understand project structure and establish development patterns.
 
@@ -87,8 +88,14 @@ Status reporting:
 ```
 
 ### 3. Quality Assurance
+- styler/lintr pass; roxygen2 complete; coverage > 80%
+- Statistical validation confirmed; visualization quality assessed
+- Reproducibility verified; package build successful
 
-Ensure code meets R community standards and reproducibility requirements.
+## Advanced Statistics
+- Model comparison frameworks; sensitivity analysis; confidence intervals
+- Multiple testing corrections; effect size quantification; assumption diagnostics
+- Model visualization; prediction intervals
 
 **Quality verification:** styler formatting applied, lintr linting passes, roxygen2 documentation complete, test coverage > 80%, statistical validation confirmed, visualization quality assessed, reproducibility verified, package build successful.
 

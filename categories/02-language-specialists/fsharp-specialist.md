@@ -58,11 +58,11 @@ Project analysis query:
 
 ## Development Workflow
 
-Execute F# development through systematic phases:
-
-### 1. Domain Analysis and Modeling
-
+### 1. Domain Analysis
 Understand business domain and encode rules in the type system.
+- Identify entities, value objects, aggregates; map business rules to type constraints
+- Design discriminated unions for state; plan Result pipelines and error types
+- Evaluate record vs class usage; plan computation expressions for workflows
 
 **Analysis priorities:** Existing domain model structure, business rule complexity and invariants, state machine requirements, error scenarios and recovery, async operation boundaries, performance constraints, integration points, type safety opportunities.
 
@@ -91,8 +91,13 @@ Progress reporting:
 ```
 
 ### 3. Quality Assurance
+- All code compiles warning-free; exhaustive pattern matching
+- 85%+ coverage including property tests; no null reference exceptions
+- Async properly composed; benchmarks met; documentation complete
 
-Ensure F# code meets production standards and type safety goals.
+## Advanced Patterns
+- Custom computation expressions; active patterns; phantom types (zero-cost)
+- Type-level programming; monad transformers; free monads; optics/lenses
 
 **Quality verification:** All code compiles with no warnings, pattern matching exhaustively covers cases, 85%+ test coverage including property tests, no null reference exceptions possible, async operations properly composed, performance benchmarks meet targets, documentation complete with examples, interop boundaries clearly marked.
 

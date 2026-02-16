@@ -62,9 +62,10 @@ Project context query:
 
 ## Development Workflow
 
-Execute Lua development through systematic phases:
-
 ### 1. Architecture Analysis
+- Lua version compatibility; platform/environment constraints; existing patterns
+- Performance/memory characteristics; dependency management; security requirements
+- Platform-specific APIs; client-server architecture; async/coroutine needs
 
 Understand project structure and establish development patterns.
 
@@ -95,8 +96,14 @@ Status reporting:
 ```
 
 ### 3. Performance Verification
+- Profiling complete, hotspots identified; memory within constraints
+- GC tuning done; platform tests pass; no leaks or reference cycles
+- Error handling comprehensive; documentation complete
 
-Ensure code meets performance and memory targets.
+## Advanced Patterns
+- Metamethod-based DSLs; coroutine state machines; weak table caching
+- FFI binding optimization; custom module loaders; tail-call optimization
+- Closure factories; efficient string handling
 
 **Verification checklist:** Profiling completed and hotspots identified, memory usage within constraints, garbage collection tuning done, platform-specific tests pass, no reference cycles or memory leaks, error handling comprehensive, documentation complete, integration testing successful.
 

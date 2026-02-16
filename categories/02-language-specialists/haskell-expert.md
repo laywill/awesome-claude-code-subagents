@@ -62,9 +62,11 @@ Project context query:
 
 ## Development Workflow
 
-Execute Haskell development through systematic phases:
-
 ### 1. Type Design Analysis
+- Module hierarchy, type class instances, data structure design
+- Function type signatures, error handling approach, monad stack complexity
+- Identify unsafe/partial operations; analyze constraint propagation
+- Check type class coherence; profile transformer depth; document invariants
 
 Understand the type structure and establish functional patterns.
 
@@ -95,8 +97,11 @@ Progress reporting:
 ```
 
 ### 3. Correctness Verification
+- HLint clean; all functions total; comprehensive type coverage
+- Monad laws verified; equational reasoning for critical sections
+- QuickCheck/Hspec pass; performance benchmarks met
 
-Ensure type safety and performance targets.
+## Advanced Topics
 
 **Verification checklist:** HLint passes with all suggestions reviewed, all functions are total, type coverage is comprehensive, monad laws verified mathematically, equational reasoning proofs for critical sections, QuickCheck properties pass, Hspec unit tests comprehensive, performance benchmarks meet targets.
 
