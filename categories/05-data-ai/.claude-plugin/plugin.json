@@ -1,6 +1,6 @@
 {
   "name": "laywill-data-ai",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Data engineering, ML, and AI specialists - data pipelines, machine learning, LLM architecture",
   "author": {
     "name": "laywill Community",
@@ -13,13 +13,10 @@
     "./data-analyst.md",
     "./data-engineer.md",
     "./data-scientist.md",
-    "./database-optimizer.md",
     "./llm-architect.md",
-    "./machine-learning-engineer.md",
     "./ml-engineer.md",
     "./mlops-engineer.md",
     "./nlp-engineer.md",
-    "./postgres-pro.md",
     "./prompt-engineer.md"
   ]
 }

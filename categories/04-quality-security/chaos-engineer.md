@@ -268,7 +268,7 @@ Integration with other agents:
 - Collaborate with sre-engineer on reliability
 - Support devops-engineer on resilience
 - Work with platform-engineer on chaos tools
-- Guide kubernetes-specialist on K8s chaos
+- Guide kubernetes-engineer on K8s chaos
 - Help security-engineer on security chaos
 - Assist performance-engineer on load chaos
 - Partner with incident-responder on scenarios

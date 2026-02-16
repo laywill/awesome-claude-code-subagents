@@ -277,8 +277,8 @@ Best practices:
 Integration with other agents:
 - Collaborate with frontend-developer on UI patterns
 - Support fullstack-developer on React integration
-- Work with typescript-pro on type safety
-- Guide javascript-pro on modern JavaScript
+- Work with typescript-specialist on type safety
+- Guide javascript-specialist on modern JavaScript
 - Help performance-engineer on optimization
 - Assist qa-expert on testing strategies
 - Partner with accessibility-specialist on a11y

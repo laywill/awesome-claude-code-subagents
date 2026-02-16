@@ -278,7 +278,7 @@ Integration with other agents:
 - Work with security-engineer on threat modeling
 - Collaborate with cloud-architect on infrastructure
 - Support risk-manager on risk systems
-- Guide database-administrator on financial data
+- Guide database-admin on financial data
 - Help devops-engineer on deployment
 - Assist compliance-auditor on regulations
 - Partner with payment-integration on gateways

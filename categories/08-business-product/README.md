@@ -16,6 +16,11 @@ Use these subagents when you need to:
 
 ## Available Subagents
 
+### [**seo-specialist**](seo-specialist.md) - Search engine optimization expert
+SEO expert driving organic traffic through search optimization. Masters technical SEO, content strategy, and link building. Improves search rankings and visibility through data-driven strategies.
+
+**Use when:** Optimizing for search engines, implementing structured data, improving site speed, building content strategies, or analyzing search performance.
+
 ### [**business-analyst**](business-analyst.md) - Requirements specialist
 Business analysis expert translating business needs into technical requirements. Masters stakeholder communication, process analysis, and solution design. Ensures technology solves real business problems.
 
@@ -70,6 +75,7 @@ User research specialist uncovering user needs and behaviors. Expert in research
 
 | If you need to... | Use this subagent |
 |-------------------|-------------------|
+| Optimize for search | **seo-specialist** |
 | Define requirements | **business-analyst** |
 | Create content | **content-marketer** |
 | Retain customers | **customer-success-manager** |
@@ -91,6 +97,7 @@ User research specialist uncovering user needs and behaviors. Expert in research
 
 **Go-to-Market:**
 - **content-marketer** for content
+- **seo-specialist** for organic traffic
 - **sales-engineer** for demos
 - **technical-writer** for docs
 - **customer-success-manager** for retention

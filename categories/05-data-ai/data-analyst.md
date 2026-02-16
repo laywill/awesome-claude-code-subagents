@@ -267,7 +267,7 @@ Continuous improvement:
 Integration with other agents:
 - Collaborate with data-engineer on pipelines
 - Support data-scientist with exploratory analysis
-- Work with database-optimizer on query performance
+- Work with database-performance-engineer on query performance
 - Guide business-analyst on metrics
 - Help product-manager with insights
 - Assist ml-engineer with feature analysis

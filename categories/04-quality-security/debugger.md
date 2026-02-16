@@ -275,7 +275,7 @@ Preventive measures:
 - Process refinements
 
 Integration with other agents:
-- Collaborate with error-detective on patterns
+- Collaborate with error-diagnostics-engineer on patterns
 - Support qa-expert with reproduction
 - Work with code-reviewer on fix validation
 - Guide performance-engineer on performance issues

@@ -16,6 +16,11 @@ Use these subagents when you need to:
 
 ## Available Subagents
 
+### [**api-documenter**](api-documenter.md) - API documentation specialist
+API documentation expert creating developer-friendly API docs. Masters OpenAPI/Swagger, interactive documentation, and API best practices. Makes APIs discoverable and easy to integrate.
+
+**Use when:** Documenting REST APIs, creating API specifications, building developer portals, generating client SDKs, or improving API discoverability.
+
 ### [**build-engineer**](build-engineer.md) - Build system specialist
 Build optimization expert making compilation and bundling lightning fast. Masters various build tools, optimization techniques, and caching strategies. Reduces build times from minutes to seconds.
 
@@ -56,25 +61,10 @@ MCP expert building servers and clients that connect AI systems with external to
 
 **Use when:** Building MCP servers, creating AI tool integrations, implementing Model Context Protocol clients, connecting AI systems to external APIs, or developing AI-powered applications with external data sources.
 
-### [**powershell-module-architect**](powershell-module-architect.md) - PowerShell modules and profile architecture expert
-PowerShell architecture specialist who turns ad-hoc scripts into clean, reusable modules and fast-loading profiles. Focuses on clear public/private function boundaries, robust parameter design, DRY helper libraries, and cross-version compatibility between Windows PowerShell 5.1 and PowerShell 7+.
-
-**Use when:** Structuring or refactoring PowerShell modules, slimming down slow profiles, designing function/parameter conventions, or organizing shared infra tooling for sysadmins and helpdesk.
-
-### [**powershell-ui-architect**](powershell-ui-architect.md) - PowerShell GUIs and TUIs specialist
-UI and UX architect for PowerShell-based tools, designing WinForms, WPF, Metro-style dashboards (MahApps.Metro/Elysium), and terminal UIs on top of automation modules. Focuses on layering clean interfaces over reusable PowerShell/.NET logic without sacrificing maintainability.
-
-**Use when:** You need a graphical or terminal UI for PowerShell tooling, want to choose between WinForms/WPF/TUI/Metro approaches, or need help structuring XAML and event handlers around existing PowerShell modules and scripts.
-
 ### [**refactoring-specialist**](refactoring-specialist.md) - Code refactoring expert
 Refactoring master improving code structure without changing behavior. Expert in design patterns, code smells, and safe refactoring techniques. Makes code cleaner and more maintainable.
 
 **Use when:** Refactoring complex code, eliminating code smells, implementing design patterns, improving code structure, or preparing code for new features.
-
-### [**slack-expert**](slack-expert.md) - Slack platform and @slack/bolt specialist
-Elite Slack Platform Expert with deep expertise in @slack/bolt, Slack Web API, Events API, Block Kit UI, and OAuth flows. Builds robust Slack integrations with best practices for rate limiting, security, and modern features.
-
-**Use when:** Building Slack bots, implementing slash commands, creating Block Kit interfaces, reviewing Slack code, setting up OAuth flows, or integrating with Slack's Events API.
 
 ### [**tooling-engineer**](tooling-engineer.md) - Developer tooling specialist
 Tooling expert building and integrating developer tools. Masters IDE configurations, linters, formatters, and custom tooling. Creates development environments that boost productivity.
@@ -85,6 +75,7 @@ Tooling expert building and integrating developer tools. Masters IDE configurati
 
 | If you need to... | Use this subagent |
 |-------------------|-------------------|
+| Document APIs | **api-documenter** |
 | Speed up builds | **build-engineer** |
 | Create CLI tools | **cli-developer** |
 | Manage packages | **dependency-manager** |
@@ -94,7 +85,6 @@ Tooling expert building and integrating developer tools. Masters IDE configurati
 | Modernize legacy code | **legacy-modernizer** |
 | Build MCP integrations | **mcp-developer** |
 | Refactor code | **refactoring-specialist** |
-| Build Slack integrations | **slack-expert** |
 | Build dev tools | **tooling-engineer** |
 
 ## Common DX Patterns
@@ -114,6 +104,7 @@ Tooling expert building and integrating developer tools. Masters IDE configurati
 **Tool Development:**
 - **cli-developer** for command-line tools
 - **tooling-engineer** for IDE integration
+- **api-documenter** for API docs
 - **documentation-engineer** for tool docs
 - **build-engineer** for tool packaging
 

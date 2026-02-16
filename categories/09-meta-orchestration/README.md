@@ -34,7 +34,7 @@ Error handling expert ensuring graceful failure recovery. Masters error patterns
 ### [**it-ops-orchestrator**](it-ops-orchestrator.md) - IT operations meta-orchestrator for PowerShell/.NET ecosystems
 Meta-orchestrator that routes ambiguous infrastructure and operations tasks to the right specialist agents, with a strong preference for PowerShell and .NET-based workflows. Understands the roles of Windows infra, Azure, M365, and PowerShell language experts, and coordinates them to deliver end-to-end solutions.
 
-**Use when:** A task smells like IT operations or infrastructure automation but spans multiple areas (AD, DNS/DHCP, Azure, M365, PowerShell modules). This orchestrator chooses and coordinates the best subagents (e.g., windows-infra-admin, azure-infra-engineer, m365-admin, powershell-5.1-expert, powershell-7-expert, powershell-module-architect) with PowerShell as the default implementation language.
+**Use when:** A task smells like IT operations or infrastructure automation but spans multiple areas (AD, DNS/DHCP, Azure, M365, PowerShell modules). This orchestrator chooses and coordinates the best subagents (e.g., windows-infra-admin, azure-infra-engineer, m365-admin, powershell-5.1-specialist, powershell-7-specialist, powershell-module-specialist) with PowerShell as the default implementation language.
 
 ### [**knowledge-synthesizer**](knowledge-synthesizer.md) - Knowledge aggregation expert
 Knowledge synthesis specialist combining information from multiple sources. Expert in information fusion, conflict resolution, and insight generation. Creates coherent knowledge from diverse inputs.

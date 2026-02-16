@@ -276,7 +276,7 @@ Troubleshooting techniques:
 
 Integration with other agents:
 - Collaborate with backend-developer on code optimization
-- Support database-administrator on query tuning
+- Support database-admin on query tuning
 - Work with devops-engineer on infrastructure
 - Guide architect-reviewer on performance architecture
 - Help qa-expert on performance testing

@@ -26,7 +26,7 @@ Multi-cloud expert designing scalable, cost-effective cloud solutions. Masters c
 
 **Use when:** Designing cloud architectures, migrating to cloud, optimizing cloud costs, implementing multi-cloud strategies, or choosing cloud services.
 
-### [**database-administrator**](database-administrator.md) - Database management expert
+### [**database-admin**](database-admin.md) - Database management expert
 Database specialist managing relational and NoSQL databases at scale. Expert in performance tuning, replication, backup strategies, and high availability. Ensures data integrity and optimal database performance.
 
 **Use when:** Setting up databases, optimizing query performance, implementing backup strategies, designing database schemas, or troubleshooting database issues.
@@ -41,17 +41,12 @@ DevOps practitioner bridging development and operations. Expert in CI/CD pipelin
 
 **Use when:** Building CI/CD pipelines, automating workflows, implementing DevOps practices, setting up development environments, or improving deployment velocity.
 
-### [**devops-incident-responder**](devops-incident-responder.md) - DevOps incident management
-Incident response specialist for DevOps environments. Masters troubleshooting, root cause analysis, and incident management. Minimizes downtime and prevents future incidents through systematic approaches.
+### [**incident-responder**](incident-responder.md) - Incident response expert
+Critical incident specialist handling security breaches, system outages, and production emergencies. Expert in rapid diagnosis, DevOps troubleshooting, root cause analysis, recovery procedures, runbook development, and post-mortem analysis. Restores service quickly while building resilient systems and a learning culture.
 
-**Use when:** Responding to production incidents, setting up incident management processes, performing root cause analysis, or implementing incident prevention measures.
+**Use when:** Responding to production incidents, managing critical outages, performing root cause analysis, conducting post-mortems, developing runbooks, implementing auto-remediation, or training incident response teams.
 
-### [**incident-responder**](incident-responder.md) - System incident response expert
-Critical incident specialist handling system outages and emergencies. Expert in rapid diagnosis, recovery procedures, and post-mortem analysis. Restores service quickly while learning from failures.
-
-**Use when:** Managing critical incidents, developing incident response plans, conducting post-mortems, or training incident response teams.
-
-### [**kubernetes-specialist**](kubernetes-specialist.md) - Container orchestration master
+### [**kubernetes-engineer**](kubernetes-engineer.md) - Container orchestration master
 Kubernetes expert managing containerized applications at scale. Masters cluster design, workload optimization, and Kubernetes ecosystem tools. Ensures reliable container orchestration in production.
 
 **Use when:** Deploying to Kubernetes, designing cluster architecture, optimizing workloads, implementing service mesh, or troubleshooting Kubernetes issues.
@@ -91,12 +86,11 @@ Deep expertise in automating AD, DNS, DHCP, GPO, server configuration, and domai
 | If you need to... | Use this subagent |
 |-------------------|-------------------|
 | Design cloud architecture | **cloud-architect** |
-| Manage databases | **database-administrator** |
+| Manage databases | **database-admin** |
 | Automate deployments | **deployment-engineer** |
 | Build CI/CD pipelines | **devops-engineer** |
-| Handle DevOps incidents | **devops-incident-responder** |
-| Manage critical outages | **incident-responder** |
-| Deploy with Kubernetes | **kubernetes-specialist** |
+| Handle production incidents | **incident-responder** |
+| Deploy with Kubernetes | **kubernetes-engineer** |
 | Design networks | **network-engineer** |
 | Build developer platforms | **platform-engineer** |
 | Secure infrastructure | **security-engineer** |
@@ -107,7 +101,7 @@ Deep expertise in automating AD, DNS, DHCP, GPO, server configuration, and domai
 
 **Cloud-Native Application:**
 - **cloud-architect** for architecture design
-- **kubernetes-specialist** for container orchestration
+- **kubernetes-engineer** for container orchestration
 - **devops-engineer** for CI/CD pipeline
 - **sre-engineer** for reliability
 
@@ -115,7 +109,7 @@ Deep expertise in automating AD, DNS, DHCP, GPO, server configuration, and domai
 - **terraform-engineer** for IaC
 - **network-engineer** for networking
 - **security-engineer** for security
-- **database-administrator** for data layer
+- **database-admin** for data layer
 
 **Platform Engineering:**
 - **platform-engineer** for platform design
@@ -124,8 +118,7 @@ Deep expertise in automating AD, DNS, DHCP, GPO, server configuration, and domai
 - **cloud-architect** for infrastructure
 
 **Incident Management:**
-- **incident-responder** for critical incidents
-- **devops-incident-responder** for DevOps issues
+- **incident-responder** for critical incidents and DevOps issues
 - **sre-engineer** for prevention
 - **security-engineer** for security incidents
 

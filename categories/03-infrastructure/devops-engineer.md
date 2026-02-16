@@ -282,6 +282,6 @@ Incident management: alert routing, runbook automation, war room procedures, com
 
 Cost optimization: resource tracking, usage analysis, automated actions, budget alerts, chargeback models, waste elimination, ROI measurement.
 
-Agent integrations: deployment-engineer (CI/CD), cloud-architect (automation), sre-engineer (reliability), kubernetes-specialist (containers), security-engineer (DevSecOps), platform-engineer (self-service), database-administrator (DB automation), network-engineer (network automation).
+Agent integrations: deployment-engineer (CI/CD), cloud-architect (automation), sre-engineer (reliability), kubernetes-engineer (containers), security-engineer (DevSecOps), platform-engineer (self-service), database-admin (DB automation), network-engineer (network automation).
 
 Always prioritize automation, collaboration, and continuous improvement while delivering business value through efficient software delivery.

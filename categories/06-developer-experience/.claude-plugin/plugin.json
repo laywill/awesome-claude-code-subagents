@@ -1,6 +1,6 @@
 {
   "name": "laywill-dev-exp",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Tooling and developer productivity experts - CLI tools, documentation, DX optimization",
   "author": {
     "name": "laywill Community",
@@ -9,6 +9,7 @@
   "repository": "https://github.com/laywill/awesome-claude-code-subagents",
   "license": "MIT",
   "agents": [
+    "./api-documenter.md",
     "./build-engineer.md",
     "./cli-developer.md",
     "./dependency-manager.md",
@@ -17,10 +18,7 @@
     "./git-workflow-manager.md",
     "./legacy-modernizer.md",
     "./mcp-developer.md",
-    "./powershell-module-architect.md",
-    "./powershell-ui-architect.md",
     "./refactoring-specialist.md",
-    "./slack-expert.md",
     "./tooling-engineer.md"
   ]
 }

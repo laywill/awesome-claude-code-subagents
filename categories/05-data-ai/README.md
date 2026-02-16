@@ -36,25 +36,15 @@ Data science practitioner combining statistics, machine learning, and domain exp
 
 **Use when:** Building predictive models, conducting experiments, performing advanced analytics, developing ML algorithms, or solving complex data problems.
 
-### [**database-optimizer**](database-optimizer.md) - Database performance specialist
-Database performance expert ensuring queries run at lightning speed. Masters indexing strategies, query optimization, and database tuning. Makes databases perform at their peak.
-
-**Use when:** Optimizing slow queries, designing efficient schemas, implementing indexing strategies, tuning database performance, or scaling databases.
-
 ### [**llm-architect**](llm-architect.md) - Large language model architect
 LLM specialist designing and deploying large language model solutions. Expert in prompt engineering, fine-tuning, and LLM applications. Harnesses the power of modern language models.
 
 **Use when:** Implementing LLM solutions, designing prompt strategies, fine-tuning models, building chatbots, or creating AI-powered applications.
 
-### [**machine-learning-engineer**](machine-learning-engineer.md) - Machine learning systems expert
-ML engineering specialist building end-to-end machine learning systems. Masters the entire ML lifecycle from data to deployment. Ensures models work reliably in production.
+### [**ml-engineer**](ml-engineer.md) - Machine learning systems specialist
+ML engineering expert building end-to-end machine learning systems from training pipelines to production serving infrastructure. Masters the entire ML lifecycle including model optimization, deployment, monitoring, and automated retraining.
 
-**Use when:** Building ML pipelines, implementing ML systems, deploying models, creating ML infrastructure, or productionizing ML solutions.
-
-### [**ml-engineer**](ml-engineer.md) - Machine learning specialist
-Machine learning expert developing and optimizing ML models. Proficient in various algorithms, frameworks, and techniques. Solves complex problems with machine learning.
-
-**Use when:** Training ML models, selecting algorithms, optimizing model performance, implementing ML solutions, or experimenting with new techniques.
+**Use when:** Building ML pipelines, training models, deploying to production, optimizing inference performance, implementing model serving infrastructure, or productionizing ML solutions.
 
 ### [**mlops-engineer**](mlops-engineer.md) - MLOps and model deployment expert
 MLOps specialist ensuring smooth ML model deployment and operations. Masters CI/CD for ML, model monitoring, and versioning. Brings DevOps practices to machine learning.
@@ -65,11 +55,6 @@ MLOps specialist ensuring smooth ML model deployment and operations. Masters CI/
 NLP specialist building systems that understand and generate human language. Expert in text processing, language models, and linguistic analysis. Makes machines understand text.
 
 **Use when:** Building text processing systems, implementing chatbots, analyzing sentiment, extracting information from text, or developing language understanding features.
-
-### [**postgres-pro**](postgres-pro.md) - PostgreSQL database expert
-PostgreSQL specialist mastering advanced features and optimizations. Expert in complex queries, performance tuning, and PostgreSQL-specific capabilities. Unlocks PostgreSQL's full potential.
-
-**Use when:** Working with PostgreSQL, optimizing Postgres queries, implementing advanced features, designing PostgreSQL schemas, or troubleshooting Postgres issues.
 
 ### [**prompt-engineer**](prompt-engineer.md) - Prompt optimization specialist
 Prompt engineering expert crafting effective prompts for AI models. Masters prompt design, testing, and optimization. Maximizes AI model performance through strategic prompting.
@@ -84,13 +69,10 @@ Prompt engineering expert crafting effective prompts for AI models. Masters prom
 | Analyze business data | **data-analyst** |
 | Build data pipelines | **data-engineer** |
 | Create ML models | **data-scientist** |
-| Optimize databases | **database-optimizer** |
 | Work with LLMs | **llm-architect** |
-| Build ML systems | **machine-learning-engineer** |
-| Train ML models | **ml-engineer** |
+| Build or deploy ML systems | **ml-engineer** |
 | Deploy ML models | **mlops-engineer** |
 | Process text data | **nlp-engineer** |
-| Optimize PostgreSQL | **postgres-pro** |
 | Design AI prompts | **prompt-engineer** |
 
 ## Common Data & AI Patterns
@@ -109,12 +91,10 @@ Prompt engineering expert crafting effective prompts for AI models. Masters prom
 
 **Data Platform:**
 - **data-engineer** for infrastructure
-- **database-optimizer** for performance
-- **postgres-pro** for PostgreSQL
 - **data-analyst** for insights
 
 **Production ML:**
-- **machine-learning-engineer** for ML systems
+- **ml-engineer** for ML systems
 - **mlops-engineer** for operations
 - **ai-engineer** for deployment
 - **data-engineer** for data flow

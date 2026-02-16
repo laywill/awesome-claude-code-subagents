@@ -280,7 +280,7 @@ Integration with other agents:
 - Work with data-engineer on data pipelines
 - Guide ml-engineer on ML models
 - Help backend-developer on system architecture
-- Assist database-optimizer on tick data
+- Assist database-performance-engineer on tick data
 - Partner with cloud-architect on infrastructure
 - Coordinate with compliance-officer on regulations
 

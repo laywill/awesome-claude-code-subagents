@@ -70,7 +70,7 @@ Downloads agents directly from GitHub without cloning the repository. Requires `
 curl -s https://raw.githubusercontent.com/laywill/awesome-claude-code-subagents/main/categories/09-meta-orchestration/agent-installer.md -o ~/.claude/agents/agent-installer.md
 ```
 
-Then in Claude Code: "Use the agent-installer to show me available categories" or "Find PHP agents and install php-pro globally".
+Then in Claude Code: "Use the agent-installer to show me available categories" or "Find PHP agents and install php-specialist globally".
 
 <br />
 
@@ -80,23 +80,23 @@ Then in Claude Code: "Use the agent-installer to show me available categories" o
 
 ## 📚 Categories
 
-### [01. Core Development](categories/01-core-development/)
+### [01. General Development](categories/01-general-development/)
 
 **Plugin:** `laywill-core-dev`
 
 Essential development subagents for everyday coding tasks.
 
-- [**api-designer**](categories/01-core-development/api-designer.md) - REST and GraphQL API architect
-- [**backend-developer**](categories/01-core-development/backend-developer.md) - Server-side expert for scalable APIs
-- [**electron-pro**](categories/01-core-development/electron-pro.md) - Desktop application expert
-- [**frontend-developer**](categories/01-core-development/frontend-developer.md) - UI/UX specialist for React, Vue, and Angular
-- [**fullstack-developer**](categories/01-core-development/fullstack-developer.md) - End-to-end feature development
-- [**graphql-architect**](categories/01-core-development/graphql-architect.md) - GraphQL schema and federation expert
-- [**microservices-architect**](categories/01-core-development/microservices-architect.md) - Distributed systems designer
-- [**mobile-developer**](categories/01-core-development/mobile-developer.md) - Cross-platform mobile specialist
-- [**ui-designer**](categories/01-core-development/ui-designer.md) - Visual design and interaction specialist
-- [**websocket-engineer**](categories/01-core-development/websocket-engineer.md) - Real-time communication specialist
-- [**wordpress-master**](categories/08-business-product/wordpress-master.md) - WordPress development and optimization expert
+- [**api-designer**](categories/00-architecture-design/api-designer.md) - REST and GraphQL API architect
+- [**backend-developer**](categories/01-general-development/backend-developer.md) - Server-side expert for scalable APIs
+- [**electron-specialist**](categories/02-language-specialists/electron-specialist.md) - Desktop application expert
+- [**frontend-developer**](categories/01-general-development/frontend-developer.md) - UI/UX specialist for React, Vue, and Angular
+- [**fullstack-developer**](categories/01-general-development/fullstack-developer.md) - End-to-end feature development
+- [**graphql-architect**](categories/00-architecture-design/graphql-architect.md) - GraphQL schema and federation expert
+- [**microservices-architect**](categories/01-general-development/microservices-architect.md) - Distributed systems designer
+- [**mobile-developer**](categories/01-general-development/mobile-developer.md) - Cross-platform mobile specialist
+- [**ui-designer**](categories/00-architecture-design/ui-designer.md) - Visual design and interaction specialist
+- [**websocket-engineer**](categories/01-general-development/websocket-engineer.md) - Real-time communication specialist
+- [**wordpress-specialist**](categories/02-language-specialists/wordpress-specialist.md) - WordPress development and optimization expert
 
 ### [02. Language Specialists](categories/02-language-specialists/)
 
@@ -104,32 +104,32 @@ Essential development subagents for everyday coding tasks.
 
 Language-specific experts with deep framework knowledge.
 
-- [**typescript-pro**](categories/02-language-specialists/typescript-pro.md) - TypeScript specialist
-- [**sql-pro**](categories/02-language-specialists/sql-pro.md) - Database query expert
-- [**swift-expert**](categories/02-language-specialists/swift-expert.md) - iOS and macOS specialist
-- [**vue-expert**](categories/02-language-specialists/vue-expert.md) - Vue 3 Composition API expert
-- [**angular-architect**](categories/02-language-specialists/angular-architect.md) - Angular 15+ enterprise patterns expert
-- [**cpp-pro**](categories/02-language-specialists/cpp-pro.md) - C++ performance expert
-- [**csharp-developer**](categories/02-language-specialists/csharp-developer.md) - .NET ecosystem specialist
-- [**django-developer**](categories/02-language-specialists/django-developer.md) - Django 4+ web development expert
-- [**dotnet-core-expert**](categories/02-language-specialists/dotnet-core-expert.md) - .NET 8 cross-platform specialist
-- [**dotnet-framework-4.8-expert**](categories/02-language-specialists/dotnet-framework-4.8-expert.md) - .NET Framework legacy enterprise specialist
-- [**elixir-expert**](categories/02-language-specialists/elixir-expert.md) - Elixir and OTP fault-tolerant systems expert
-- [**flutter-expert**](categories/02-language-specialists/flutter-expert.md) - Flutter 3+ cross-platform mobile expert
-- [**golang-pro**](categories/02-language-specialists/golang-pro.md) - Go concurrency specialist
-- [**java-architect**](categories/02-language-specialists/java-architect.md) - Enterprise Java expert
-- [**javascript-pro**](categories/02-language-specialists/javascript-pro.md) - JavaScript development expert
-- [**powershell-5.1-expert**](categories/02-language-specialists/powershell-5.1-expert.md) - Windows PowerShell 5.1 and full .NET Framework automation specialist
-- [**powershell-7-expert**](categories/02-language-specialists/powershell-7-expert.md) - Cross-platform PowerShell 7+ automation and modern .NET specialist
+- [**typescript-specialist**](categories/02-language-specialists/typescript-specialist.md) - TypeScript specialist
+- [**sql-specialist**](categories/02-language-specialists/sql-specialist.md) - Database query expert
+- [**swift-specialist**](categories/02-language-specialists/swift-specialist.md) - iOS and macOS specialist
+- [**vue-specialist**](categories/02-language-specialists/vue-specialist.md) - Vue 3 Composition API expert
+- [**angular-specialist**](categories/02-language-specialists/angular-specialist.md) - Angular 15+ enterprise patterns expert
+- [**cpp-specialist**](categories/02-language-specialists/cpp-specialist.md) - C++ performance expert
+- [**csharp-specialist**](categories/02-language-specialists/csharp-specialist.md) - .NET ecosystem specialist
+- [**django-specialist**](categories/02-language-specialists/django-specialist.md) - Django 4+ web development expert
+- [**dotnet-core-specialist**](categories/02-language-specialists/dotnet-core-specialist.md) - .NET 8 cross-platform specialist
+- [**dotnet-framework-specialist**](categories/02-language-specialists/dotnet-framework-specialist.md) - .NET Framework legacy enterprise specialist
+- [**elixir-specialist**](categories/02-language-specialists/elixir-specialist.md) - Elixir and OTP fault-tolerant systems expert
+- [**flutter-specialist**](categories/02-language-specialists/flutter-specialist.md) - Flutter 3+ cross-platform mobile expert
+- [**golang-specialist**](categories/02-language-specialists/golang-specialist.md) - Go concurrency specialist
+- [**java-specialist**](categories/02-language-specialists/java-specialist.md) - Enterprise Java expert
+- [**javascript-specialist**](categories/02-language-specialists/javascript-specialist.md) - JavaScript development expert
+- [**powershell-5.1-specialist**](categories/02-language-specialists/powershell-5.1-specialist.md) - Windows PowerShell 5.1 and full .NET Framework automation specialist
+- [**powershell-7-specialist**](categories/02-language-specialists/powershell-7-specialist.md) - Cross-platform PowerShell 7+ automation and modern .NET specialist
 - [**kotlin-specialist**](categories/02-language-specialists/kotlin-specialist.md) - Modern JVM language expert
 - [**laravel-specialist**](categories/02-language-specialists/laravel-specialist.md) - Laravel 10+ PHP framework expert
-- [**nextjs-developer**](categories/02-language-specialists/nextjs-developer.md) - Next.js 14+ full-stack specialist
-- [**php-pro**](categories/02-language-specialists/php-pro.md) - PHP web development expert
-- [**python-pro**](categories/02-language-specialists/python-pro.md) - Python ecosystem master
-- [**rails-expert**](categories/02-language-specialists/rails-expert.md) - Rails 8.1 rapid development expert
+- [**nextjs-specialist**](categories/02-language-specialists/nextjs-specialist.md) - Next.js 14+ full-stack specialist
+- [**php-specialist**](categories/02-language-specialists/php-specialist.md) - PHP web development expert
+- [**python-specialist**](categories/02-language-specialists/python-specialist.md) - Python ecosystem master
+- [**rails-specialist**](categories/02-language-specialists/rails-specialist.md) - Rails 8.1 rapid development expert
 - [**react-specialist**](categories/02-language-specialists/react-specialist.md) - React 18+ modern patterns expert
-- [**rust-engineer**](categories/02-language-specialists/rust-engineer.md) - Systems programming expert
-- [**spring-boot-engineer**](categories/02-language-specialists/spring-boot-engineer.md) - Spring Boot 3+ microservices expert
+- [**rust-specialist**](categories/02-language-specialists/rust-specialist.md) - Systems programming expert
+- [**spring-boot-specialist**](categories/02-language-specialists/spring-boot-specialist.md) - Spring Boot 3+ microservices expert
 
 ### [03. Infrastructure](categories/03-infrastructure/)
 
@@ -139,12 +139,12 @@ DevOps, cloud, and deployment specialists.
 
 - [**azure-infra-engineer**](categories/03-infrastructure/azure-infra-engineer.md) - Azure infrastructure and Az PowerShell automation expert
 - [**cloud-architect**](categories/03-infrastructure/cloud-architect.md) - AWS/GCP/Azure specialist
-- [**database-administrator**](categories/03-infrastructure/database-administrator.md) - Database management expert
+- [**database-admin**](categories/03-infrastructure/database-admin.md) - Database management expert
 - [**deployment-engineer**](categories/03-infrastructure/deployment-engineer.md) - Deployment automation specialist
 - [**devops-engineer**](categories/03-infrastructure/devops-engineer.md) - CI/CD and automation expert
-- [**devops-incident-responder**](categories/03-infrastructure/devops-incident-responder.md) - DevOps incident management
+- [**incident-responder**](categories/03-infrastructure/incident-responder.md) - DevOps incident management
 - [**incident-responder**](categories/03-infrastructure/incident-responder.md) - System incident response expert
-- [**kubernetes-specialist**](categories/03-infrastructure/kubernetes-specialist.md) - Container orchestration master
+- [**kubernetes-engineer**](categories/03-infrastructure/kubernetes-engineer.md) - Container orchestration master
 - [**network-engineer**](categories/03-infrastructure/network-engineer.md) - Network infrastructure specialist
 - [**platform-engineer**](categories/03-infrastructure/platform-engineer.md) - Platform architecture expert
 - [**security-engineer**](categories/03-infrastructure/security-engineer.md) - Infrastructure security specialist
@@ -160,15 +160,15 @@ Testing, security, and code quality experts.
 
 - [**accessibility-tester**](categories/04-quality-security/accessibility-tester.md) - A11y compliance expert
 - [**ad-security-reviewer**](categories/04-quality-security/ad-security-reviewer.md) - Active Directory security and GPO audit specialist
-- [**architect-reviewer**](categories/04-quality-security/architect-reviewer.md) - Architecture review specialist
+- [**architect-reviewer**](categories/00-architecture-design/architect-reviewer.md) - Architecture review specialist
 - [**chaos-engineer**](categories/04-quality-security/chaos-engineer.md) - System resilience testing expert
 - [**code-reviewer**](categories/04-quality-security/code-reviewer.md) - Code quality guardian
 - [**compliance-auditor**](categories/04-quality-security/compliance-auditor.md) - Regulatory compliance expert
 - [**debugger**](categories/04-quality-security/debugger.md) - Advanced debugging specialist
-- [**error-detective**](categories/04-quality-security/error-detective.md) - Error analysis and resolution expert
+- [**error-diagnostics-engineer**](categories/04-quality-security/error-diagnostics-engineer.md) - Error analysis and resolution expert
 - [**penetration-tester**](categories/04-quality-security/penetration-tester.md) - Ethical hacking specialist
 - [**performance-engineer**](categories/04-quality-security/performance-engineer.md) - Performance optimization expert
-- [**powershell-security-hardening**](categories/04-quality-security/powershell-security-hardening.md) - PowerShell security hardening and compliance specialist
+- [**powershell-security-reviewer**](categories/04-quality-security/powershell-security-reviewer.md) - PowerShell security hardening and compliance specialist
 - [**qa-expert**](categories/04-quality-security/qa-expert.md) - Test automation specialist
 - [**security-auditor**](categories/04-quality-security/security-auditor.md) - Security vulnerability expert
 - [**test-automator**](categories/04-quality-security/test-automator.md) - Test automation framework expert
@@ -183,13 +183,13 @@ Data engineering, ML, and AI specialists.
 - [**data-analyst**](categories/05-data-ai/data-analyst.md) - Data insights and visualization specialist
 - [**data-engineer**](categories/05-data-ai/data-engineer.md) - Data pipeline architect
 - [**data-scientist**](categories/05-data-ai/data-scientist.md) - Analytics and insights expert
-- [**database-optimizer**](categories/05-data-ai/database-optimizer.md) - Database performance specialist
+- [**database-performance-engineer**](categories/03-infrastructure/database-performance-engineer.md) - Database performance specialist
 - [**llm-architect**](categories/05-data-ai/llm-architect.md) - Large language model architect
-- [**machine-learning-engineer**](categories/05-data-ai/machine-learning-engineer.md) - Machine learning systems expert
+- [**ml-engineer**](categories/05-data-ai/ml-engineer.md) - Machine learning systems expert
 - [**ml-engineer**](categories/05-data-ai/ml-engineer.md) - Machine learning specialist
 - [**mlops-engineer**](categories/05-data-ai/mlops-engineer.md) - MLOps and model deployment expert
 - [**nlp-engineer**](categories/05-data-ai/nlp-engineer.md) - Natural language processing expert
-- [**postgres-pro**](categories/05-data-ai/postgres-pro.md) - PostgreSQL database expert
+- [**postgresql-admin**](categories/03-infrastructure/postgresql-admin.md) - PostgreSQL database expert
 - [**prompt-engineer**](categories/05-data-ai/prompt-engineer.md) - Prompt optimization specialist
 
 ### [06. Developer Experience](categories/06-developer-experience/)
@@ -206,10 +206,10 @@ Tooling and developer productivity experts.
 - [**git-workflow-manager**](categories/06-developer-experience/git-workflow-manager.md) - Git workflow and branching expert
 - [**legacy-modernizer**](categories/06-developer-experience/legacy-modernizer.md) - Legacy code modernization specialist
 - [**mcp-developer**](categories/06-developer-experience/mcp-developer.md) - Model Context Protocol specialist
-- [**powershell-ui-architect**](categories/06-developer-experience/powershell-ui-architect.md) - PowerShell UI/UX specialist for WinForms, WPF, Metro frameworks, and TUIs
-- [**powershell-module-architect**](categories/06-developer-experience/powershell-module-architect.md) - PowerShell module and profile architecture specialist
+- [**powershell-ui-specialist**](categories/02-language-specialists/powershell-ui-specialist.md) - PowerShell UI/UX specialist for WinForms, WPF, Metro frameworks, and TUIs
+- [**powershell-module-specialist**](categories/02-language-specialists/powershell-module-specialist.md) - PowerShell module and profile architecture specialist
 - [**refactoring-specialist**](categories/06-developer-experience/refactoring-specialist.md) - Code refactoring expert
-- [**slack-expert**](categories/06-developer-experience/slack-expert.md) - Slack platform and @slack/bolt specialist
+- [**slack-specialist**](categories/07-specialized-domains/slack-specialist.md) - Slack platform and @slack/bolt specialist
 - [**tooling-engineer**](categories/06-developer-experience/tooling-engineer.md) - Developer tooling specialist
 
 ### [07. Specialized Domains](categories/07-specialized-domains/)
@@ -218,18 +218,18 @@ Tooling and developer productivity experts.
 
 Domain-specific technology experts.
 
-- [**api-documenter**](categories/07-specialized-domains/api-documenter.md) - API documentation specialist
+- [**api-documenter**](categories/06-developer-experience/api-documenter.md) - API documentation specialist
 - [**blockchain-developer**](categories/07-specialized-domains/blockchain-developer.md) - Web3 and crypto specialist
-- [**embedded-systems**](categories/07-specialized-domains/embedded-systems.md) - Embedded and real-time systems expert
+- [**embedded-systems-engineer**](categories/07-specialized-domains/embedded-systems-engineer.md) - Embedded and real-time systems expert
 - [**fintech-engineer**](categories/07-specialized-domains/fintech-engineer.md) - Financial technology specialist
 - [**game-developer**](categories/07-specialized-domains/game-developer.md) - Game development expert
 - [**iot-engineer**](categories/07-specialized-domains/iot-engineer.md) - IoT systems developer
-- [**m365-admin**](categories/07-specialized-domains/m365-admin.md) - Microsoft 365, Exchange Online, Teams, and SharePoint administration specialist
-- [**mobile-app-developer**](categories/07-specialized-domains/mobile-app-developer.md) - Mobile application specialist
+- [**m365-admin**](categories/03-infrastructure/m365-admin.md) - Microsoft 365, Exchange Online, Teams, and SharePoint administration specialist
+- [**mobile-developer**](categories/07-specialized-domains/mobile-developer.md) - Mobile application specialist
 - [**payment-integration**](categories/07-specialized-domains/payment-integration.md) - Payment systems expert
 - [**quant-analyst**](categories/07-specialized-domains/quant-analyst.md) - Quantitative analysis specialist
 - [**risk-manager**](categories/07-specialized-domains/risk-manager.md) - Risk assessment and management expert
-- [**seo-specialist**](categories/07-specialized-domains/seo-specialist.md) - Search engine optimization expert
+- [**seo-specialist**](categories/08-business-product/seo-specialist.md) - Search engine optimization expert
 
 ### [08. Business & Product](categories/08-business-product/)
 
@@ -368,7 +368,7 @@ Each subagent includes a `model` field that automatically routes it to the right
 | Model    | When It's Used                                                          | Examples                                                     |
 | -------- | ----------------------------------------------------------------------- | ------------------------------------------------------------ |
 | `opus`   | Deep reasoning — architecture reviews, security audits, financial logic | `security-auditor`, `architect-reviewer`, `fintech-engineer` |
-| `sonnet` | Everyday coding — writing, debugging, refactoring                       | `python-pro`, `backend-developer`, `devops-engineer`         |
+| `sonnet` | Everyday coding — writing, debugging, refactoring                       | `python-specialist`, `backend-developer`, `devops-engineer`         |
 | `haiku`  | Quick tasks — docs, search, dependency checks                           | `documentation-engineer`, `seo-specialist`, `build-engineer` |
 
 You can override any agent's model by editing the `model` field in its frontmatter. Set `model: inherit` to use whatever model your main conversation is using.

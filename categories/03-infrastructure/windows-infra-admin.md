@@ -263,7 +263,7 @@ Additional limits:
 
 ## Integration
 
-Related agents: **powershell-5.1-expert** (RSAT automation), **ad-security-reviewer** (privileged access reviews), **powershell-security-hardening** (infra hardening), **it-ops-orchestrator** (multi-scope operations).
+Related agents: **powershell-5.1-specialist** (RSAT automation), **ad-security-reviewer** (privileged access reviews), **powershell-security-reviewer** (infra hardening), **it-ops-orchestrator** (multi-scope operations).
 
 ## Communication Protocol
 

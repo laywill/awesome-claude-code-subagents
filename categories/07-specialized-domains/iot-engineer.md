@@ -275,7 +275,7 @@ Scalability patterns:
 - Multi-region deployment
 
 Integration with other agents:
-- Collaborate with embedded-systems on firmware
+- Collaborate with embedded-systems-engineer on firmware
 - Support cloud-architect on infrastructure
 - Work with data-engineer on pipelines
 - Guide security-auditor on IoT security

@@ -26,11 +26,6 @@ Active Directory security specialist reviewing directory configuration, admin mo
 
 **Use when:** Reviewing AD security posture, assessing privileged groups and delegation, tightening GPOs and auth settings, or planning hardening work to reduce lateral movement and domain compromise risk.
 
-### [**architect-reviewer**](architect-reviewer.md) - Architecture review specialist
-Architecture expert evaluating system designs for scalability, maintainability, and best practices. Identifies architectural risks and suggests improvements. Ensures long-term system health.
-
-**Use when:** Reviewing architecture designs, evaluating technical decisions, identifying architectural debt, planning refactoring, or validating system design.
-
 ### [**chaos-engineer**](chaos-engineer.md) - System resilience testing expert
 Resilience specialist using chaos engineering to uncover weaknesses. Masters failure injection, game days, and chaos experiments. Builds confidence in system reliability through controlled chaos.
 
@@ -51,7 +46,7 @@ Debugging expert solving the most complex issues. Masters debugging tools, techn
 
 **Use when:** Debugging complex issues, analyzing memory leaks, investigating race conditions, profiling applications, or solving intermittent bugs.
 
-### [**error-detective**](error-detective.md) - Error analysis and resolution expert
+### [**error-diagnostics-engineer**](error-diagnostics-engineer.md) - Error analysis and resolution expert
 Error investigation specialist tracking down elusive bugs. Expert in log analysis, error patterns, and systematic debugging. Turns cryptic errors into actionable solutions.
 
 **Use when:** Investigating production errors, analyzing error patterns, setting up error tracking, improving error handling, or debugging distributed systems.
@@ -66,7 +61,7 @@ Performance specialist making applications blazing fast. Masters profiling, opti
 
 **Use when:** Optimizing application performance, conducting load testing, analyzing bottlenecks, improving response times, or reducing resource consumption.
 
-### [**powershell-security-hardening**](powershell-security-hardening.md) - PowerShell-driven security baseline specialist
+### [**powershell-security-reviewer**](powershell-security-reviewer.md) - PowerShell-driven security baseline specialist
 Security-focused PowerShell expert hardening Windows servers, workstations, and automation tooling. Specializes in secure remoting, constrained endpoints, credential hygiene, logging, and aligning scripts with security baselines.
 
 **Use when:** Hardening Windows hosts, securing PowerShell remoting, locking down scripts and scheduled tasks, or aligning infrastructure automation with security baselines and compliance requirements.
@@ -91,12 +86,11 @@ Automation specialist building robust test frameworks. Expert in various testing
 | If you need to... | Use this subagent |
 |-------------------|-------------------|
 | Make apps accessible | **accessibility-tester** |
-| Review architecture | **architect-reviewer** |
 | Test system resilience | **chaos-engineer** |
 | Review code quality | **code-reviewer** |
 | Achieve compliance | **compliance-auditor** |
 | Debug complex issues | **debugger** |
-| Investigate errors | **error-detective** |
+| Investigate errors | **error-diagnostics-engineer** |
 | Test security | **penetration-tester** |
 | Optimize performance | **performance-engineer** |
 | Automate testing | **qa-expert** |
@@ -120,12 +114,11 @@ Automation specialist building robust test frameworks. Expert in various testing
 **Performance Optimization:**
 - **performance-engineer** for profiling
 - **debugger** for bottleneck analysis
-- **error-detective** for issue investigation
+- **error-diagnostics-engineer** for issue investigation
 - **chaos-engineer** for stress testing
 
 **Code Quality:**
 - **code-reviewer** for code review
-- **architect-reviewer** for design review
 - **qa-expert** for quality processes
 - **test-automator** for test coverage
 

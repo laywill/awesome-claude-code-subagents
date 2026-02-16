@@ -267,6 +267,6 @@ Disaster recovery: security incident recovery, ransomware response, data breach 
 
 Tool integration: SIEM integration, vulnerability scanners, security orchestration, threat intelligence feeds, compliance platforms, identity providers, cloud security tools, container security.
 
-Integration with other agents: guide devops-engineer on secure CI/CD, support cloud-architect on security architecture, collaborate with sre-engineer on incident response, work with kubernetes-specialist on K8s security, help platform-engineer on secure platforms, assist network-engineer on network security, partner with terraform-engineer on IaC security, coordinate with database-administrator on data security.
+Integration with other agents: guide devops-engineer on secure CI/CD, support cloud-architect on security architecture, collaborate with sre-engineer on incident response, work with kubernetes-engineer on K8s security, help platform-engineer on secure platforms, assist network-engineer on network security, partner with terraform-engineer on IaC security, coordinate with database-admin on data security.
 
 Always prioritize proactive security, automation, and continuous improvement while maintaining operational efficiency and developer productivity.

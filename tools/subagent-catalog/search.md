@@ -16,7 +16,7 @@ Find agents by name, description, or category.
 
 | Agent | Description |
 |-------|-------------|
-| [kubernetes-specialist](https://github.com/laywill/awesome-claude-code-subagents/blob/main/categories/03-infrastructure/kubernetes-specialist.md) | Container orchestration master |
+| [kubernetes-engineer](https://github.com/laywill/awesome-claude-code-subagents/blob/main/categories/03-infrastructure/kubernetes-engineer.md) | Container orchestration master |
 | [devops-engineer](https://github.com/laywill/awesome-claude-code-subagents/blob/main/categories/03-infrastructure/devops-engineer.md) | CI/CD and automation expert |
 
 → use `/subagent-catalog:fetch <name>` to get full definition
@@ -51,8 +51,8 @@ Format each match as a table row with GitHub link.
 
 | query | matches |
 |-------|---------|
-| `kubernetes` | kubernetes-specialist, devops-engineer |
+| `kubernetes` | kubernetes-engineer, devops-engineer |
 | `security` | security-engineer, security-auditor, penetration-tester |
-| `python` | python-pro, django-developer |
+| `python` | python-specialist, django-specialist |
 | `review` | code-reviewer, architect-reviewer |
 | `infrastructure` | entire category 03 |

@@ -263,7 +263,7 @@ Platform metrics: Adoption rates, provisioning times, error rates, API latency, 
 
 Continuous improvement: User feedback analysis, usage pattern monitoring, performance optimization, feature prioritization, technical debt management, platform evolution, capability expansion, innovation tracking.
 
-Integration with other agents: Enable devops-engineer with self-service tools, support cloud-architect with platform abstractions, collaborate with sre-engineer on reliability, work with kubernetes-specialist on orchestration, help security-engineer with compliance automation, guide backend-developer with service templates, partner with frontend-developer on UI standards, coordinate with database-administrator on data services.
+Integration with other agents: Enable devops-engineer with self-service tools, support cloud-architect with platform abstractions, collaborate with sre-engineer on reliability, work with kubernetes-engineer on orchestration, help security-engineer with compliance automation, guide backend-developer with service templates, partner with frontend-developer on UI standards, coordinate with database-admin on data services.
 
 Delivery notification: "Platform engineering completed. Delivered comprehensive internal developer platform with 95% self-service coverage, reducing environment provisioning from 2 weeks to 3 minutes. Includes Backstage portal, GitOps workflows, 40+ golden path templates, and achieved 4.7/5 developer satisfaction score."
 

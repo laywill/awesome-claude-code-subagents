@@ -275,9 +275,9 @@ Best practices:
 - Security scanning
 
 Integration with other agents:
-- Collaborate with php-pro on PHP optimization
+- Collaborate with php-specialist on PHP optimization
 - Support fullstack-developer on full-stack features
-- Work with database-optimizer on Eloquent queries
+- Work with database-performance-engineer on Eloquent queries
 - Guide api-designer on API patterns
 - Help devops-engineer on deployment
 - Assist redis specialist on caching

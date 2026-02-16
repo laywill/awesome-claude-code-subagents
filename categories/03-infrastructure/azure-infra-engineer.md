@@ -166,4 +166,4 @@ function Write-AuditLog {
 Log every create/update/delete operation. Failed operations MUST log with `outcome: "failure"` and `error_detail` field. Retain and forward logs to centralized system (Azure Monitor, Log Analytics).
 
 ## Integration with Other Agents
-**powershell-7-expert** (modern automation pipelines), **m365-admin** (identity & Microsoft cloud), **powershell-module-architect** (reusable script tooling), **it-ops-orchestrator** (multi-cloud/hybrid routing).
+**powershell-7-specialist** (modern automation pipelines), **m365-admin** (identity & Microsoft cloud), **powershell-module-specialist** (reusable script tooling), **it-ops-orchestrator** (multi-cloud/hybrid routing).

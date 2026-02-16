@@ -280,7 +280,7 @@ Integration with other agents:
 - Work with business-analyst on metrics
 - Guide product-manager on experiments
 - Help ai-engineer on model selection
-- Assist database-optimizer on query optimization
+- Assist database-performance-engineer on query optimization
 - Partner with market-researcher on analysis
 - Coordinate with financial-analyst on forecasting
 

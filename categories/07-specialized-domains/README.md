@@ -16,17 +16,12 @@ Use these subagents when you need to:
 
 ## Available Subagents
 
-### [**api-documenter**](api-documenter.md) - API documentation specialist
-API documentation expert creating developer-friendly API docs. Masters OpenAPI/Swagger, interactive documentation, and API best practices. Makes APIs discoverable and easy to integrate.
-
-**Use when:** Documenting REST APIs, creating API specifications, building developer portals, generating client SDKs, or improving API discoverability.
-
 ### [**blockchain-developer**](blockchain-developer.md) - Web3 and crypto specialist
 Blockchain expert building decentralized applications and smart contracts. Masters Ethereum, Solidity, and Web3 technologies. Creates secure, efficient blockchain solutions.
 
 **Use when:** Building dApps, writing smart contracts, implementing DeFi protocols, creating NFT platforms, or integrating blockchain features.
 
-### [**embedded-systems**](embedded-systems.md) - Embedded and real-time systems expert
+### [**embedded-systems-engineer**](embedded-systems-engineer.md) - Embedded and real-time systems expert
 Embedded systems specialist working with constrained environments. Expert in microcontrollers, RTOS, and hardware interfaces. Builds efficient software for resource-limited devices.
 
 **Use when:** Programming microcontrollers, developing firmware, implementing real-time systems, optimizing for memory/power, or interfacing with hardware.
@@ -46,11 +41,6 @@ IoT expert connecting physical devices to the cloud. Masters device protocols, e
 
 **Use when:** Building IoT applications, implementing device communication, managing IoT fleets, processing sensor data, or designing IoT architectures.
 
-### [**mobile-app-developer**](mobile-app-developer.md) - Mobile application specialist
-Mobile expert creating native and cross-platform applications. Masters iOS/Android development, mobile UI/UX, and app store deployment. Builds apps users love on their devices.
-
-**Use when:** Creating mobile apps, implementing native features, optimizing mobile performance, handling offline functionality, or deploying to app stores.
-
 ### [**payment-integration**](payment-integration.md) - Payment systems expert
 Payment specialist integrating various payment providers and methods. Expert in PCI compliance, payment security, and transaction handling. Makes payments seamless and secure.
 
@@ -66,26 +56,18 @@ Risk management specialist identifying and mitigating various risks. Expert in r
 
 **Use when:** Assessing technical risks, implementing risk controls, building risk models, ensuring compliance, or developing risk management systems.
 
-### [**seo-specialist**](seo-specialist.md) - Search engine optimization expert
-SEO expert driving organic traffic through search optimization. Masters technical SEO, content strategy, and link building. Improves search rankings and visibility through data-driven strategies.
-
-**Use when:** Optimizing for search engines, implementing structured data, improving site speed, building content strategies, or analyzing search performance.
-
 ## Quick Selection Guide
 
 | Domain | Use this subagent | Best For |
 |--------|-------------------|----------|
-| API Documentation | **api-documenter** | OpenAPI specs, developer portals |
 | Blockchain/Web3 | **blockchain-developer** | Smart contracts, DeFi, NFTs |
-| Embedded/IoT | **embedded-systems** | Firmware, microcontrollers |
+| Embedded/IoT | **embedded-systems-engineer** | Firmware, microcontrollers |
 | Financial Tech | **fintech-engineer** | Banking, payments, compliance |
 | Gaming | **game-developer** | Game engines, multiplayer |
 | IoT/Connected | **iot-engineer** | Device clouds, sensors |
-| Mobile Apps | **mobile-app-developer** | iOS/Android apps |
 | Payments | **payment-integration** | Payment gateways, PCI |
 | Quantitative | **quant-analyst** | Trading algorithms, risk |
 | Risk Management | **risk-manager** | Risk assessment, compliance |
-| SEO/Search | **seo-specialist** | Search optimization, rankings |
 
 ## Common Domain Patterns
 
@@ -97,27 +79,18 @@ SEO expert driving organic traffic through search optimization. Masters technica
 
 **IoT Platform:**
 - **iot-engineer** for architecture
-- **embedded-systems** for devices
-- **mobile-app-developer** for apps
-- **api-documenter** for APIs
+- **embedded-systems-engineer** for devices
+- **mobile-developer** for apps
 
 **Blockchain Project:**
 - **blockchain-developer** for smart contracts
 - **fintech-engineer** for financial features
 - **risk-manager** for security
-- **api-documenter** for integration
 
 **Gaming Platform:**
 - **game-developer** for game logic
-- **mobile-app-developer** for mobile
+- **mobile-developer** for mobile
 - **payment-integration** for monetization
-- **api-documenter** for game APIs
-
-**E-commerce Platform:**
-- **seo-specialist** for organic traffic
-- **payment-integration** for checkout
-- **mobile-app-developer** for mobile commerce
-- **risk-manager** for fraud prevention
 
 ## Getting Started
 

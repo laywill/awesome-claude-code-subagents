@@ -276,7 +276,7 @@ Governance implementation:
 
 Integration with other agents:
 - Collaborate with data-scientist on feature engineering
-- Support database-optimizer on query performance
+- Support database-performance-engineer on query performance
 - Work with ai-engineer on ML pipelines
 - Guide backend-developer on data APIs
 - Help cloud-architect on infrastructure
