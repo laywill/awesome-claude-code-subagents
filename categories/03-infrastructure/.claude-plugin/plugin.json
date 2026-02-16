@@ -1,6 +1,6 @@
 {
   "name": "laywill-infra",
-  "version": "1.2.0",
+  "version": "2.0.0",
   "description": "DevOps, cloud, and deployment specialists - Kubernetes, Terraform, AWS, Azure, GCP, and SRE",
   "author": {
     "name": "laywill Community",

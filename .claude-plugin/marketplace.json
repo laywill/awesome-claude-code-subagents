@@ -1,7 +1,7 @@
 {
   "metadata": {
     "description": "Curated collection of specialized Claude Code subagents organized into focused categories",
-    "version": "1.1.0"
+    "version": "2.0.0"
   },
   "name": "laywill-subagents",
   "owner": {
@@ -9,6 +9,22 @@
     "url": "https://github.com/laywill"
   },
   "plugins": [
+    {
+      "category": "architecture",
+      "description": "Architecture and design specialists for API design, GraphQL, visual design, and architectural review",
+      "keywords": [
+        "api",
+        "architectural-review",
+        "cloud",
+        "graphql",
+        "llm",
+        "microservices",
+        "ui"
+      ],
+      "name": "laywill-api-design",
+      "source": "./categories/00-api-design",
+      "version": "2.0.0"
+    },
     {
       "category": "development",
       "description": "Essential development subagents for everyday coding tasks - backend, frontend, fullstack, mobile, and API design",
@@ -26,7 +42,7 @@
       ],
       "name": "laywill-core-dev",
       "source": "./categories/01-core-development",
-      "version": "1.1.0"
+      "version": "2.0.0"
     },
     {
       "category": "development",
@@ -59,7 +75,7 @@
       ],
       "name": "laywill-lang",
       "source": "./categories/02-language-specialists",
-      "version": "1.1.0"
+      "version": "2.0.0"
     },
     {
       "category": "infrastructure",
@@ -83,7 +99,7 @@
       ],
       "name": "laywill-infra",
       "source": "./categories/03-infrastructure",
-      "version": "1.1.0"
+      "version": "2.0.0"
     },
     {
       "category": "quality",
@@ -107,7 +123,7 @@
       ],
       "name": "laywill-qa-sec",
       "source": "./categories/04-quality-security",
-      "version": "1.1.0"
+      "version": "2.0.0"
     },
     {
       "category": "data",
@@ -127,7 +143,7 @@
       ],
       "name": "laywill-data-ai",
       "source": "./categories/05-data-ai",
-      "version": "1.1.0"
+      "version": "2.0.0"
     },
     {
       "category": "tooling",
@@ -150,7 +166,7 @@
       ],
       "name": "laywill-dev-exp",
       "source": "./categories/06-developer-experience",
-      "version": "1.1.0"
+      "version": "2.0.0"
     },
     {
       "category": "specialized",
@@ -172,7 +188,7 @@
       ],
       "name": "laywill-domains",
       "source": "./categories/07-specialized-domains",
-      "version": "1.1.0"
+      "version": "2.0.0"
     },
     {
       "category": "business",
@@ -192,7 +208,7 @@
       ],
       "name": "laywill-biz",
       "source": "./categories/08-business-product",
-      "version": "1.1.0"
+      "version": "2.0.0"
     },
     {
       "category": "orchestration",
@@ -214,7 +230,7 @@
       ],
       "name": "laywill-meta",
       "source": "./categories/09-meta-orchestration",
-      "version": "1.1.0"
+      "version": "2.0.0"
     },
     {
       "category": "research",
@@ -230,7 +246,7 @@
       ],
       "name": "laywill-research",
       "source": "./categories/10-research-analysis",
-      "version": "1.1.0"
+      "version": "2.0.0"
     }
   ]
 }

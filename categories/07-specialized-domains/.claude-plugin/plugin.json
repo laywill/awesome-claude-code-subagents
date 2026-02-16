@@ -1,6 +1,6 @@
 {
   "name": "laywill-domains",
-  "version": "1.2.0",
+  "version": "2.0.0",
   "description": "Domain-specific technology experts - blockchain, fintech, gaming, IoT, payments",
   "author": {
     "name": "laywill Community",
@@ -14,7 +14,7 @@
     "./fintech-engineer.md",
     "./game-developer.md",
     "./iot-engineer.md",
-    "./payment-integration.md",
+    "./payment-integration-specialist.md",
     "./quant-analyst.md",
     "./risk-manager.md",
     "./slack-specialist.md",

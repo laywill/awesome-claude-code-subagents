@@ -157,7 +157,7 @@ Many agents reference other agents by name in collaboration/integration sections
 **Mitigation:** Dedicated cross-reference update phase using grep.
 
 ### 7. Install Script URL Breakage
-`install-agents.sh` and `agent-installer.md` contain GitHub raw URLs with category paths. Category renames (01-core-development → 01-general-development) and agent renames will break these URLs.
+`install-agents.sh` and `agent-installer.md` contain GitHub raw URLs with category paths. Category renames (01-core-development → 01-core-development) and agent renames will break these URLs.
 
 ### 8. Pre-Existing Discrepancies
 - `wordpress-master` listed in cat 01 README but physically in cat 08
@@ -168,7 +168,7 @@ Many agents reference other agents by name in collaboration/integration sections
 
 ## Proposed New Category Structure
 
-### New category: `00-architecture-design` (slim — 4 agents)
+### New category: `00-api-design` (slim — 4 agents)
 Move from 01: `api-designer`, `ui-designer`, `graphql-architect`
 Move from 04: `architect-reviewer`
 
@@ -176,7 +176,7 @@ Move from 04: `architect-reviewer`
 - `microservices-architect` — stays in 01 (tightly coupled to implementation agents)
 - `cloud-architect` — stays in 03 (infra teams expect it; cloud-specific, not cross-cutting design)
 
-### Rename 01 → `01-general-development` (6 agents remaining)
+### Rename 01 → `01-core-development` (6 agents remaining)
 Keep: frontend-developer, backend-developer, fullstack-developer, mobile-developer, microservices-architect, websocket-engineer
 Move out: electron-pro → cat 02, api-designer/ui-designer/graphql-architect → cat 00
 
@@ -240,7 +240,7 @@ Move out: electron-pro → cat 02, api-designer/ui-designer/graphql-architect �
 ## Future Category Candidates
 
 These could warrant their own categories if the agent count grows:
-- **Fintech** — currently quant-analyst, risk-manager, fintech-engineer, payment-integration (4 agents in cat 07)
+- **Fintech** — currently quant-analyst, risk-manager, fintech-engineer, payment-integration-specialist (4 agents in cat 07)
 - **Gaming** — currently game-developer, unreal-specialist (2 agents in cat 07)
 - **Compliance/Governance** — currently compliance-auditor (cat 04), legal-advisor (cat 08)
 

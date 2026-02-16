@@ -4,7 +4,7 @@
 Reorganise the repository so every category provides a clear, cohesive set of capabilities. Standardise agent naming conventions. Eliminate duplicates. Update all references including cross-references and install scripts.
 
 ## Decisions Locked In
-1. **graphql-architect** → move to `00-architecture-design` (pure design agent)
+1. **graphql-architect** → move to `00-api-design` (pure design agent)
 2. **microservices-architect** → stays in `01-general-development` (tightly coupled to implementation agents)
 3. **cloud-architect** → stays in `03-infrastructure` (infra teams expect it)
 4. **wordpress-master** → `wordpress-specialist` in cat 02 (framework specialist, NOT architect)
@@ -18,7 +18,7 @@ Reorganise the repository so every category provides a clear, cohesive set of ca
 
 ---
 
-## Phase 1: Create `00-architecture-design`
+## Phase 1: Create `00-api-design`
 
 ### Agents (4):
 | Agent | Source | Action |
@@ -29,7 +29,7 @@ Reorganise the repository so every category provides a clear, cohesive set of ca
 | architect-reviewer | 04-quality-security | Move |
 
 ### Tasks:
-- [ ] 1.1 Create `categories/00-architecture-design/` directory
+- [ ] 1.1 Create `categories/00-api-design/` directory
 - [ ] 1.2 Move 4 agent files to new category
 - [ ] 1.3 Create category `README.md`
 - [ ] 1.4 Create `.claude-plugin/plugin.json`
@@ -289,7 +289,7 @@ Dedicated phase — grep for every old agent name across ALL `.md` files and upd
 
 | Metric | Count |
 |--------|-------|
-| New categories created | 1 (00-architecture-design) |
+| New categories created | 1 (00-api-design) |
 | Categories renamed | 1 (01-core-development → 01-general-development) |
 | Agents renamed | ~30 |
 | Agents moved between categories | ~12 |

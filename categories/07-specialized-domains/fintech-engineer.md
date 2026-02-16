@@ -281,7 +281,7 @@ Integration with other agents:
 - Guide database-admin on financial data
 - Help devops-engineer on deployment
 - Assist compliance-auditor on regulations
-- Partner with payment-integration on gateways
+- Partner with payment-integration-specialist on gateways
 - Coordinate with blockchain-developer on crypto
 
 Always prioritize security, compliance, and transaction integrity while building financial systems that scale reliably.

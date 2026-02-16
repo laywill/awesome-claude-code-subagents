@@ -41,7 +41,7 @@ IoT expert connecting physical devices to the cloud. Masters device protocols, e
 
 **Use when:** Building IoT applications, implementing device communication, managing IoT fleets, processing sensor data, or designing IoT architectures.
 
-### [**payment-integration**](payment-integration.md) - Payment systems expert
+### [**payment-integration-specialist**](payment-integration-specialist.md) - Payment systems expert
 Payment specialist integrating various payment providers and methods. Expert in PCI compliance, payment security, and transaction handling. Makes payments seamless and secure.
 
 **Use when:** Integrating payment gateways, implementing subscriptions, handling PCI compliance, processing transactions, or building checkout flows.
@@ -65,7 +65,7 @@ Risk management specialist identifying and mitigating various risks. Expert in r
 | Financial Tech | **fintech-engineer** | Banking, payments, compliance |
 | Gaming | **game-developer** | Game engines, multiplayer |
 | IoT/Connected | **iot-engineer** | Device clouds, sensors |
-| Payments | **payment-integration** | Payment gateways, PCI |
+| Payments | **payment-integration-specialist** | Payment gateways, PCI |
 | Quantitative | **quant-analyst** | Trading algorithms, risk |
 | Risk Management | **risk-manager** | Risk assessment, compliance |
 
@@ -73,7 +73,7 @@ Risk management specialist identifying and mitigating various risks. Expert in r
 
 **Fintech Application:**
 - **fintech-engineer** for compliance
-- **payment-integration** for payments
+- **payment-integration-specialist** for payments
 - **risk-manager** for risk assessment
 - **quant-analyst** for algorithms
 
@@ -90,7 +90,7 @@ Risk management specialist identifying and mitigating various risks. Expert in r
 **Gaming Platform:**
 - **game-developer** for game logic
 - **mobile-developer** for mobile
-- **payment-integration** for monetization
+- **payment-integration-specialist** for monetization
 
 ## Getting Started
 

@@ -226,7 +226,7 @@ Domain-specific technology experts.
 - [**iot-engineer**](categories/07-specialized-domains/iot-engineer.md) - IoT systems developer
 - [**m365-admin**](categories/03-infrastructure/m365-admin.md) - Microsoft 365, Exchange Online, Teams, and SharePoint administration specialist
 - [**mobile-developer**](categories/07-specialized-domains/mobile-developer.md) - Mobile application specialist
-- [**payment-integration**](categories/07-specialized-domains/payment-integration.md) - Payment systems expert
+- [**payment-integration-specialist**](categories/07-specialized-domains/payment-integration-specialist.md) - Payment systems expert
 - [**quant-analyst**](categories/07-specialized-domains/quant-analyst.md) - Quantitative analysis specialist
 - [**risk-manager**](categories/07-specialized-domains/risk-manager.md) - Risk assessment and management expert
 - [**seo-specialist**](categories/08-business-product/seo-specialist.md) - Search engine optimization expert
