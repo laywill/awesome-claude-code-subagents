@@ -64,8 +64,8 @@ For each new agent, create a .md file following the existing pattern (YAML front
 - [x] 3.18 Create 5 new agents for 23-production-ops-and-observability
 - [x] 3.19 Create 5 new agents for 24-production-data-ops (ALL new)
 
-### Phase 4: Create category READMEs
-- [ ] 4.1 Create README.md for each of the 25 categories, including:
+### Phase 4: Create category READMEs ✅
+- [x] 4.1 Create README.md for each of the 25 categories, including:
   - Category title and risk tier badge/icon
   - Description of what agents in this category do
   - "Available Subagents" section with description per agent
@@ -73,13 +73,13 @@ For each new agent, create a .md file following the existing pattern (YAML front
   - Common Combinations section
   - Getting Started section
 
-### Phase 5: Create plugin.json files
-- [ ] 5.1 Create `.claude-plugin/plugin.json` for each of the 25 categories with:
-  - name (laywill-{shortname})
-  - version: "3.0.0"
-  - description
-  - author, repository, license
-  - agents array listing all .md files in the category
+### Phase 5: Create plugin.json files ✅
+- [x] 5.1 Create `.claude-plugin/plugin.json` for each of the 25 categories with:
+  - name (laywill-{shortname}) ✓
+  - version: "3.0.0" ✓
+  - description ✓
+  - author, repository, license ✓
+  - agents array listing all .md files in the category (alphabetically sorted) ✓
 
 ### Phase 6: Update marketplace.json
 - [ ] 6.1 Rewrite `.claude-plugin/marketplace.json` with all 25 plugins, updated source paths, keywords, and categories
@@ -111,4 +111,4 @@ For each new agent, create a .md file following the existing pattern (YAML front
 - (none yet)
 
 ## Status
-**Phases 1, 2, and 3 complete.** Ready to start Phase 4 (create category READMEs).
+**Phases 1-5 complete.** All 25 plugin.json files created and verified. Ready to start Phase 6 (update marketplace.json).

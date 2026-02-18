@@ -1,0 +1,22 @@
+{
+  "name": "laywill-research-discovery",
+  "version": "3.0.0",
+  "description": "Research and discovery subagents explore new technologies, assess feasibility, analyze markets and trends, and conduct deep investigations. They help teams understand the landscape before committing to major decisions.",
+  "author": {
+    "name": "laywill Community",
+    "url": "https://github.com/laywill"
+  },
+  "repository": "https://github.com/laywill/awesome-claude-code-subagents",
+  "license": "MIT",
+  "agents": [
+    "./codebase-explorer.md",
+    "./competitive-analyst.md",
+    "./data-researcher.md",
+    "./feasibility-assessor.md",
+    "./market-researcher.md",
+    "./research-analyst.md",
+    "./search-specialist.md",
+    "./technology-researcher.md",
+    "./trend-analyst.md"
+  ]
+}

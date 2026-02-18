@@ -1,0 +1,18 @@
+{
+  "name": "laywill-production-data-ops",
+  "version": "3.0.0",
+  "description": "Production data ops subagents manage data migrations, anonymization, backup and restore, replication, and retention policies. They ensure data safety and compliance in production.",
+  "author": {
+    "name": "laywill Community",
+    "url": "https://github.com/laywill"
+  },
+  "repository": "https://github.com/laywill/awesome-claude-code-subagents",
+  "license": "MIT",
+  "agents": [
+    "./backup-restore-manager.md",
+    "./data-anonymizer.md",
+    "./data-migrator.md",
+    "./replication-configurator.md",
+    "./retention-policy-enforcer.md"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "name": "laywill-frontend-ui",
+  "version": "3.0.0",
+  "description": "Frontend and UI subagents build responsive components, manage themes, handle internationalization, and refactor styles. They ensure polished, accessible user interfaces.",
+  "author": {
+    "name": "laywill Community",
+    "url": "https://github.com/laywill"
+  },
+  "repository": "https://github.com/laywill/awesome-claude-code-subagents",
+  "license": "MIT",
+  "agents": [
+    "./i18n-extractor.md",
+    "./responsive-adapter.md",
+    "./style-refactorer.md",
+    "./theme-generator.md",
+    "./ui-component-builder.md"
+  ]
+}
