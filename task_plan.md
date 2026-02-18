@@ -92,8 +92,12 @@ For each new agent, create a .md file following the existing pattern (YAML front
   - Updated plugin names in installation section ✓
   - Complete agent listings with links ✓
 
-### Phase 8: Update CLAUDE.md
-- [ ] 8.1 Update the "Repository Structure" section in CLAUDE.md to reflect new 00-24 categories
+### Phase 8: Update CLAUDE.md ✅
+- [x] 8.1 Update the "Repository Structure" section in CLAUDE.md to reflect new 00-24 categories ✓
+  - Replaced old 01-10 structure with new 00-24 structure
+  - Added risk tier icons (⚪🟢🟡🟠🔴⛔) for each category
+  - Added detailed risk tier guide explaining tier levels
+  - All 25 categories now documented with their functions
 
 ### Phase 9: Cleanup
 - [ ] 9.1 Verify no orphaned files in old directories
@@ -111,13 +115,11 @@ For each new agent, create a .md file following the existing pattern (YAML front
 - (none yet)
 
 ## Status
-**Phase 7 complete.** Root README.md completely rewritten with:
-- Badge updated to 179+ subagents
-- Risk Tiers at a Glance section with 6 tiers (⚪🟢🟡🟠🔴⛔)
-- All 25 categories with proper risk tier icons and descriptions
-- Complete agent listings under each category with links
-- Updated plugin installation examples (laywill-language-specialists, laywill-infrastructure-code, etc.)
-- Language specialists section links to full list (34 specialists)
-- All 179+ agents discoverable from README
+**Phase 8 complete.** CLAUDE.md Repository Structure section updated:
+- Old 01-10 category structure replaced with new 00-24 structure
+- Risk tier icons added to each category (⚪🟢🟡🟠🔴⛔)
+- Detailed risk tier guide included explaining tiers 0-5
+- All 25 categories now documented with functions and risk levels
+- Developer guidance updated for new structure
 
-Total plugins: 25 | Total agents: 179+
+Next: Phase 9 - Cleanup verification

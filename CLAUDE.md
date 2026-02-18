@@ -8,19 +8,44 @@ This is a curated collection of Claude Code subagent definitions - specialized A
 
 ## Repository Structure
 
+The repository uses a 25-category risk-tiered structure organized as follows:
+
 ```
 categories/
-  01-general-development/     # Backend, frontend, fullstack, mobile, etc.
-  02-language-specialists/ # Language/framework experts (TypeScript, Python, etc.)
-  03-infrastructure/       # DevOps, cloud, Kubernetes, etc.
-  04-quality-security/     # Testing, security auditing, code review
-  05-data-ai/              # ML, data engineering, AI specialists
-  06-developer-experience/ # Tooling, documentation, DX optimization
-  07-specialized-domains/  # Blockchain, IoT, fintech, gaming
-  08-business-product/     # Product management, business analysis
-  09-meta-orchestration/   # Multi-agent coordination
-  10-research-analysis/    # Research and analysis specialists
+  00-meta-and-orchestration/              # ⚪ Meta | Agent coordination
+  01-research-and-discovery/              # 🟢 Tier 1 | Research & exploration
+  02-architecture-and-design/             # 🟢 Tier 1 | System design
+  03-analysis-and-review/                 # 🟢 Tier 1 | Code analysis & audit
+  04-documentation/                       # 🟢 Tier 1 | Docs & guides
+  05-planning-and-estimation/             # 🟢 Tier 1 | Project planning
+  06-business-and-product/                # 🟢 Tier 1 | Business strategy
+  07-language-and-framework-specialists/  # 🟡 Tier 2 | 34 language experts
+  08-general-development/                 # 🟡 Tier 2 | Core development roles
+  09-testing-and-qa/                      # 🟡 Tier 2 | Testing & QA
+  10-refactoring-and-modernization/       # 🟡 Tier 2 | Code improvement
+  11-bug-fixing-and-debugging/            # 🟡 Tier 2 | Debugging & diagnostics
+  12-frontend-and-ui/                     # 🟡 Tier 2 | Frontend specialization
+  13-developer-experience-and-tooling/    # 🟡 Tier 2 | DX & tools
+  14-data-and-database/                   # 🟠 Tier 3 | Data layer
+  15-data-science-and-ai/                 # 🟠 Tier 3 | ML & AI
+  16-dependency-and-package-management/   # 🟠 Tier 3 | Dependency management
+  17-build-and-ci-cd/                     # 🟠 Tier 3 | Build automation
+  18-api-and-service-integration/         # 🔴 Tier 4 | API integration
+  19-infrastructure-as-code/              # 🔴 Tier 4 | IaC & cloud
+  20-security-and-secrets/                # 🔴 Tier 4 | Security hardening
+  21-specialized-domains/                 # 🔴 Tier 4 | Niche domains
+  22-deployment-and-release/              # ⛔ Tier 5 | Production deployment
+  23-production-ops-and-observability/    # ⛔ Tier 5 | Production operations
+  24-production-data-ops/                 # ⛔ Tier 5 | Production data
 ```
+
+**Risk Tier Guide:**
+- **Tier 0 (⚪)**: Meta/orchestration - coordination only
+- **Tier 1 (🟢)**: Low risk - read-only, advisory, analysis
+- **Tier 2 (🟡)**: Medium risk - local code changes
+- **Tier 3 (🟠)**: Medium-high risk - data/dependencies/build
+- **Tier 4 (🔴)**: High risk - external systems, infrastructure
+- **Tier 5 (⛔)**: Critical risk - production changes, deployments
 
 ## Subagent File Format
 
