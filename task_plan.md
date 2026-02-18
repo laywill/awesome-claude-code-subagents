@@ -81,16 +81,16 @@ For each new agent, create a .md file following the existing pattern (YAML front
   - author, repository, license ✓
   - agents array listing all .md files in the category (alphabetically sorted) ✓
 
-### Phase 6: Update marketplace.json
-- [ ] 6.1 Rewrite `.claude-plugin/marketplace.json` with all 25 plugins, updated source paths, keywords, and categories
+### Phase 6: Update marketplace.json ✅
+- [x] 6.1 Rewrite `.claude-plugin/marketplace.json` with all 25 plugins, updated source paths, keywords, and categories
 
-### Phase 7: Update root README.md
-- [ ] 7.1 Rewrite `README.md` with:
-  - Updated subagent count badge (~179)
-  - Risk Tiers at a Glance table
-  - All 25 categories with agents listed under each
-  - Updated plugin names in installation section
-  - Updated CLAUDE.md category listing
+### Phase 7: Update root README.md ✅
+- [x] 7.1 Rewrite `README.md` with:
+  - Updated subagent count badge (179+) ✓
+  - Risk Tiers at a Glance table ✓
+  - All 25 categories with agents listed under each ✓
+  - Updated plugin names in installation section ✓
+  - Complete agent listings with links ✓
 
 ### Phase 8: Update CLAUDE.md
 - [ ] 8.1 Update the "Repository Structure" section in CLAUDE.md to reflect new 00-24 categories
@@ -111,4 +111,13 @@ For each new agent, create a .md file following the existing pattern (YAML front
 - (none yet)
 
 ## Status
-**Phases 1-5 complete.** All 25 plugin.json files created and verified. Ready to start Phase 6 (update marketplace.json).
+**Phase 7 complete.** Root README.md completely rewritten with:
+- Badge updated to 179+ subagents
+- Risk Tiers at a Glance section with 6 tiers (⚪🟢🟡🟠🔴⛔)
+- All 25 categories with proper risk tier icons and descriptions
+- Complete agent listings under each category with links
+- Updated plugin installation examples (laywill-language-specialists, laywill-infrastructure-code, etc.)
+- Language specialists section links to full list (34 specialists)
+- All 179+ agents discoverable from README
+
+Total plugins: 25 | Total agents: 179+
