@@ -19,7 +19,9 @@
       "Bash(sed:*)",
       "Bash(awk:*)",
       "Bash(grep:*)",
-      "Bash(sort:*)"
+      "Bash(sort:*)",
+      "Bash(dir:*)",
+      "Bash(test:*)"
     ],
     "deny": [],
     "ask": []
