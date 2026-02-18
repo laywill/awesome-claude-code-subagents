@@ -1,6 +1,6 @@
 {
   "name": "laywill-meta-orchestration",
-  "version": "3.0.0",
+  "version": "2.0.0",
   "description": "Meta and orchestration subagents coordinate and manage other subagents rather than performing work directly. They decompose complex tasks, distribute work to specialists, synthesize outputs, and handle errors across multi-agent workflows.",
   "author": {
     "name": "laywill Community",

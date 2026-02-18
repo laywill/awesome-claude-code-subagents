@@ -1,6 +1,6 @@
 {
   "name": "laywill-data-science-ai",
-  "version": "3.0.0",
+  "version": "2.0.0",
   "description": "Data science and AI subagents build machine learning models, analyze data, architect LLM solutions, and handle MLOps. They bring intelligent capabilities to applications.",
   "author": {
     "name": "laywill Community",

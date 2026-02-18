@@ -1,6 +1,6 @@
 {
   "name": "laywill-analysis-review",
-  "version": "3.0.0",
+  "version": "2.0.0",
   "description": "Analysis and review subagents audit code quality, security, performance, accessibility, and compliance. They identify risks and improvements before code reaches production.",
   "author": {
     "name": "laywill Community",

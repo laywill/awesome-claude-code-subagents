@@ -1,6 +1,6 @@
 {
   "name": "laywill-testing-qa",
-  "version": "3.0.0",
+  "version": "2.0.0",
   "description": "Testing and QA subagents create automated tests, chaos experiments, fixtures, and coverage reports. They ensure code quality through comprehensive testing strategies.",
   "author": {
     "name": "laywill Community",

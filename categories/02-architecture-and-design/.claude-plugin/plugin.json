@@ -1,6 +1,6 @@
 {
   "name": "laywill-architecture-design",
-  "version": "3.0.0",
+  "version": "2.0.0",
   "description": "Architecture and design subagents design systems, APIs, databases, and data flows. They create blueprints for scalable, maintainable solutions before implementation begins.",
   "author": {
     "name": "laywill Community",
