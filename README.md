@@ -78,7 +78,7 @@ Then in Claude Code: "Use the agent-installer to show me available categories" o
 ## 🔒 Risk Tiers at a Glance
 
 | Tier | Icon | Categories | Risk Level | Key Characteristics |
-|------|------|-----------|------------|-------------------|
+|------|------|------------|------------|---------------------|
 | 0 | ⚪ | 00 | Meta | Orchestration and coordination only |
 | 1 | 🟢 | 01–06 | Low (Read-Only/Advisory) | Analysis, research, planning, documentation |
 | 2 | 🟡 | 07–13 | Medium (Local Code) | Development, testing, refactoring |
@@ -493,8 +493,14 @@ You can configure each subagent with specific tool access rights, enabling fine-
 **3. Deploy and Utilize**
 Your subagent becomes immediately available. Claude Code will automatically engage it when suitable, or you can explicitly request its help:
 
-```
+Implicitly requesting an agent:
+```plaintext
 > Have the code-reviewer subagent analyze my latest commits
+```
+
+Explicitly requesting an agent with `@agent` syntax:
+```plaintext
+> Have the @"code-reviewer (agent)" analyze my latest commits
 ```
 
 ### Subagent Storage Locations
@@ -520,6 +526,10 @@ model: sonnet
 
 You are a [role description]...
 
+## Key steps to summarise what to do
+[When invoked:]
+
+## Define agent specific behaviour in detail
 [Agent-specific checklists, patterns, guidelines]
 
 ## Communication Protocol
