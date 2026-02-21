@@ -1,6 +1,6 @@
 {
   "name": "laywill-production-ops",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Production ops and observability subagents manage incidents, configure monitoring and logging, build dashboards, manage SLAs, and handle scaling. They ensure systems run smoothly in production.",
   "author": {
     "name": "laywill Community",

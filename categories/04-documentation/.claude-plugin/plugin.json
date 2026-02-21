@@ -1,6 +1,6 @@
 {
   "name": "laywill-documentation",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Documentation subagents create and maintain API docs, ADRs, runbooks, READMEs, changelogs, and technical guides. They ensure knowledge is captured and accessible.",
   "author": {
     "name": "laywill Community",

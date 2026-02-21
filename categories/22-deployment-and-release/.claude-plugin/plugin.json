@@ -1,6 +1,6 @@
 {
   "name": "laywill-deployment-release",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Deployment and release subagents manage deployments, handle blue-green and canary strategies, manage feature flags, and control rollbacks. They enable safe, controlled releases.",
   "author": {
     "name": "laywill Community",

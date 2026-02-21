@@ -1,6 +1,6 @@
 {
   "name": "laywill-api-service-integration",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "API and service integration subagents generate API clients, integrate third-party services, build SDK wrappers, configure webhooks, and set up message queues.",
   "author": {
     "name": "laywill Community",

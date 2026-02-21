@@ -1,6 +1,6 @@
 {
   "name": "laywill-frontend-ui",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Frontend and UI subagents build responsive components, manage themes, handle internationalization, and refactor styles. They ensure polished, accessible user interfaces.",
   "author": {
     "name": "laywill Community",
