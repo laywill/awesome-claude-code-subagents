@@ -1,6 +1,6 @@
 {
   "name": "laywill-bug-fixing-debugging",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Bug fixing and debugging subagents diagnose and fix bugs, analyze logs and stack traces, and hunt regressions. They help teams resolve production issues quickly.",
   "author": {
     "name": "laywill Community",

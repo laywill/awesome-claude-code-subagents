@@ -1,6 +1,6 @@
 {
   "name": "laywill-dependency-management",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Dependency and package management subagents manage dependencies, handle upgrades, patch vulnerabilities, resolve lockfiles, publish packages, and manage monorepos.",
   "author": {
     "name": "laywill Community",

@@ -1,6 +1,6 @@
 {
   "name": "laywill-data-database",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Data and database subagents design schemas, optimize queries, manage migrations, generate test data, and validate data integrity. They ensure reliable data layer performance.",
   "author": {
     "name": "laywill Community",

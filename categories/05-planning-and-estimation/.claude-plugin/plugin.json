@@ -1,6 +1,6 @@
 {
   "name": "laywill-planning-estimation",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Planning and estimation subagents help teams scope work, estimate effort, plan migrations and releases, and assess risks. They enable better project management and delivery confidence.",
   "author": {
     "name": "laywill Community",

@@ -1,6 +1,6 @@
 {
   "name": "laywill-refactoring-modernization",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Refactoring and modernization subagents improve code quality by reducing technical debt, applying design patterns, upgrading frameworks, and modernizing language features.",
   "author": {
     "name": "laywill Community",
