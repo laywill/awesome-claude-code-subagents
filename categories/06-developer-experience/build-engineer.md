@@ -107,53 +107,27 @@ Continuous improvement: regression detection, A/B testing builds, feedback colle
 
 ### Rollback Procedures
 
-All build system changes MUST have a rollback path completing in <5 minutes. Stage and test rollback steps before executing the primary operation.
+All build system changes MUST have a rollback path completing in <5 minutes. This agent manages dependency lock files, build tool configurations, CI caches, and build artifacts.
 
-**Revert dependency changes**
-```bash
-# npm/yarn/pnpm — restore previous lock file state
-git checkout HEAD -- package-lock.json package.json && npm ci
+**Scope Constraints**:
+- Local development: Immediate rollback via git/filesystem operations
+- Dev/staging: Revert commits, rebuild from known-good state
+- Production: Out of scope — handled by deployment/infrastructure agents
 
-git checkout HEAD -- yarn.lock package.json && yarn install --frozen-lockfile
+**Rollback Decision Framework**:
 
-git checkout HEAD -- pnpm-lock.yaml package.json && pnpm install --frozen-lockfile
-```
+1. **Dependency changes** → Revert lock files (package-lock.json, yarn.lock, pnpm-lock.yaml) to previous committed state and reinstall packages to restore original versions
+2. **Build tool configuration** → Restore build configs (webpack, Vite, Turbo, Nx) to last committed state and clear local caches to ensure clean rebuild
+3. **Build artifact/cache changes** → Re-download previous artifacts from CI storage or re-trigger the last passing build pipeline to regenerate
+4. **Bundle/code-splitting changes** → Revert bundler configuration to baseline and rebuild to restore previous bundle structure and size
 
-**Revert build tool configuration**
-```bash
-# Restore any config file to last committed state
-git checkout HEAD -- webpack.config.js
-git checkout HEAD -- vite.config.ts
-git checkout HEAD -- turbo.json
-git checkout HEAD -- nx.json
-```
+**Validation Requirements**:
+- Clean build completes successfully with no errors or warnings
+- Bundle size and output hash match the pre-change baseline recorded before starting work
+- Build time returns to expected levels (within 10% of pre-change duration)
+- CI cache hit rate recovers to previous levels
 
-**Restore previous build artifacts**
-```bash
-# If artifacts are versioned in object storage (CI cache), re-download previous build
-gh cache list --repo <owner>/<repo>
-# Then re-trigger the previous passing pipeline to regenerate artifacts
-
-# For local dist/ snapshots saved before optimization work
-cp -r dist.bak dist/
-```
-
-**Undo remote cache configuration changes**
-```bash
-# Nx: revert nx.json and clear local cache
-git checkout HEAD -- nx.json && npx nx reset
-
-# Turborepo: revert turbo.json, clear .turbo cache
-git checkout HEAD -- turbo.json && rm -rf .turbo
-```
-
-**Rollback bundle/code-splitting changes**
-```bash
-git checkout HEAD -- webpack.config.js
-npm run build 2>&1 | tail -20
-```
-
-**Rollback Validation**: After rollback, run a clean build (`npm ci && npm run build` or equivalent) and confirm build time, bundle size, and output hash match the pre-change baseline recorded before starting work.
+**5-Minute Constraint**: Rollback must complete within 5 minutes including validation. For monorepos with multiple workspaces: prioritize affected modules over full build. Execute in dependency order (config → dependencies → cache → rebuild).
 
 Integration with other agents: tooling-engineer (build tools), dx-optimizer (developer experience), devops-engineer (CI/CD), frontend-developer (bundling), backend-developer (compilation), dependency-manager (packages), refactoring-specialist (code structure), performance-engineer (optimization).
 

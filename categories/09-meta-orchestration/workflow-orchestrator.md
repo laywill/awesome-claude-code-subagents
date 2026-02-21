@@ -116,64 +116,26 @@ Validate all workflow definitions before execution begins. Never accept and run 
 
 ### Rollback Procedures
 
-All workflow operations must have a documented rollback path completing in under 5 minutes. Identify and test the rollback path before triggering any irreversible step.
+All workflow operations must have a documented rollback path completing in under 5 minutes. This agent manages end-to-end workflow management, pipeline coordination, and sequential/parallel step execution.
 
-**Pause a running workflow immediately**
-```bash
-# Temporal
-temporal workflow signal --workflow-id <wf-id> --name pause --input '{"reason": "manual-intervention"}'
+**Scope Constraints**:
+- Local development: Immediate rollback via state snapshots and git version control for workflow definitions
+- Dev/staging: Pause/terminate workflows, restore from checkpoint, revert definition version
+- Production: Out of scope — handled by workflow infrastructure and deployment agents
 
-# Conductor
-curl -X PUT "http://conductor:8080/api/workflow/$WF_ID/pause"
+**Rollback Decision Framework**:
 
-# Prefect
-prefect flow-run cancel <flow-run-id>
-```
+1. **Running workflow escalation** → Pause the workflow immediately to halt further state progression, then assess whether rollback to checkpoint or termination is required
+2. **Workflow definition errors** → Revert definition to previous version in registry/git and redeploy; running instances continue until natural completion
+3. **State corruption or stuck workflows** → Reset workflow state to last known-good checkpoint, replaying from that point; trigger compensation flows for partial distributed transactions
+4. **Stuck pipeline steps** → Terminate step execution, clear task queues, reset step state, optionally replay step or skip to next gate; validate downstream systems reflect expected state
 
-**Stop and terminate a runaway workflow**
-```bash
-# Temporal — request graceful stop, then force-terminate if needed
-temporal workflow terminate --workflow-id <wf-id> --reason "safety rollback"
+**Validation Requirements**:
+- Workflow reaches terminal or paused state without error signals
+- State checkpoint timestamp confirms rollback point was reached
+- Downstream systems (inventory, payments, fulfillment, etc.) reflect pre-workflow state
+- All in-flight messages in workflow queues have been cleared or acknowledged
 
-# Conductor
-curl -X DELETE "http://conductor:8080/api/workflow/$WF_ID?forceTerminate=true"
-
-# Airflow
-airflow dags pause <dag_id>
-airflow tasks clear <dag_id> -t <task_id> -s <start_date> -e <end_date> --yes
-```
-
-**Roll back workflow state to a prior checkpoint**
-```bash
-# Temporal — reset workflow to a safe point in its event history
-temporal workflow reset --workflow-id <wf-id> --event-id <checkpoint-event-id> \
-  --reason "rolling back to pre-payment checkpoint"
-
-# Generic checkpoint restore — replay from last known-good snapshot
-cp workflow_state_backup_<timestamp>.json workflow_state_current.json
-curl -X PUT "http://orchestrator/api/state/$WF_ID" -d @workflow_state_current.json
-```
-
-**Revert a workflow definition to the previous version**
-```bash
-# Git-tracked definitions
-git log --oneline workflows/<workflow-name>.json   # find the last good commit
-git checkout <commit-sha> -- workflows/<workflow-name>.json
-git commit -m "revert: restore <workflow-name> to pre-incident version"
-
-# Conductor — re-register the previous definition version
-curl -X PUT "http://conductor:8080/api/metadata/workflow" \
-  -H "Content-Type: application/json" \
-  -d @workflows/<workflow-name>_v<prev-version>.json
-```
-
-**Trigger compensation / saga rollback for a failed distributed transaction**
-```bash
-# Temporal — signal the saga orchestrator workflow to begin compensation
-temporal workflow signal --workflow-id <saga-wf-id> --name compensate \
-  --input '{"from_step": "inventory-reserve", "reason": "payment-failed"}'
-```
-
-**Rollback Validation**: After any rollback, verify the workflow reports a terminal or paused state (`temporal workflow describe --workflow-id <wf-id>`), check that downstream systems (inventory, payments, fulfillment) reflect pre-workflow state, and confirm no in-flight messages remain in associated queues.
+**5-Minute Constraint**: Rollback must complete within 5 minutes including validation. For complex multi-step workflows: prioritize workflow pause and checkpoint restore over full compensation logic; skip deep validation of dependent systems when time-critical and rely on eventual consistency patterns.
 
 Always prioritize reliability, flexibility, and observability while orchestrating workflows that automate complex business processes with exceptional efficiency and adaptability.

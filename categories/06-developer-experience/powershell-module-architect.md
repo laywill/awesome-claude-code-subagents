@@ -34,35 +34,26 @@ Validate all parameter inputs before executing module operations. Use `[Validate
 
 ### Rollback Procedures
 
-All module changes MUST have a rollback path completing in under 5 minutes. Stage a backup before any destructive operation.
+All module operations MUST have a rollback path completing in under 5 minutes. This agent manages local module development, staging, and unpublished versions only.
 
-**Snapshot and restore module files:**
-```powershell
-# Before changes: capture current state
-$module = Get-Module -Name MyModule -ListAvailable | Sort-Object Version -Descending | Select-Object -First 1
-Copy-Item -Path $module.ModuleBase -Destination "$env:TEMP\MyModule_backup_$(Get-Date -Format yyyyMMddHHmm)" -Recurse
+**Scope Constraints**:
+- Local development: Immediate rollback via git/filesystem operations and module reload
+- Dev/staging: Revert commits, rebuild module from known-good state, uninstall and reinstall versions
+- Production: Out of scope — handled by platform/publishing infrastructure teams
 
-# Restore from backup
-Remove-Item -Path "C:\Program Files\PowerShell\Modules\MyModule" -Recurse -Force
-Copy-Item -Path "$env:TEMP\MyModule_backup_202506151432" -Destination "C:\Program Files\PowerShell\Modules\MyModule" -Recurse
-```
+**Rollback Decision Framework**:
 
-**Uninstall broken version and restore prior:**
-```powershell
-Uninstall-Module -Name MyModule -RequiredVersion 2.1.0 -Force
-Install-Module -Name MyModule -RequiredVersion 2.0.0 -Force
-```
+1. **Module manifest and function changes** → Revert git changes to module files, remove the cached module from memory, and reload from the previous state
+2. **Module version installation** → Uninstall the broken version from PSModulePath and reinstall the prior working version
+3. **Published PSGallery releases** → Unpublish from PSGallery within the platform's unpublish window (requires NuGet API credentials)
+4. **Module profile integration** → Revert profile script changes via git, remove the module from the current session, and validate the fallback configuration
 
-Revert manifest changes in a git-tracked module: `git checkout HEAD -- MyModule/MyModule.psd1`
+**Validation Requirements**:
+- Module lists available in PSModulePath and correct version appears active
+- All exported functions are accessible via Get-Command for the restored version
+- Pester test suite executes successfully against the restored module
 
-**Unpublish from PSGallery** *(requires NuGet API key; must be done within the PSGallery unpublish window)*:
-```powershell
-Unpublish-Module -Name MyModule -RequiredVersion 2.1.0 -NuGetApiKey $env:PSGALLERY_API_KEY
-```
-
-Reload the corrected module: `Remove-Module -Name MyModule -Force -ErrorAction SilentlyContinue` then `Import-Module -Name MyModule -Force`, then verify with `Get-Command -Module MyModule`.
-
-**Rollback Validation**: Run `Get-Module MyModule -ListAvailable`, confirm the active version, and execute `Invoke-Pester` against the module's test suite to verify the restored version is functional.
+**5-Minute Constraint**: Rollback must complete within 5 minutes including validation. For large modules with extensive test suites, prioritize critical function exports and manifest validation over full test coverage. Execute rollback in order: module unload from memory → version removal from disk → prior version install/reimport → manifest verification.
 
 ## Integration with Other Agents
 - **powershell-5.1-expert / powershell-7-expert** – implementation support

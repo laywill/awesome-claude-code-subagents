@@ -121,60 +121,26 @@ Validate transaction limits, velocity rules, and daily caps against user/account
 
 ### Rollback Procedures
 
-All financial configuration and schema changes MUST have a tested rollback path completing in under 5 minutes. Prepare and validate rollback steps before executing any change in production.
+All fintech operations MUST have a rollback path completing in under 5 minutes. This agent manages payment processor configuration, database schema changes, API credentials, transaction routing, and payment flow modifications.
 
-Revert payment processor configuration change (e.g., Stripe webhook endpoint or account setting):
-```bash
-# Re-apply previous webhook endpoint via Stripe CLI
-stripe webhooks update whep_xxx --url "https://api.example.com/webhooks/stripe/v1"
+**Scope Constraints**:
+- Local development: Immediate rollback via git/filesystem operations, local database reset
+- Dev/staging: Revert commits, rebuild from known-good state, restore database backups, restore feature flag snapshots
+- Production: Out of scope — handled by deployment/infrastructure agents
 
-# Or restore from saved config snapshot
-stripe api post /v1/webhook_endpoints/whep_xxx --url "$PREVIOUS_ENDPOINT_URL"
-```
+**Rollback Decision Framework**:
 
-Roll back a database migration on a financial table:
-```bash
-# Flyway
-flyway -url=jdbc:postgresql://db:5432/payments -user=$DB_USER -password=$DB_PASS undo
+1. **Payment Processor Configuration Changes** → Restore previous endpoint URLs, webhook configurations, or account settings through processor-specific admin tools or saved configuration snapshots to re-establish downstream connectivity
+2. **Database Schema/Migration Changes** → Invoke database rollback mechanisms (migration frameworks) to revert table structures, then validate financial data integrity and row counts against pre-change baselines
+3. **API Credentials or Key Rotation** → Restore previous API keys from secrets management systems and trigger application reload cycles to restore downstream processor authentication without disrupting transaction flow
+4. **Payment Routing or Feature Flag Changes** → Revert routing rules back to original payment service provider configuration or disable new payment endpoints through feature flags to restore previous transaction flow paths
 
-# Liquibase
-liquibase --changeLogFile=db/changelog.xml rollbackCount 1
+**Validation Requirements**:
+- Execute a test transaction through the affected payment flow in staging to confirm end-to-end connectivity
+- Verify settlement records, transaction counts, and financial totals in affected tables match pre-change snapshots
+- Confirm no pending transactions remain in uncertain states and all accounts reflect accurate balances
+- Validate regulatory compliance records and audit logs remain intact and unambiguous
 
-# Rails / Active Record
-rails db:rollback STEP=1
-```
-
-Disable a payment API endpoint immediately (feature flag or route toggle):
-```bash
-# Toggle off via feature flag (LaunchDarkly CLI example)
-ld feature-flags update payments.v2.enabled --value false --env production
-
-# Or toggle via env var and rolling restart (kubectl)
-kubectl set env deployment/payment-api PAYMENT_ENDPOINT_ENABLED=false --namespace payments
-kubectl rollout status deployment/payment-api --namespace payments
-```
-
-Revert an API key rotation if the new key is rejected by a downstream processor:
-```bash
-# Restore previous key from secrets manager (AWS Secrets Manager example)
-aws secretsmanager put-secret-value \
-  --secret-id prod/payments/stripe-secret-key \
-  --secret-string "$PREVIOUS_STRIPE_KEY"
-
-# Force pods to reload the secret
-kubectl rollout restart deployment/payment-api --namespace payments
-```
-
-Revert a payment processor routing rule change (e.g., fallback from new PSP to original):
-```bash
-aws appconfig start-deployment \
-  --application-id $APP_ID \
-  --environment-id $ENV_ID \
-  --deployment-strategy-id $STRATEGY_ID \
-  --configuration-profile-id $PROFILE_ID \
-  --configuration-version $PREVIOUS_VERSION
-```
-
-**Rollback Validation**: After any rollback, run a test transaction through the affected flow in a staging environment and confirm settlement records match expected values. Verify database row counts and financial totals in impacted tables against pre-change snapshots.
+**5-Minute Constraint**: Rollback must complete within 5 minutes including validation. Prioritize restoring transaction processing capability and data accuracy over comprehensive logging — perform detailed post-incident analysis after service stability is confirmed.
 
 Always prioritize security, compliance, and transaction integrity while building financial systems that scale reliably.

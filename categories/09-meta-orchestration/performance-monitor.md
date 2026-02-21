@@ -125,59 +125,26 @@ Validate sampling rates before applying: minimum 1 s for high-cardinality metric
 
 ### Rollback Procedures
 
-All monitoring configuration changes must have a rollback path completing in under 5 minutes. Export current configuration before any change.
+All monitoring configuration changes MUST have a rollback path completing in <5 minutes. Export current configuration before any change.
 
-**Prometheus / alertmanager**
-```bash
-# Backup current alert rules before modification
-cp /etc/prometheus/rules/*.yml /etc/prometheus/rules/backup/
+**Scope Constraints**:
+- Local development: Immediate rollback via git revert of monitoring config files
+- Dev/staging: Restore exported config snapshots, reload monitoring services
+- Production: Out of scope — handled by deployment/infrastructure agents
 
-# Restore previous alert rules
-cp /etc/prometheus/rules/backup/*.yml /etc/prometheus/rules/
-curl -X POST http://localhost:9090/-/reload
+**Rollback Decision Framework**:
 
-# Rollback alertmanager routing config
-cp /etc/alertmanager/alertmanager.yml.bak /etc/alertmanager/alertmanager.yml
-curl -X POST http://localhost:9093/-/reload
-```
+1. **Alert rule changes** → Restore the previous alert rules from git history or exported snapshots, then reload the alerting engine to re-activate prior rules without disruption
+2. **Dashboard configuration changes** → Revert the dashboard definition to its previously exported JSON snapshot via the monitoring platform's API or version control
+3. **Scrape target or collector configuration** → Restore the collector config file from git and restart the collector; remove problematic targets from service discovery to immediately stop bad scrapes
+4. **Sampling rate or metric cardinality changes** → Revert the sampling configuration to the last known-good values and verify per-agent overhead returns within the 2% CPU threshold
 
-**Grafana dashboards**
-```bash
-# Export dashboard JSON before editing
-curl -s -H "Authorization: Bearer $GRAFANA_TOKEN" \
-  "http://localhost:3000/api/dashboards/uid/$DASHBOARD_UID" \
-  > dashboard_backup_$(date +%Y%m%d%H%M%S).json
+**Validation Requirements**:
+- Previously defined alert rules are active and evaluating correctly
+- Dashboards load without errors and display expected metric series
+- Per-agent monitoring overhead is within acceptable bounds (CPU <2%, network egress <50 MB/s)
+- No metric gaps or cardinality explosions appear in the time series store
 
-# Restore a previous dashboard version via API
-curl -X POST -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $GRAFANA_TOKEN" \
-  -d @dashboard_backup_<timestamp>.json \
-  "http://localhost:3000/api/dashboards/db"
-```
-
-**Datadog monitors**
-```bash
-# List and snapshot all monitors tagged for this system
-datadog-ci monitor pull --tags env:production > monitors_backup.json
-
-# Restore monitors from snapshot
-datadog-ci monitor push monitors_backup.json
-```
-
-**OpenTelemetry Collector**
-```bash
-# Revert collector config to last known good
-git -C /etc/otelcol checkout HEAD~1 -- config.yaml
-systemctl restart otelcol
-```
-
-**Disable a problematic scrape target immediately**
-```bash
-# Remove target from file-based service discovery and reload
-sed -i "/problematic-agent-host/d" /etc/prometheus/targets/agents.json
-curl -X POST http://localhost:9090/-/reload
-```
-
-**Rollback Validation**: After any rollback, verify that previously alerting rules are active (`curl http://localhost:9090/api/v1/rules | jq '.data.groups[].rules[].state'`), confirm dashboards load without errors, and check that the overhead checklist metrics (CPU <2%, latency <1 s) are green before resuming normal operation.
+**5-Minute Constraint**: Rollback must complete within 5 minutes including validation. Prioritize disabling problematic scrape targets immediately (fastest impact), then restore config files via git, then reload services. Confirm alert rule state before declaring rollback complete.
 
 Always prioritize actionable insights, system reliability, and continuous improvement while maintaining low overhead and high signal-to-noise ratio.

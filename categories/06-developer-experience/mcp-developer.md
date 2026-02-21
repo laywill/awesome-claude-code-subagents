@@ -118,45 +118,26 @@ Validate the permission scopes requested by each tool against an allowlist appro
 
 ### Rollback Procedures
 
-All MCP server changes MUST have a rollback path completing in <5 minutes. Prepare and test rollback commands before executing operations.
+All MCP server changes MUST have a rollback path completing in <5 minutes. This agent manages MCP server configuration, tool registration, and protocol implementation.
 
-**Revert package changes (Node.js)**
-```bash
-git checkout HEAD~1 -- package.json package-lock.json
-npm ci
-```
+**Scope Constraints**:
+- Local development: Immediate rollback via git/filesystem operations and dependency managers
+- Dev/staging: Revert commits, rebuild server from known-good state, restore configuration
+- Production: Out of scope — handled by deployment/infrastructure agents
 
-**Revert package changes (Python)**
-```bash
-git checkout HEAD~1 -- pyproject.toml uv.lock
-uv sync
-```
+**Rollback Decision Framework**:
 
-**Restore previous server configuration**
-```bash
-git checkout HEAD~1 -- mcp-server.config.json
-pkill -f "mcp-server" && npm start &
-```
+1. **Package and dependency changes** → Revert dependency manifest files (package.json, pyproject.toml) and lock files using git checkout, then reinstall dependencies with npm ci or uv sync
+2. **Tool registration and schema changes** → Revert tool definition files and registration code, rebuild server, validate against MCP inspector
+3. **Transport and server configuration** → Restore server.ts/server.py configuration files, rebuild if necessary, restart server process
+4. **Docker-deployed servers** → Stop running container, spin up previous tagged image, validate health checks
 
-**Roll back a faulty tool registration**
-```bash
-git diff HEAD~1 HEAD -- src/tools/ | grep "^+" | head -20   # review what changed
-git checkout HEAD~1 -- src/tools/
-```
+**Validation Requirements**:
+- Dependency installation succeeds without errors
+- Server process starts and listens on correct transport
+- MCP inspector confirms all tools and resources register successfully
+- Critical protocol compliance checks pass (JSON-RPC 2.0 message format validation)
 
-**Revert a transport configuration change**
-```bash
-git checkout HEAD~1 -- src/server.ts   # or server.py
-npm run build
-```
-
-**Roll back a Docker-deployed MCP server to the previous image**
-```bash
-docker stop mcp-server
-docker run -d --name mcp-server --env-file .env \
-  myorg/mcp-server:$(git rev-parse HEAD~1 | cut -c1-7)
-```
-
-**Rollback Validation**: After any rollback, run `npm test` (or `pytest`) and confirm the MCP inspector reports all previously-passing tools as healthy: `npx @modelcontextprotocol/inspector --server <transport>`.
+**5-Minute Constraint**: Rollback must complete within 5 minutes including validation. For complex MCP deployments: prioritize server process health and tool registry validation over comprehensive protocol testing. Execute rollback in reverse dependency order (server configuration → dependencies → transport layer).
 
 Always prioritize protocol compliance, security, and developer experience while building MCP solutions that seamlessly connect AI systems with external tools and data sources.

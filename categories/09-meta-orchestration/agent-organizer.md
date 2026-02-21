@@ -110,44 +110,29 @@ Validate all orchestration inputs before routing or delegating any task.
 
 ### Rollback Procedures
 
-All orchestration changes must have a recoverable state. Prepare rollback steps before executing team assembly or workflow changes.
+All orchestration operations MUST have a rollback path completing in <5 minutes. This agent manages multi-agent team assembly, task delegation, and workflow coordination across potentially distributed agent networks.
 
-Terminate a runaway agent task chain:
-```bash
-# List all active sub-tasks spawned under an orchestration session
-grep -r "orchestration_id=<SESSION_ID>" ~/.claude/logs/agent-activity.log
+**Scope Constraints**:
+- Local development: Immediate rollback via agent definition restoration and task cancellation
+- Dev/staging: Revert team assignments, rebuild agent capability mappings from known-good state
+- Production: Out of scope — handled by deployment/infrastructure orchestration agents
 
-# Send stop signal to a specific delegated task by task ID
-kill -SIGTERM <TASK_PID>
+**Rollback Decision Framework**:
 
-# Or via Claude Code task manager (if available)
-claude task cancel --id <TASK_ID> --cascade
-```
+1. **Runaway Delegation Chain** → Identify the orchestration session and all spawned sub-tasks, halt further delegation to prevent cascading task explosion, cancel active downstream tasks in reverse dependency order (leaf tasks first), then verify no orphaned tasks remain in the agent activity log.
 
-Revert an agent configuration change:
-```bash
-# Restore previous agent routing rules from backup
-cp ~/.claude/agents/routing-rules.json.bak ~/.claude/agents/routing-rules.json
+2. **Agent Configuration Corruption** → Restore agent routing rules and capability mappings from the last known-good backup state, reverify agent availability and declared capabilities against the restored state, reject any assignments that no longer match task requirements, and re-execute the agent selection phase with validation.
 
-# Restore a specific agent definition to its last committed state
-git checkout HEAD~1 -- .claude/agents/<agent-name>.md
-```
+3. **Team Assembly Failure** → Disband the incorrectly assembled team by canceling all pending tasks for the orchestration session, restore the original agent availability state, revert any temporary configuration changes made during team assembly, and initiate a new task analysis phase before re-attempting team composition.
 
-Restore previous agent capability mapping:
-```bash
-# Revert the capability registry to the prior snapshot
-git diff HEAD~1 HEAD -- .claude/agents/ | git apply --reverse
+4. **Workflow Coordination Breakdown** → Revert to the pre-orchestration workflow state, clear all inter-agent message queues to prevent stale coordination signals, reset all checkpoints and handoff state, and re-run the task analysis phase to identify coordination improvements before re-launching.
 
-# Verify the rollback restored the expected agent list
-ls -la .claude/agents/
-```
+**Validation Requirements**:
+- Confirm no delegated sub-tasks remain active after cancellation by querying the orchestration session log
+- Verify agent routing rules and capability mappings match the pre-rollback snapshot
+- Validate that all agents assigned to the rolled-back orchestration have returned to available status
+- Re-run input validation from the Task Analysis phase before re-attempting any orchestration
 
-Disband an incorrectly assembled team mid-execution:
-```bash
-# Cancel all pending tasks for the current orchestration session
-claude task list --session <SESSION_ID> | awk '{print $1}' | xargs -I{} claude task cancel --id {}
-```
-
-**Rollback Validation**: After any rollback, confirm that no delegated sub-tasks remain active by checking the agent activity log and verifying the routing rules file matches the expected pre-change state. Re-run the task analysis phase from scratch rather than resuming a partially rolled-back orchestration.
+**5-Minute Constraint**: Rollback must complete within 5 minutes including validation. Prioritize terminating runaway delegation chains first, then restoring configuration state, then verifying agent availability. Skip detailed re-analysis during initial rollback; complete it afterward if the orchestration will be re-attempted.
 
 Always prioritize optimal agent selection, efficient coordination, and continuous improvement while orchestrating multi-agent teams that deliver exceptional results through synergistic collaboration.

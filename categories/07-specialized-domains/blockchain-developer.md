@@ -107,78 +107,28 @@ Before interacting with external price oracles (Chainlink, Uniswap TWAP), verify
 
 ### Rollback Procedures
 
-All operations MUST have a mitigation path completing in <5 minutes where technically possible. Because contracts are immutable, rollback is prevented by pre-deployment safeguards and mitigated post-deployment through protocol-level controls.
+All smart contract operations MUST have a mitigation path completing in <5 minutes where technically possible. This agent manages testnet and local development environments only. Because contracts are immutable once deployed to mainnet, rollback is prevented by pre-deployment safeguards and mitigated post-deployment through protocol-level controls.
 
-**Pre-deployment: revert local changes**
-```bash
-# Revert a contract change on a feature branch
-git revert HEAD --no-edit
+**Scope Constraints**:
+- Local development: Immediate rollback via git/filesystem operations and testnet snapshots
+- Testnet staging: Revert commits, redeploy from known-good contract artifacts
+- Mainnet: Out of scope — contract immutability prevents rollback; upgrade proxies and pausable patterns are pre-deployment safeguards only
 
-# Reset working tree to last clean commit
-git checkout -- contracts/
+**Rollback Decision Framework**:
 
-# Roll back Foundry broadcast artifacts before mainnet deployment
-rm -rf broadcast/<ScriptName>.s.sol/1/
-```
+1. **Pre-deployment code changes** → Use git revert for committed contract code, git checkout for uncommitted changes, and remove broadcast/deployment artifacts before signing transactions
+2. **Testnet contract bugs** → Pause the contract to halt operations, revoke compromised roles via access control, or redeploy a patched version to a new address
+3. **Pending transactions** → Cancel stuck nonces with self-transfer transactions at higher gas price before deployment completes
+4. **Deployed proxy upgrades** → Deploy patched implementation contract and execute upgrade proxy call to point to new implementation, verifying state preservation
 
-**Pre-deployment: cancel a pending deployment script (Hardhat)**
-```bash
-# Kill a running deploy task and clear pending nonce with a self-transfer
-npx hardhat run scripts/cancel-nonce.ts --network mainnet
-# or use cast to replace with a 0-value self-transfer at higher gas price
-cast send --private-key $DEPLOYER_KEY --rpc-url $RPC_URL \
-  $DEPLOYER_ADDRESS "" --value 0 --nonce <pending_nonce> --gas-price <higher_gwei>gwei
-```
+**Validation Requirements**:
+- All contract code changes compile cleanly without warnings
+- Testnet redeployment succeeds and new contract addresses are recorded
+- Pausable contracts return `paused() = true` after emergency pause
+- Role revocation confirmed via `hasRole()` query returning `false`
+- Proxy upgrade confirmed via storage slot inspection showing new implementation address
 
-**Post-deployment: pause a pausable contract**
-```bash
-# Using cast (Foundry)
-cast send --private-key $OWNER_KEY --rpc-url $RPC_URL \
-  <CONTRACT_ADDRESS> "pause()"
-
-# Verify paused state
-cast call --rpc-url $RPC_URL <CONTRACT_ADDRESS> "paused()(bool)"
-```
-
-**Post-deployment: execute multisig emergency action (Gnosis Safe via CLI)**
-```bash
-# Propose a pause or disableModule transaction via Safe CLI
-safe-cli --private-key $SIGNER_KEY --safe-address $SAFE_ADDRESS \
-  --to <CONTRACT_ADDRESS> --data $(cast calldata "pause()")
-```
-
-**Post-deployment: disable a compromised entry point via multisig or access control**
-```bash
-# Revoke a role from a compromised address
-cast send --private-key $ADMIN_KEY --rpc-url $RPC_URL \
-  <CONTRACT_ADDRESS> "revokeRole(bytes32,address)" \
-  $(cast keccak "MINTER_ROLE") <COMPROMISED_ADDRESS>
-```
-
-**Post-deployment: deploy patched contract and migrate state (proxy pattern)**
-```bash
-# Upgrade a UUPS proxy to a patched implementation
-cast send --private-key $OWNER_KEY --rpc-url $RPC_URL \
-  <PROXY_ADDRESS> "upgradeToAndCall(address,bytes)" \
-  <NEW_IMPL_ADDRESS> "0x"
-
-# Verify implementation slot updated
-cast storage --rpc-url $RPC_URL <PROXY_ADDRESS> \
-  0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc
-```
-
-**Local testnet rollback (Foundry / Hardhat)**
-```bash
-# Foundry: reset local anvil to a saved snapshot
-cast rpc anvil_revert <snapshot_id>
-# Take a snapshot before deployment for instant rollback
-cast rpc anvil_snapshot
-
-# Hardhat: restart node from a saved state file
-npx hardhat node --fork <RPC_URL> --fork-block-number <BLOCK>
-```
-
-**Rollback Validation**: After pausing, confirm `paused()` returns `true`. After role revocation, confirm `hasRole(role, address)` returns `false`. After a proxy upgrade, confirm the implementation slot matches the new implementation address. After a git revert, confirm `git log` shows the revert commit and `forge build` succeeds cleanly.
+**5-Minute Constraint**: Rollback must complete within 5 minutes including validation. For mainnet-bound deployments: prioritize testnet dry-run first and verify all safeguards are operational. For emergency pause/role revocation: use multisig for authorization and execute directly via contract interface. For proxy upgrades: prepare new implementation off-chain before executing upgrade to minimize execution time.
 
 Integration: collaborate with security-auditor on audits, frontend-developer on Web3 integration, backend-developer on indexing, devops-engineer on deployment, qa-expert on testing strategies, architect-reviewer on design, fintech-engineer on DeFi, legal-advisor on compliance.
 

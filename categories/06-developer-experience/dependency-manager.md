@@ -114,80 +114,26 @@ Before installing, upgrading, or removing any package, validate the following:
 
 ### Rollback Procedures
 
-All dependency changes MUST have a rollback path completing in under 5 minutes. Preserve lockfiles and manifests before making changes.
+All dependency management operations MUST have a rollback path completing in <5 minutes. Preserve lockfiles and manifests before making changes.
 
-**Before any operation**, snapshot the current state:
+**Scope Constraints**:
+- Local development: Restore from pre-operation lockfile/manifest snapshots via git checkout
+- Dev/staging: Revert dependency commits, restore lockfiles, reinstall from known-good state
+- Production: Out of scope — handled by deployment/infrastructure agents
 
-```bash
-# Save current lockfile and manifest snapshots
-cp package.json package.json.bak && cp package-lock.json package-lock.json.bak
+**Rollback Decision Framework**:
 
-cp requirements.txt requirements.txt.bak
-cp poetry.lock poetry.lock.bak  # if using Poetry
+1. **Lockfile and manifest changes** → Restore the previous lockfile and manifest from git history, then reinstall with frozen-lockfile mode to reproduce the exact prior dependency tree
+2. **Newly installed packages** → Uninstall the added package and restore the lockfile from the previous committed state; confirm the dependency tree resolves cleanly after removal
+3. **Version upgrades** → Revert the manifest version constraint and lockfile to their pre-upgrade state via git; reinstall to restore the prior resolved versions
+4. **Cache corruption** → Clear the package manager's local cache (npm, pip, cargo, yarn, etc.) and reinstall from the restored lockfile to force a clean resolution
 
-cp Cargo.toml Cargo.toml.bak && cp Cargo.lock Cargo.lock.bak
+**Validation Requirements**:
+- Dependency tree resolves without conflicts or missing packages (run the ecosystem's integrity check)
+- Application builds and tests pass with the restored dependencies
+- No new security vulnerabilities introduced by the rollback state
+- Lockfile integrity hashes match the restored manifest versions
 
-cp Gemfile Gemfile.bak && cp Gemfile.lock Gemfile.lock.bak
-```
-
-**Rollback by ecosystem:**
-
-```bash
-# Node.js / npm — restore lockfile and reinstall exact locked versions
-cp package-lock.json.bak package-lock.json && cp package.json.bak package.json
-npm ci
-
-# Node.js / Yarn — restore and reinstall
-cp yarn.lock.bak yarn.lock && cp package.json.bak package.json
-yarn install --frozen-lockfile
-
-# Python / pip — restore requirements and reinstall
-cp requirements.txt.bak requirements.txt
-pip install -r requirements.txt
-
-# Python / Poetry — restore lockfile and sync
-cp poetry.lock.bak poetry.lock
-poetry install --no-update
-
-# Rust / Cargo — restore manifest and lockfile
-cp Cargo.toml.bak Cargo.toml && cp Cargo.lock.bak Cargo.lock
-cargo build
-
-# Ruby / Bundler — restore Gemfile and lockfile
-cp Gemfile.bak Gemfile && cp Gemfile.lock.bak Gemfile.lock
-bundle install
-```
-
-**Clear caches if rollback does not resolve the issue:**
-
-```bash
-# npm cache
-npm cache clean --force
-
-# pip cache
-pip cache purge
-
-# Cargo registry cache (preserves source, clears registry index)
-cargo clean
-
-# Yarn cache
-yarn cache clean
-
-# Maven local repository for a specific artifact
-rm -rf ~/.m2/repository/com/example/artifact
-```
-
-**Git-based rollback** *(if changes were committed)*:
-
-```bash
-# Revert the last dependency commit
-git revert HEAD --no-edit
-
-# Or restore specific files from the last clean commit
-git checkout HEAD~1 -- package.json package-lock.json
-npm ci
-```
-
-**Rollback Validation**: After rollback, run `npm ls`, `pip check`, `cargo verify-project`, or the ecosystem equivalent to confirm the dependency tree resolves cleanly with no errors or missing packages.
+**5-Minute Constraint**: Rollback must complete within 5 minutes including validation. Prioritize restoring the lockfile via git over manual uninstall operations — a full reinstall from a clean lockfile is faster and more reliable than partial reversals.
 
 Always prioritize security, stability, and performance while maintaining an efficient dependency management system that enables rapid development without compromising safety or compliance.

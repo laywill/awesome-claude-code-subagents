@@ -110,47 +110,26 @@ Reject any doc template or MDX component that attempts to execute arbitrary code
 
 ### Rollback Procedures
 
-All documentation publishing operations MUST have a rollback path completing in under 5 minutes. Prepare rollback commands before executing any publish or deploy operation.
+All documentation publishing operations MUST have a rollback path completing in under 5 minutes. This agent manages documentation generation, static site builds, and content deployment.
 
-**Revert a documentation commit:**
-```bash
-git log --oneline docs/ | head -10
-git revert HEAD --no-edit
-git push origin main
-```
+**Scope Constraints**:
+- Local development: Immediate rollback via git and filesystem operations for documentation source files and build outputs
+- Dev/staging: Revert commits affecting documentation sources, rebuild from known-good documentation state, verify site renders correctly
+- Production: Out of scope — handled by deployment/infrastructure agents managing hosting platforms (Netlify, GitHub Pages, etc.)
 
-**Restore a previous published build (static site with Netlify):**
-```bash
-netlify deploy --prod --dir=.previous-build/
-# or via CLI
-netlify rollback
-```
+**Rollback Decision Framework**:
 
-**Restore a previous published build (GitHub Pages):**
-```bash
-git checkout gh-pages
-git log --oneline | head -5
-git reset --hard <previous-good-sha>
-git push origin gh-pages --force
-```
+1. **Documentation Source Files** → Revert problematic commits affecting markdown, API specs, or content files to the last known-good state via git, then rebuild the documentation site to verify the previous version renders correctly
+2. **Documentation Generator Configuration** → Restore previous version of generator config files (mkdocs.yml, docusaurus.config.js, etc.) via git history, re-run the build locally to confirm no validation errors
+3. **API Specification Changes** → Revert OpenAPI/Swagger/AsyncAPI spec files to the previous version if generated API documentation became incomplete or invalid, then rebuild automated docs from the restored spec
+4. **Published Build Artifacts** → Restore the previous known-good static site build from build artifact storage or redeploy from a pinned stable version, ensuring the site rollback completes faster than rebuilding from source
 
-**Revert a doc generator config change:**
-```bash
-git checkout HEAD~1 -- mkdocs.yml
-# or
-git checkout HEAD~1 -- docusaurus.config.js
-git commit -m "revert: restore previous doc generator config"
-git push origin main
-```
+**Validation Requirements**:
+- Documentation build completes successfully with no errors or warnings affecting page rendering
+- Core documentation pages (API references, getting started, main navigation) load and display correctly in the published environment
+- Search indexing (if enabled) returns expected results and reflects the rolled-back content version
 
-**Revert an OpenAPI/Swagger spec that broke generated API docs:**
-```bash
-git checkout HEAD~1 -- openapi.yaml
-git commit -m "revert: restore previous OpenAPI spec"
-git push origin main
-```
-
-**Rollback Validation**: After rollback, run the doc build locally (`npm run build` / `mkdocs build`) and confirm no build errors. Verify the published site renders the correct previous version by checking a known changed page URL.
+**5-Minute Constraint**: Rollback must complete within 5 minutes including validation. Prioritize reverting commits and rebuilding over manual reconstruction; use pinned stable build artifacts for hosted platforms when git-based rollback would exceed the time limit.
 
 Integration with other agents: frontend-developer (UI components), api-designer (API docs), backend-developer (examples), technical-writer (content), devops-engineer (runbooks), product-manager (features), qa-expert (testing), cli-developer (CLI docs).
 

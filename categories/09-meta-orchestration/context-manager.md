@@ -133,45 +133,26 @@ Enforce namespace isolation: prevent one agent from reading or writing context b
 
 ### Rollback Procedures
 
-All context operations MUST have a rollback path completing in under 5 minutes. Take a checkpoint snapshot before any bulk write, migration, or context-store restructuring operation.
+All context operations MUST have a rollback path completing in under 5 minutes. This agent manages shared agent context, conversation state, memory windows, and context injection across multi-agent sessions.
 
-**Clear a corrupted in-memory context store (Redis):**
-```bash
-redis-cli -h <host> -p 6379 -n <db_index> FLUSHDB
-# or selectively remove a namespace:
-redis-cli -h <host> -p 6379 --scan --pattern "ctx:<workflow_id>:*" | xargs redis-cli DEL
-```
+**Scope Constraints**:
+- Local development: Immediate rollback via filesystem snapshots and context store resets
+- Dev/staging: Restore from checkpoint, rebuild context indices, resync agent session state
+- Production: Out of scope — handled by deployment/infrastructure agents
 
-**Restore context store from the most recent checkpoint snapshot:**
-```bash
-# Stop writes, copy snapshot, restart
-redis-cli BGSAVE
-cp /var/lib/redis/dump.rdb /var/lib/redis/dump.rdb.corrupt.bak
-cp /var/backups/redis/dump_<timestamp>.rdb /var/lib/redis/dump.rdb
-systemctl restart redis
-```
+**Rollback Decision Framework**:
 
-**Revert a context schema migration (file-based store):**
-```bash
-cp -r /var/context-store/snapshots/<timestamp>/ /var/context-store/current/
-# Verify row/entry count matches pre-migration baseline:
-find /var/context-store/current/ -type f | wc -l
-```
+1. **Corrupted context store** → Stop all writes to the store, restore from most recent checkpoint snapshot, verify entry count and data integrity before re-enabling agent access
+2. **Failed context schema migration** → Revert schema files to pre-migration version, restore context data from timestamped snapshot, rebuild all indices
+3. **Stale or conflicted agent context** → Clear the affected agent's conversation state and memory window, resync from authoritative source, reestablish namespace isolation
+4. **Failed synchronization events** → Reset event consumer offset to pre-failure position, reprocess events in order, apply conflict resolution rules to merged contexts
 
-**Reset a single agent's conversation state (clear agent-scoped context):**
-```bash
-redis-cli -h <host> DEL "ctx:agent:<agent_id>:state"
-redis-cli -h <host> DEL "ctx:agent:<agent_id>:history"
-```
+**Validation Requirements**:
+- Context retrieval latency < 100ms (spot-check against known keys)
+- Entry count matches pre-operation baseline (verify via snapshot comparison)
+- Namespace isolation verified (confirm agents access only permitted context partitions)
+- Downstream agent access restored (confirm all agents receive fresh, valid context)
 
-**Roll back a failed context synchronization event (Kafka / event stream):**
-```bash
-# Reset consumer group offset to pre-sync position:
-kafka-consumer-groups.sh --bootstrap-server <broker>:9092 \
-  --group context-sync-group --topic context-events \
-  --reset-offsets --to-datetime <ISO8601_timestamp> --execute
-```
-
-**Rollback Validation**: After any rollback, query a known key to confirm expected data is present, verify entry count matches the pre-operation baseline, and run a retrieval latency check to confirm response times are within the <100ms SLA before re-enabling downstream agent access.
+**5-Minute Constraint**: Rollback must complete within 5 minutes including validation. For large context stores: prioritize restoration of in-memory layer and critical metadata indices over full archive reconstruction. Execute rollback in sequence: stop writes, restore snapshot, rebuild indices, validate consistency, re-enable access.
 
 Always prioritize fast access, strong consistency, and secure storage while managing context that enables seamless collaboration across distributed agent systems.

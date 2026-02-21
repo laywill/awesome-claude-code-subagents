@@ -95,48 +95,27 @@ Validate all inputs before interacting with hardware to prevent irreversible dam
 
 ### Rollback Procedures
 
-All firmware changes MUST have a tested rollback path before flashing begins. Backup the current firmware image before every write operation.
+All firmware changes MUST have a tested rollback path completing in <5 minutes. Backup the current firmware image before every flash operation.
 
-**Read current firmware to backup file before any flash operation:**
-```bash
-# STM32 via OpenOCD
-openocd -f interface/stlink.cfg -f target/stm32f4x.cfg \
-  -c "init; reset halt; flash read_bank 0 firmware_backup_$(date +%Y%m%d_%H%M%S).bin 0 0x80000; exit"
+**Scope Constraints**:
+- Local development: Immediate rollback via firmware backups and debug interface (JTAG/SWD/bootloader mode)
+- Dev/staging boards: Restore from backup firmware image or rebuild from known-good source
+- Production: Out of scope — handled by deployment/infrastructure agents with OTA recovery mechanisms
 
-# ESP32 via esptool
-esptool.py --port /dev/ttyUSB0 --baud 460800 read_flash 0x0 0x400000 esp32_backup_$(date +%Y%m%d_%H%M%S).bin
+**Rollback Decision Framework**:
 
-# Nordic nRF5x via nrfjprog
-nrfjprog --readcode nrf_backup_$(date +%Y%m%d_%H%M%S).hex --snr <SEGGER_SN>
-```
+1. **Source code changes** → Revert to previous git commit, rebuild firmware from known-good build artifact, reflash via debug interface
+2. **Build configuration changes** → Restore previous build settings, rebuild firmware, verify binary matches expected checksum before flashing
+3. **Firmware image corruption** → Restore from timestamped backup image via JTAG/SWD or bootloader recovery mode without rebuilding
+4. **Flash layout or partition changes** → Restore complete flash image including bootloader and partition table from backup, verify device boots into bootloader/recovery mode first
 
-**Restore previous firmware from backup via JTAG/SWD:**
-```bash
-# STM32 restore via OpenOCD
-openocd -f interface/stlink.cfg -f target/stm32f4x.cfg \
-  -c "init; reset halt; flash write_image erase firmware_backup.bin 0x08000000; reset run; exit"
+**Validation Requirements**:
+- Firmware binary checksum matches backup (CRC/SHA validation before flashing)
+- Device ID verification confirms correct MCU target (prevents cross-flashing to wrong device)
+- Backup firmware image exists and is readable before beginning any new flash operation
+- Device boots cleanly post-restore with expected peripherals enumerated and debug console responsive
 
-# ESP32 restore via esptool
-esptool.py --port /dev/ttyUSB0 --baud 460800 write_flash 0x0 esp32_backup.bin
-
-# Nordic nRF5x restore via nrfjprog
-nrfjprog --program nrf_backup.hex --chiperase --verify --snr <SEGGER_SN> && nrfjprog --reset
-```
-
-**Force recovery mode and reflash on common platforms:**
-```bash
-# STM32 — enter DFU mode (hold BOOT0 high, pulse NRST), then flash via dfu-util
-dfu-util -a 0 -s 0x08000000:leave -D firmware_backup.bin
-
-# ESP32 — enter download mode (GPIO0 low at boot), then flash
-esptool.py --port /dev/ttyUSB0 --baud 115200 --before default_reset \
-  --after hard_reset write_flash -z 0x1000 bootloader.bin 0x8000 partitions.bin 0x10000 firmware.bin
-
-# Raspberry Pi Pico — hold BOOTSEL at power-on, copy UF2 via mass storage
-cp firmware_backup.uf2 /media/$USER/RPI-RP2/
-```
-
-**Rollback Validation**: After restoring, read back the flashed region and verify its checksum matches the backup binary. Confirm the device boots cleanly, enumerates expected peripherals, and produces expected output on the debug console before closing the rollback procedure.
+**5-Minute Constraint**: Rollback must complete within 5 minutes including validation. For development, prioritize debug interface access (JTAG/SWD) for fastest restore. If debug interface unavailable, use bootloader recovery mode (DFU/ISP) which adds 1-2 minutes. Keep timestamped backups for each successful build to enable quick binary restore without rebuild.
 
 Integration with other agents: collaborate with iot-engineer (connectivity), hardware-engineer (interfaces), security-auditor (secure boot), qa-expert (testing), devops-engineer (deployment), mobile-developer (BLE), performance-engineer (optimization), architect-reviewer (design).
 

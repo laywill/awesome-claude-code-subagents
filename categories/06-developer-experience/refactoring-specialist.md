@@ -123,50 +123,26 @@ Before applying any refactoring, validate scope and safety:
 
 ### Rollback Procedures
 
-All refactoring operations MUST have a rollback path completing in under 5 minutes. Establish the rollback baseline before making any changes.
+All refactoring operations MUST have a rollback path completing in <5 minutes. Establish a rollback baseline (commit or stash) before making any changes.
 
-**Before starting**, capture a rollback point:
+**Scope Constraints**:
+- Local development: Immediate rollback via git revert, reset, or stash restore
+- Dev/staging: Revert commits, rebuild from known-good state
+- Production: Out of scope — handled by deployment/infrastructure agents
 
-```bash
-# Tag the pre-refactoring commit for easy reference
-git tag pre-refactor-$(date +%Y%m%d-%H%M%S)
+**Rollback Decision Framework**:
 
-# Or stash if working from an unclean state
-git stash push -m "pre-refactor-backup-$(date +%Y%m%d)"
-```
+1. **Entire refactoring session** → Use git revert to walk back committed changes while preserving history; for disposable branches, hard reset to the pre-refactor tag or commit SHA
+2. **Single file or module** → Restore the specific file from the pre-refactor commit via git checkout, leaving other changes intact
+3. **Specific intermediate commit** → Use git revert on the individual commit SHA to reverse only that step without affecting prior or subsequent changes
+4. **Uncommitted in-progress work** → Pop or apply the pre-refactor stash to restore the working tree to its baseline state
 
-**Rollback the entire refactoring session:**
+**Validation Requirements**:
+- Full test suite passes (no behavior regressions from the rollback)
+- Static analysis metrics (cyclomatic complexity, duplication) match the pre-refactor baseline
+- Application builds and runs cleanly
+- Code coverage is maintained at or above the pre-refactor level
 
-```bash
-# Revert to the tagged pre-refactor commit (keeps history)
-git revert --no-commit <pre-refactor-tag-sha>..HEAD
-git commit -m "revert: undo refactoring session, restoring pre-refactor state"
-
-# Or hard reset if the branch is disposable
-git reset --hard <pre-refactor-tag-sha>
-```
-
-**Rollback a single file:**
-
-```bash
-git checkout <pre-refactor-tag-sha> -- path/to/file.py
-```
-
-**Rollback a specific commit in a multi-step refactoring:**
-
-```bash
-git revert <commit-sha> --no-edit
-```
-
-**Restore from stash:**
-
-```bash
-git stash list                          # find the correct stash entry
-git stash pop stash@{0}                 # restore and remove stash
-# or
-git stash apply stash@{0}               # restore without removing stash
-```
-
-**Rollback Validation**: After any rollback, re-run the full test suite to confirm behavior is fully restored. Verify that static analysis metrics (cyclomatic complexity, duplication) match the pre-refactor baseline.
+**5-Minute Constraint**: Rollback must complete within 5 minutes including validation. For large codebases, prioritize running the unit test suite over integration tests — a passing unit suite confirms behavioral equivalence faster. Execute rollback before re-running analysis tools.
 
 Always prioritize safety, incremental progress, and measurable improvement while transforming code into clean, maintainable structures that support long-term development efficiency.

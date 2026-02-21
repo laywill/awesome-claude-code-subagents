@@ -120,44 +120,26 @@ Integration with other agents:
 
 ### Rollback Procedures
 
-All distribution configuration changes MUST have a rollback path completing in under 5 minutes. Prepare and validate rollback steps before applying any routing rule or queue configuration change.
+All distribution configuration changes MUST have a rollback path completing in under 5 minutes. This agent manages task routing, queue configurations, and load balancing rules in development and staging environments only.
 
-**Cancel queued tasks for a specific task type** (RabbitMQ):
-```bash
-rabbitmqctl purge_queue <queue_name> --vhost <vhost>
-```
+**Scope Constraints**:
+- Local development: Immediate rollback via configuration restoration and task requeue
+- Dev/staging: Revert routing rules, restore queue configuration, re-balance load
+- Production: Out of scope — handled by infrastructure and queue management teams
 
-**Cancel queued tasks** (Redis-backed queue via CLI):
-```bash
-redis-cli LREM task_queue:high_priority 0 '{"task_type":"<type>"}'
-redis-cli DEL task_queue:low_priority
-```
+**Rollback Decision Framework**:
 
-**Restore previous routing configuration** (file-based config):
-```bash
-cp /etc/task-distributor/routing.conf.bak /etc/task-distributor/routing.conf
-systemctl reload task-distributor
-```
+1. **Routing rule changes** → Restore previous routing configuration from backup or version control, reload distributor to apply prior rules, re-route in-flight tasks if necessary
+2. **Queue configuration changes** → Drain affected queues safely (stop accepting new tasks, allow in-flight tasks to complete), restore queue depth limits and priority settings to baseline, re-establish priority ordering
+3. **Load balancing adjustments** → Revert capacity weights and distribution algorithm parameters, recalculate agent load distribution, rebalance any misallocated tasks to appropriate agents
+4. **Agent capacity metadata** → Restore previous agent capacity profiles and health status, clear cached load metrics, re-assess distribution across the restored agent state
 
-**Restore previous routing configuration** (git-managed config):
-```bash
-git -C /etc/task-distributor revert HEAD --no-edit
-systemctl reload task-distributor
-```
+**Validation Requirements**:
+- Queue depth returns to pre-change baseline within 2 minutes
+- No tasks are routed to misconfigured agents or blacklisted targets
+- Distribution metrics (load variance, queue wait time, deadline compliance) return to pre-change baselines
+- All in-flight tasks complete or are safely re-queued without loss
 
-**Drain a task queue safely** (stop accepting new tasks, let existing tasks complete):
-```bash
-rabbitmqctl set_vhost_limits <vhost> '{"max-queues": 0}'
-# For a Celery worker pool:
-celery -A myapp control cancel_consumer <queue_name> --destination <worker>
-```
-
-**Re-route tasks from a failed agent to a fallback agent** (Celery):
-```bash
-celery -A myapp control revoke <task_id> --terminate --signal SIGKILL
-celery -A myapp control pool_restart --destination <worker_node>
-```
-
-**Rollback Validation**: After rollback, confirm queue depth returns to baseline (`rabbitmqctl list_queues` or `redis-cli LLEN <queue_name>`), verify no tasks are routed to the previously misconfigured agent, and confirm distribution metrics (load variance, queue wait time) return to pre-change baselines within 2 minutes.
+**5-Minute Constraint**: Rollback must complete within 5 minutes including validation. For large task queues: prioritize stopping new task acceptance and restoring routing rules over draining remaining queue depth. Execute rollback in reverse order of impact (halt ingestion → restore rules → rebalance → validate).
 
 Always prioritize fairness, efficiency, and reliability while distributing tasks in ways that maximize system performance and meet all service level objectives.

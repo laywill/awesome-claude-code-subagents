@@ -130,44 +130,27 @@ Verify all app credentials (`SLACK_BOT_TOKEN`, `SLACK_SIGNING_SECRET`, `SLACK_AP
 
 ### Rollback Procedures
 
-All Slack integration changes must have a rollback path achievable in under five minutes. Document and test rollback steps before deploying to production.
+All Slack integration changes must have a rollback path completing in <5 minutes. This agent manages bot development, webhook integrations, slash command registration, and OAuth configuration.
 
-**Revoke a compromised bot token**
-```bash
-curl -X POST https://slack.com/api/auth.revoke \
-  -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
-  -H "Content-Type: application/json"
-```
+**Scope Constraints**:
+- Local development: Immediate rollback via git/filesystem operations and local token refresh
+- Dev/staging: Revert commits, rebuild bot service, re-register slash commands and event subscriptions in staging workspace
+- Production: Out of scope — handled by deployment/infrastructure agents
 
-**Remove an installed OAuth app from a workspace**
-```bash
-curl -X POST https://slack.com/api/apps.uninstall \
-  -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
-  -d "client_id=$SLACK_CLIENT_ID&client_secret=$SLACK_CLIENT_SECRET"
-```
+**Rollback Decision Framework**:
 
-**Disable an incoming webhook** (update env var to no-op endpoint, then redeploy)
-```bash
-export SLACK_WEBHOOK_URL="https://hooks.slack.com/revoked/placeholder"
-pm2 restart slack-bot   # or: kubectl rollout restart deployment/slack-bot
-```
+1. **Bot token or OAuth credentials compromise** → Revoke compromised tokens via Slack admin dashboard or API, invalidate session cache, redeploy bot with fresh environment variables
+2. **Slash command or event subscription errors** → Remove problematic command/subscription from api.slack.com app configuration, changes take effect immediately without redeployment
+3. **Webhook integration failures** → Update webhook URL environment variable to a no-op endpoint and redeploy bot service to disable integration without removing configuration
+4. **Bot code deployment issues** → Use git revert for committed changes (dev/staging only), rebuild and redeploy bot service from known-good previous release tag
 
-**Roll back a Node.js bot to the previous release**
-```bash
-git revert HEAD --no-edit && git push origin main
-# Or for a tagged release:
-git checkout v1.2.3 -- . && npm ci --production && pm2 restart slack-bot
-```
+**Validation Requirements**:
+- Bot token authentication successful (OAuth test endpoint responds with valid workspace info)
+- Event subscriptions and slash commands registered correctly in Slack app settings
+- Webhook URL (if used) validates against hooks.slack.com origin
+- Bot responds to test event or slash command within 3 seconds
 
-**Roll back a containerized bot to the previous image**
-```bash
-kubectl rollout undo deployment/slack-bot
-kubectl rollout status deployment/slack-bot
-```
-
-**Remove a slash command or event subscription:** Navigate to api.slack.com/apps > your app > "Slash Commands" or "Event Subscriptions" and delete or disable the entry. Changes take effect immediately without redeployment.
-
-**Rollback Validation**: After revoking credentials, confirm with `curl -H "Authorization: Bearer $OLD_TOKEN" https://slack.com/api/auth.test` — a successful revoke returns `{"ok":false,"error":"token_revoked"}`. After a deployment rollback, send a test message or trigger a test slash command to verify the previous version is responding correctly.
+**5-Minute Constraint**: Rollback must complete within 5 minutes including validation. For credential revocation, prioritize token refresh and service restart. For command/subscription changes, leverage immediate Slack dashboard updates. For webhook failures, use environment variable updates with fast redeploy to minimize downtime.
 
 ## Integration with Other Agents
 

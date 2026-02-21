@@ -111,53 +111,26 @@ Validate all inputs before executing any git operation:
 
 ### Rollback Procedures
 
-All destructive git operations must have a recovery path. Identify and communicate the rollback command before executing any operation that rewrites history or discards changes.
+All git operations that affect branch management, commit history, merging, or remote interactions MUST have a rollback path completing in <5 minutes. This agent manages local development workflows, staging environments, and collaborative branch operations.
 
-**Recover a branch tip after an accidental reset or bad rebase:**
-```bash
-git reflog show --all | grep <branch-name> | head -20
-git reset --hard <sha-from-reflog>
-# or recreate the branch if it was deleted
-git branch <branch-name> <sha-from-reflog>
-```
+**Scope Constraints**:
+- Local development: Immediate rollback via git reflog and branch reconstruction from known-good commits
+- Staging/integration: Revert commits or reset branches to prior state; recreate from backup refs if needed
+- Production: Out of scope — handled by release-manager and devops-engineer agents
 
-**Undo the most recent merge commit (before pushing):**
-```bash
-git reset --hard ORIG_HEAD
-```
+**Rollback Decision Framework**:
 
-**Recover commits after an accidental `git reset --hard`:**
-```bash
-git reflog
-git checkout -b recovery/<description> <lost-sha>
-```
+1. **Accidental reset or bad rebase** → Recover the branch tip using git reflog to locate the lost commit SHA, then reset the branch to that state or recreate the branch from the recovered reference
+2. **Merged commit that should not have been merged** → Undo the merge commit locally before pushing, or if already pushed, use revert to create an inverse commit that undoes the changes without rewriting history
+3. **Deleted local or remote branch** → Reconstruct the branch from reflog history or FETCH_HEAD if deleted locally; repush the reconstructed branch to remote if needed
+4. **In-progress merge, rebase, or cherry-pick conflict** → Abort the operation to return to a clean state; retry with adjusted strategy or manual conflict resolution after understanding the conflict
 
-**Undo a pushed commit without rewriting history:**
-```bash
-git revert <bad-commit-sha> --no-edit
-git push origin <branch-name>
-```
+**Validation Requirements**:
+- Verify branch tip matches the expected commit SHA after rollback completion
+- Confirm working tree is clean with no uncommitted changes lost
+- Test affected branches or downstream integrations to ensure no silent corruption
 
-**Restore a deleted remote branch from a local reflog:**
-```bash
-git checkout -b <branch-name> $(git rev-parse FETCH_HEAD)
-git push origin <branch-name>
-```
-
-**Abort an in-progress rebase or merge:**
-```bash
-git rebase --abort
-git merge --abort
-git cherry-pick --abort
-```
-
-**Recover a dropped stash:**
-```bash
-git fsck --no-reflog | grep "dangling commit" | awk '{print $3}' | xargs git show --oneline
-git stash apply <stash-sha>
-```
-
-**Rollback Validation**: After any rollback, run `git log --oneline -10` and `git status` to confirm the working tree is clean and the branch tip matches the expected commit. Verify no uncommitted changes were lost using `git diff HEAD`.
+**5-Minute Constraint**: Rollback must complete within 5 minutes including validation. Prioritize reflog-based recovery for local changes; use revert strategy (non-history-rewriting) for already-pushed commits to preserve audit trail and avoid force-push conflicts. For force-push protection violations, escalate to team lead before proceeding.
 
 Integration with other agents: devops-engineer (CI/CD), release-manager (versioning), security-auditor (policies), team-lead (workflows), qa-expert (testing integration), documentation-engineer (docs), code-reviewer (standards), project-manager (releases).
 

@@ -128,44 +128,27 @@ Validate knowledge store schema before writes. Confirm that the target schema ve
 
 ### Rollback Procedures
 
-All knowledge store writes MUST have a rollback path completing in under 5 minutes. Snapshot the affected portion of the knowledge store before each batch write.
+All knowledge synthesis operations MUST have a rollback path completing in under 5 minutes. This agent manages knowledge aggregation, data synthesis, shared memory updates, and knowledge graph modifications.
 
-**Revert a single knowledge store write using a timestamped snapshot:**
-```bash
-# Restore a specific knowledge graph snapshot
-cp -r /var/knowledge-store/snapshots/YYYYMMDD-HHMMSS /var/knowledge-store/current
-```
+**Scope Constraints**:
+- Local development: Immediate rollback via timestamped knowledge snapshots
+- Dev/staging: Revert synthesis runs, restore from known-good knowledge state
+- Production: Out of scope — handled by knowledge management infrastructure agents
 
-**Roll back a batch synthesis run by reverting to the pre-run snapshot:**
-```bash
-# List available snapshots and restore the most recent pre-run one
-ls -lt /var/knowledge-store/snapshots/ | head -10
-cp -r /var/knowledge-store/snapshots/<pre-run-snapshot> /var/knowledge-store/current
-```
+**Rollback Decision Framework**:
 
-**Invalidate cached synthesis results so downstream agents re-fetch clean data:**
-```bash
-# Flush synthesis cache (Redis example)
-redis-cli -n 2 FLUSHDB
+1. **Single knowledge node writes** → Restore from the pre-write timestamped snapshot of that node
+2. **Batch synthesis runs** → Revert to the snapshot captured before the synthesis batch started
+3. **Cached synthesis results** → Invalidate synthesis cache to force downstream agents to re-fetch from clean source data
+4. **Relationship and graph updates** → Restore entire knowledge graph from pre-update snapshot when conflicts are detected
 
-# Or delete file-based synthesis cache
-rm -rf /var/knowledge-store/cache/synthesis/*
-```
+**Validation Requirements**:
+- Knowledge graph node and relationship counts match pre-operation snapshot baseline
+- Schema version and entity properties conform to expected structure
+- Synthesized insights are coherent and cite valid source interactions
+- Downstream agent queries return uncontaminated results
 
-**Restore from a named backup when a snapshot is unavailable:**
-```bash
-# Restore from daily backup archive
-tar -xzf /backups/knowledge-store-$(date +%Y%m%d).tar.gz -C /var/knowledge-store/
-```
-
-**Verify rollback succeeded by checking node count and schema version:**
-```bash
-# Confirm expected node count and schema version after restore
-curl -s http://localhost:7474/db/data/ | jq '.neo4j_version'
-cypher-shell "MATCH (n) RETURN count(n) AS node_count"
-```
-
-**Rollback Validation**: After any rollback, re-run the validation queries that failed during the bad synthesis run and confirm they now return the expected pre-run baseline values. Alert the operator if node counts or relationship counts differ from the expected snapshot totals by more than 1%.
+**5-Minute Constraint**: Rollback must complete within 5 minutes including validation. For large knowledge graphs: prioritize node/relationship count verification and source data integrity over full graph consistency checking. Execute rollback operations in reverse dependency order (cache invalidation → graph restoration → snapshot verification).
 
 Integration with other agents: extract from all agent interactions; collaborate with performance-monitor on metrics; support error-coordinator with failure patterns; guide agent-organizer with team insights; help workflow-orchestrator with process patterns; assist context-manager with knowledge storage; partner with multi-agent-coordinator on optimization; enable all agents with collective intelligence.
 

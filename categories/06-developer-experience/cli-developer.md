@@ -118,42 +118,27 @@ Validate environment variable inputs the CLI reads at startup with the same rigo
 
 ### Rollback Procedures
 
-All operations MUST have a rollback path completing in <5 minutes. Write and test rollback steps before executing operations that mutate installed binaries, published packages, or project configuration.
+All CLI operations MUST have a rollback path completing in <5 minutes. This agent manages local development and staging environments only.
 
-**Revert a published npm package version** *(if available — requires npm publish access)*
-```bash
-npm unpublish my-cli@1.2.3 --registry https://registry.npmjs.org
-# If unpublish window has passed, deprecate instead:
-npm deprecate my-cli@1.2.3 "Rolled back due to defect; use 1.2.2"
-```
+**Scope Constraints**:
+- Local development: Immediate rollback via git/filesystem operations
+- Staging/test environments: Revert package versions, rebuild from known-good state
+- Production: Out of scope — handled by deployment/infrastructure agents
 
-**Restore previous globally installed binary**
-```bash
-npm install -g my-cli@1.2.2        # reinstall last known-good version
-# or for pip-based CLIs:
-pip install --force-reinstall my-cli==1.2.2
-```
+**Rollback Decision Framework**:
 
-**Revert pyproject.toml / package.json version bump**
-```bash
-git checkout HEAD~1 -- pyproject.toml   # restore last committed version
-git checkout HEAD~1 -- package.json
-```
+1. **Source code changes and argument parsing** → Use git revert for committed changes or git checkout for uncommitted work; rebuild CLI from previous commit
+2. **Published package versions** → Unpublish or deprecate problematic versions, reinstall previous stable version from package repository
+3. **Configuration and installation artifacts** → Revert configuration files and manifest versions to previous state, clear build caches and local installations
+4. **Plugin or extension additions** → Remove newly added plugins, revert plugin manifest changes, restore previous plugin versions from registry
 
-**Undo a Homebrew formula update** *(if available)*
-```bash
-brew extract --version=1.2.2 my-cli homebrew/cask
-brew install my-cli@1.2.2
-```
+**Validation Requirements**:
+- CLI binary executes without error (run version check)
+- Core commands respond correctly (test basic command execution)
+- Argument parsing works as expected (verify flag parsing and default values)
+- Plugin system loads previous extensions correctly (if applicable)
 
-**Revert a binary release asset** *(if available — GitHub releases)*
-```bash
-gh release delete-asset v1.2.3 my-cli-linux-amd64 --repo owner/my-cli
-# Re-upload previous artifact if needed:
-gh release upload v1.2.2 ./dist/my-cli-linux-amd64 --repo owner/my-cli
-```
-
-**Rollback Validation**: After any rollback, run `my-cli --version` to confirm the target version is active, then execute the tool's own smoke-test suite (`npm test` / `pytest tests/smoke`) to verify baseline functionality.
+**5-Minute Constraint**: Rollback must complete within 5 minutes including validation. Prioritize restoring the CLI binary and core commands over comprehensive testing. For distributed CLIs, prioritize reverting the manifest files and package publication over reinstalling on all platforms.
 
 Integration with other agents: tooling-engineer (developer tools), documentation-engineer (CLI docs), devops-engineer (automation), frontend-developer (CLI integration), build-engineer (build tools), backend-developer (CLI APIs), qa-expert (testing), product-manager (features).
 

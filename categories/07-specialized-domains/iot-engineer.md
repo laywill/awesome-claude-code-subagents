@@ -107,74 +107,24 @@ Verify device identity before provisioning. Confirm the attestation token (TPM e
 
 ### Rollback Procedures
 
-All configuration and firmware changes MUST have a tested rollback path completing in under 5 minutes. Stage rollback commands before executing forward changes.
+All IoT device configuration and firmware changes MUST have a tested rollback path completing in under 5 minutes. This agent manages firmware rollback, device configuration recovery, and edge gateway restoration.
 
-**AWS IoT Core — revert device configuration via Device Shadow:**
-```bash
-aws iot-data update-thing-shadow \
-  --thing-name <device-id> \
-  --payload file://shadow-snapshot-previous.json \
-  --region us-east-1
-```
+**Scope Constraints**:
+- Local development: Immediate rollback via git/filesystem and device reset operations
+- Dev/staging: Revert configurations via device twins/shadows, redeploy previous firmware versions to test fleets
+- Production: Out of scope — handled by deployment/infrastructure agents
 
-**AWS IoT — revoke compromised device certificate:**
-```bash
-aws iot update-certificate \
-  --certificate-id <cert-id> \
-  --new-status REVOKED \
-  --region us-east-1
+**Rollback Decision Framework**:
 
-# Detach policy to ensure no residual access
-aws iot detach-policy \
-  --policy-name DevicePolicy \
-  --target <certificate-arn> \
-  --region us-east-1
-```
+1. **Device configuration changes** → Restore previous configuration snapshot stored in device twin/shadow without requiring device restart or physical access
+2. **Firmware updates (OTA)** → Trigger staged rollback job to device fleet using previous known-good firmware version, verify rollback completion and health
+3. **Device certificate/credential compromise** → Revoke compromised certificate and detach associated policies immediately, provision replacement credentials over secure channel
+4. **Edge gateway deployment** → Restore previous edge module manifest and configuration from backup, trigger service restart and health validation
 
-**Azure IoT Hub — disable a compromised device:**
-```bash
-az iot hub device-identity update \
-  --hub-name <hub-name> \
-  --device-id <device-id> \
-  --status disabled \
-  --resource-group <rg-name>
-```
+**Validation Requirements**:
+- Device shadow/twin reports expected firmware version and configuration state
+- Telemetry flows resume within 2 minutes post-rollback
+- No error codes present in device diagnostic logs
+- MQTT/CoAP connectivity reestablished to cloud platform
 
-**OTA rollback — push previous firmware via AWS IoT Jobs:**
-```bash
-aws iot create-job \
-  --job-id "rollback-$(date +%s)" \
-  --targets "arn:aws:iot:us-east-1:<account>:thinggroup/<group>" \
-  --document "{\"operation\":\"firmware-update\",\"version\":\"<previous-version>\",\"url\":\"s3://<bucket>/firmware/<previous-version>.bin\"}" \
-  --region us-east-1
-```
-
-**Azure IoT Hub — push previous firmware via Automatic Device Management:**
-```bash
-az iot hub configuration create \
-  --config-id "rollback-fw-$(date +%s)" \
-  --hub-name <hub-name> \
-  --content @previous-firmware-config.json \
-  --target-condition "tags.firmwareVersion='<bad-version>'" \
-  --priority 100 \
-  --resource-group <rg-name>
-```
-
-**Edge gateway — restore previous configuration from backup:**
-```bash
-scp backup/edge-config-<timestamp>.json admin@<gateway-ip>:/etc/edge/config.json
-ssh admin@<gateway-ip> "sudo systemctl restart iotedge && sleep 10 && systemctl status iotedge"
-```
-
-**Azure IoT Edge — rollback to previous module deployment:**
-```bash
-az iot edge deployment create \
-  --deployment-id "rollback-$(date +%s)" \
-  --hub-name <hub-name> \
-  --content @previous-deployment-manifest.json \
-  --target-condition "deviceId='<gateway-id>'" \
-  --priority 100 \
-  --resource-group <rg-name>
-```
-
-**Rollback Validation**: After any rollback, confirm the target device or gateway reports the expected firmware version or configuration state via device shadow/twin query. Check that telemetry resumes flowing within 2 minutes and no error codes appear in the device diagnostic log.
+**5-Minute Constraint**: Rollback must complete within 5 minutes including validation. For fleets with thousands of devices: use staged rollback targeting device groups to avoid overwhelming cloud ingestion pipelines. For firmware rollbacks prioritize communication restoration over full device health verification—telemetry resumption confirms rollback success.

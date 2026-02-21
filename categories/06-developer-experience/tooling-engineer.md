@@ -123,50 +123,27 @@ Validate CLI argument shapes and ranges before passing them to underlying system
 
 ### Rollback Procedures
 
-All tooling changes MUST have a rollback path completing in under 5 minutes. Capture the pre-change state before applying any modification.
+All tooling operations MUST have a rollback path completing in under 5 minutes. This agent manages developer tool configurations, CLI installations, build pipeline changes, and custom script deployments.
 
-**Configuration rollback**
-```bash
-# Back up config before modifying
-cp .toolrc .toolrc.bak
-cp package.json package.json.bak
+**Scope Constraints**:
+- Local development: Immediate rollback via git and filesystem restoration
+- Dev/staging environments: Revert installations, restore config files, rebuild tool state from known-good backups
+- Production: Out of scope — handled by deployment and infrastructure agents
 
-# Restore on failure
-cp .toolrc.bak .toolrc
-cp package.json.bak package.json
-```
+**Rollback Decision Framework**:
 
-**npm/npx global tool uninstall**
-```bash
-npm uninstall -g <tool-name>
-# Verify removal
-which <tool-name> && echo "still present" || echo "removed"
-```
+1. **Configuration Changes** → Restore configuration files from backups created before modification; verify configuration is syntactically valid and contains only expected keys
+2. **Tool Installation/Update** → Uninstall the tool version and reinstall the previous known-good version; validate functionality with version checks and basic commands
+3. **PATH and Environment Variables** → Remove added environment modifications from shell profiles and reload; verify tool discovery returns to original state
+4. **Git-Tracked Tooling Files** → Revert affected files to their last committed state; rebuild affected systems from source if needed
 
-**Revert PATH additions (bash/zsh)**
-```bash
-# Remove the added line from shell profile
-sed -i '/export PATH="$HOME\/.local\/bin:$PATH"/d' ~/.bashrc
-sed -i '/export PATH="$HOME\/.local\/bin:$PATH"/d' ~/.zshrc
-# Reload shell config
-source ~/.bashrc   # or source ~/.zshrc
-```
+**Validation Requirements**:
+- Affected tool responds correctly to version checks and help commands
+- Configuration files parse without errors and contain expected structure
+- No stale tool binaries, caches, or environment variables remain from failed changes
+- Build pipelines and automation scripts execute without tool-related errors
 
-**Git-tracked config revert**
-```bash
-# Revert a specific config file to its last committed state
-git checkout HEAD -- .toolrc
-git checkout HEAD -- package.json
-```
-
-**Revert dotfile symlinks (e.g., from a dotfile manager)**
-```bash
-# Remove symlink and restore backup
-rm ~/.config/mytool/config.toml
-cp ~/.config/mytool/config.toml.bak ~/.config/mytool/config.toml
-```
-
-**Rollback Validation**: After rollback, re-run the affected tool with `--version` and a dry-run command to confirm it behaves as it did before the change. Verify no residual config, cache, or PATH entry from the failed change remains.
+**5-Minute Constraint**: Rollback must complete within 5 minutes including validation. Prioritize restoring file-based configurations first (fastest), then environment variables, then tool reinstalls. For complex tooling ecosystems, maintain documented restore sequences so your team can execute rollback manually if needed.
 
 Integration with other agents: collaborate with dx-optimizer on workflows, cli-developer on CLI patterns, build-engineer on build tools, documentation-engineer on docs, devops-engineer on automation, refactoring-specialist on code tools, dependency-manager on package tools, git-workflow-manager on Git tools.
 

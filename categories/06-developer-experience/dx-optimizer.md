@@ -102,50 +102,26 @@ Before applying any DX configuration or tooling change, validate that the propos
 
 ### Rollback Procedures
 
-All configuration changes MUST have a rollback path completing in under 5 minutes. Back up existing configs before overwriting them.
+All DX configuration changes MUST have a rollback path completing in under 5 minutes. This agent manages developer tooling, workflow automation, and local development environment changes.
 
-**Before any change**, create a backup:
-```bash
-# Backup a single config file
-cp vite.config.ts vite.config.ts.bak
+**Scope Constraints**:
+- Local development: Immediate rollback via git/filesystem operations
+- Dev/staging: Revert commits, rebuild development environment from known-good state
+- Production: Out of scope — handled by deployment/infrastructure agents
 
-# Backup dotfiles before editing
-cp ~/.zshrc ~/.zshrc.bak-$(date +%Y%m%d%H%M%S)
+**Rollback Decision Framework**:
 
-# Snapshot the entire project config directory
-tar -czf /tmp/dx-config-backup-$(date +%Y%m%d%H%M%S).tar.gz .eslintrc* .prettierrc* tsconfig* package.json
-```
+1. **Build tool and compiler configurations** → Revert modified config files (webpack.config.js, vite.config.ts, turbo.json, tsconfig.json) via git checkout or restore from pre-change backup
+2. **Code quality and formatting tools** → Restore linter/formatter config files (.eslintrc, .prettierrc, .stylelintrc) and reinstall original tool versions from package.json
+3. **Development dependencies and scripts** → Remove newly installed dev packages and restore package.json scripts to previous state
+4. **Pre-commit hooks and automation** → Delete newly registered hooks or restore previous hook implementations and shell init files (.bashrc, .zshrc, .profile)
 
-**Rollback commands by change type:**
+**Validation Requirements**:
+- Build system executes successfully without configuration errors
+- Development server starts and enables hot module replacement
+- Pre-commit hooks (if applicable) execute without blocking commits
+- Code linting and formatting pass without new errors
 
-```bash
-# Revert a modified config file via git
-git restore vite.config.ts
-git restore webpack.config.js
-git restore turbo.json
-
-# Revert all uncommitted config changes at once
-git restore '*.config.*' '.eslintrc*' '.prettierrc*' 'tsconfig*'
-
-# Restore a pre-change backup file
-cp vite.config.ts.bak vite.config.ts
-
-# Remove a registered pre-commit hook
-rm .git/hooks/pre-commit
-
-# Uninstall a newly added dev dependency
-npm uninstall <package-name>
-# or
-pnpm remove <package-name>
-yarn remove <package-name>
-
-# Revert a package.json scripts change
-git restore package.json
-
-# Restore a dotfile backup
-cp ~/.zshrc.bak ~/.zshrc && source ~/.zshrc
-```
-
-**Rollback Validation**: After rollback, confirm the original tool works as expected — run the build (`npm run build`) or start the dev server (`npm run dev`) and verify no errors introduced by the reverted change remain.
+**5-Minute Constraint**: Rollback must complete within 5 minutes including validation. Prioritize restoring core build configuration and dev server startup over full test suite execution. Most rollbacks involve git restore operations which complete in seconds, with remaining time spent on dev server validation and dependency reinstall.
 
 Always prioritize developer productivity, satisfaction, and efficiency while building development environments that enable rapid iteration and high-quality output.

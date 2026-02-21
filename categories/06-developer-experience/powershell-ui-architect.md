@@ -95,38 +95,27 @@ Treat every value from a WinForms TextBox, WPF TextBox/ComboBox, or TUI Read-Hos
 
 ### Rollback Procedures
 
-All UI changes must have a rollback path completing in under five minutes. Capture current state before applying changes.
+All UI changes must have a rollback path completing in under five minutes. This agent manages PowerShell UI layer changes (forms, XAML, TUIs, and related scripts) in local and dev/staging environments.
 
-```powershell
-# Discard uncommitted UI file changes
-git restore categories/ui/*.xaml
-git restore *.ps1
+**Scope Constraints**:
+- Local development: Immediate rollback via git/filesystem operations
+- Dev/staging: Revert commits, rebuild UI artifacts and redeploy XAML resources
+- Production: Out of scope — handled by deployment/infrastructure agents
 
-# Revert a specific committed change
-git revert --no-commit <commit-sha>
-git restore --staged .
-git restore .
+**Rollback Decision Framework**:
 
-# Restore a backed-up assembly
-Copy-Item "C:\Backups\MyTool\MahApps.Metro.dll.bak" "C:\Tools\MyTool\MahApps.Metro.dll" -Force
+1. **UI script and XAML changes** → Use git revert for committed changes or git restore for uncommitted work on .ps1, .xaml, and .psd1 files
+2. **WinForms/WPF assemblies and dependencies** → Restore backed-up DLLs or regenerate from source control, revert packages.config or dotnet project file entries
+3. **Theme and resource files** → Restore MahApps.Metro or custom resource dictionaries from prior commits; rebuild WPF UI if resources fail to load
+4. **UI module manifest or entrypoint changes** → Revert module manifest updates and UI launcher scripts to restore the previous UI invocation path
 
-# Remove a NuGet package added to a PowerShell-hosted WPF project
-dotnet remove package MahApps.Metro && dotnet restore
+**Validation Requirements**:
+- UI script reloads without syntax errors in a test PowerShell session
+- Main window or form opens successfully and displays expected controls
+- XAML parses cleanly for WPF projects; WinForms form class instantiates without errors
+- Event handlers and bindings function as expected in a quick functional test
 
-# Or restore packages.config from Git
-git checkout HEAD~1 -- packages.config
-nuget restore packages.config -PackagesDirectory .\packages
-
-# Restore a specific XAML file to a prior commit
-git log --oneline -- **/*.xaml
-git checkout <commit-sha> -- src\Resources\AppStyles.xaml
-
-# Undo module manifest or UI entrypoint change
-git checkout HEAD~1 -- MyToolUI.psd1
-git checkout HEAD~1 -- Start-MyToolUI.ps1
-```
-
-**Rollback Validation**: After restoring files, reload the UI script in a test session and confirm the main window opens without errors. For WPF, verify XAML parses cleanly with `[System.Windows.Markup.XamlReader]::Parse((Get-Content .\Window.xaml -Raw))`. For WinForms, instantiate the form class in a fresh PowerShell session and confirm `$form.ShowDialog()` presents the expected controls.
+**5-Minute Constraint**: Rollback must complete within 5 minutes including validation. For WPF UIs with complex XAML: prioritize file restoration and quick syntax validation over full theme/styling tests. For WinForms: focus on control instantiation and primary button functionality. TUIs require confirmation that menu navigation and command execution work in a terminal session.
 
 ## Integration with Other Agents
 

@@ -122,63 +122,26 @@ Validate all player-supplied and external data before it touches game state or t
 
 ### Rollback Procedures
 
-All game-logic and content changes MUST have a rollback path completing in under 5 minutes. Test rollback steps in a staging build before shipping to production.
+All game systems and content changes MUST have a rollback path completing in <5 minutes. This agent manages game development environments (local, dev builds, staging).
 
-**Game logic rollback (Unity/Unreal/Godot — version-controlled project):**
-```bash
-# Revert a specific commit to game logic scripts
-git revert <commit-hash> --no-edit
-git push origin main
+**Scope Constraints**:
+- Local development: Immediate rollback via git/filesystem operations
+- Dev/staging builds: Revert commits, rebuild from known-good state, restore asset backups
+- Production distribution: Out of scope — handled by platform/infrastructure agents (Steam, console, etc.)
 
-# Hard-reset a feature branch to last known-good tag
-git reset --hard v1.4.2-stable
-git push --force-with-lease origin feature/combat-overhaul
-```
+**Rollback Decision Framework**:
 
-**Scene and level file rollback (Unity):**
-```bash
-# Restore a single scene file from the last tagged release
-git checkout v1.4.2-stable -- Assets/Scenes/Level_03.unity
-git commit -m "revert: restore Level_03 to v1.4.2-stable"
-```
+1. **Game logic and scripts** → Use git revert for committed gameplay code, asset loading systems, physics/rendering setup, and AI behavior logic. Reset feature branches to last known-good tagged release version.
+2. **Scene and level configuration** → Restore individual scene files from version control tagged releases. For large-scale level/map assets, restore from asset backups if corruption occurred.
+3. **Asset pipeline and content** → Recover textures, models, animations, audio banks, and configuration files from dated backups. Asset management systems should track versions for quick restoration.
+4. **Build artifacts and engine state** → Clear build cache, rebuild from previous commit, reset local project state. Restore database snapshots for save-slot testing if needed.
 
-**Scene and level file rollback (Unreal Engine):**
-```bash
-# Restore a map asset from Perforce or Git LFS
-git checkout v1.4.2-stable -- Content/Maps/Level_03.umap Content/Maps/Level_03.uexp
-git commit -m "revert: restore Level_03 map to v1.4.2-stable"
-```
+**Validation Requirements**:
+- Game loads without crashes in editor/dev build
+- Previously broken game mechanic (physics, rendering, scene loading, AI pathfinding) is absent
+- Player save files deserialize correctly from known-good snapshots
+- Performance metrics (FPS, load time, memory) return to baseline
 
-**Asset backup restoration:**
-```bash
-# Restore a corrupted texture atlas from a dated backup
-cp /backups/assets/2026-02-17/UI_Atlas.png Assets/Textures/UI_Atlas.png
-
-# Restore an audio bank backup (FMOD/Wwise)
-cp /backups/audio/2026-02-17/SFX_Weapons.bank StreamingAssets/Audio/GeneratedSoundBanks/Windows/SFX_Weapons.bank
-```
-
-**Build artifact rollback (rolling back a live build on a distribution platform):**
-```bash
-# Steam: roll back to the previous live build using the Steamworks partner dashboard
-# CLI equivalent via steamcmd
-steamcmd +login <account> +app_set_build <appid> <buildid> +quit
-
-# Itch.io: revert a channel to a previous uploaded build
-butler status <user>/<game>:<channel>
-# Then re-push the previous known-good build
-butler push ./builds/v1.4.2 <user>/<game>:<channel> --userversion 1.4.2
-```
-
-**Database/save-slot rollback (online game, server-side saves):**
-```bash
-# Restore player save data from the most recent hourly snapshot
-psql -U gamedb -c "CALL restore_player_saves_from_snapshot('2026-02-17T14:00:00Z');"
-
-# Point-in-time recovery for the saves database
-pg_restore -U gamedb -d player_saves /backups/player_saves_2026-02-17T14.dump
-```
-
-**Rollback Validation**: After rollback, run a smoke-test build, launch a local server instance, connect a test client, verify the previously broken mechanic is absent, and confirm player stats/inventory load correctly from a known-good save file.
+**5-Minute Constraint**: Rollback must complete within 5 minutes including validation. For complex games: prioritize core gameplay rollback (scripts and scene files) over full rebuild and testing of all asset pipelines. Execute rollback in reverse dependency order (level scripts → scene configuration → assets → engine state).
 
 Always prioritize player experience, performance, and engagement while creating games that entertain and delight across all target platforms.

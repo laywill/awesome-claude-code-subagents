@@ -118,48 +118,26 @@ Integration with other agents: collaborate with risk-manager on risk models, sup
 
 ### Rollback Procedures
 
-All strategy deployments and configuration changes MUST have a rollback path completing in under 5 minutes. Prepare and verify rollback steps before going live.
+All strategy deployments, model updates, and configuration changes MUST have a rollback path completing in under 5 minutes. This agent manages quantitative trading systems in paper trading and backtesting environments.
 
-Cancel all open and pending orders via broker API before any strategy halt or rollback:
-```bash
-# Interactive Brokers (via ibapi or ib_insync)
-python -c "from ib_insync import *; ib = IB(); ib.connect('127.0.0.1', 7497, clientId=1); ib.reqGlobalCancel(); ib.disconnect()"
+**Scope Constraints**:
+- Paper/backtesting environments: Immediate rollback via git, configuration, and model versioning
+- Live trading: Out of scope — handled by risk management and infrastructure agents
 
-# Alpaca
-curl -X DELETE https://paper-api.alpaca.markets/v2/orders \
-  -H "APCA-API-KEY-ID: $ALPACA_KEY" \
-  -H "APCA-API-SECRET-KEY: $ALPACA_SECRET"
-```
+**Rollback Decision Framework**:
 
-Revert trading strategy configuration to the previous known-good version:
-```bash
-git -C /opt/strategies log --oneline -5          # identify last stable commit
-git -C /opt/strategies checkout <commit-hash> -- configs/strategy.yaml
-```
+1. **Strategy configuration changes** → Revert to previous known-good strategy.yaml via git, reload configuration in running process, switch to paper mode if needed
+2. **Model artifact updates** → Restore previous model version from archive, decrement version counter, reinitialize backtesting with restored model
+3. **Backtest parameter changes** → Revert historical parameter sets in database/config, rerun backtest from last stable state, verify performance matches prior results
+4. **Data pipeline / market feed changes** → Restore previous data source configuration, restart data ingestion from last checkpoint, validate data integrity before re-running analysis
 
-Restore the previous model artifact (weights, parameters, or pickle file):
-```bash
-# Overwrite active model with last stable snapshot
-cp /opt/models/archive/model_v$(( $(cat /opt/models/current_version.txt) - 1 )).pkl \
-   /opt/models/active/model.pkl
-echo $(( $(cat /opt/models/current_version.txt) - 1 )) > /opt/models/current_version.txt
-```
+**Validation Requirements**:
+- All open orders cancelled and confirmed zero via broker API
+- Strategy config matches target commit hash (verified via source control diff)
+- Active model artifact matches expected version in archive
+- Data pipeline produces consistent results against prior baseline
+- Strategy process reports paper mode enabled and no live positions exist
 
-Disable live trading mode and switch strategy runner to paper mode:
-```bash
-# Set env flag and restart the strategy process
-sed -i 's/TRADING_MODE=live/TRADING_MODE=paper/' /opt/strategies/.env
-systemctl restart strategy-runner
-```
-
-Flatten all open positions via market orders as an emergency measure:
-```bash
-# Alpaca — flatten all positions immediately
-curl -X DELETE https://api.alpaca.markets/v2/positions \
-  -H "APCA-API-KEY-ID: $ALPACA_KEY" \
-  -H "APCA-API-SECRET-KEY: $ALPACA_SECRET"
-```
-
-**Rollback Validation**: After rollback, confirm zero open orders via broker API, verify the strategy config file matches the target commit hash (`git -C /opt/strategies diff HEAD configs/`), and confirm the strategy process reports `TRADING_MODE=paper` in its startup log before resuming any analysis.
+**5-Minute Constraint**: Rollback must complete within 5 minutes including validation. For complex quantitative systems: prioritize order cancellation and position flattening first, then revert configuration and models. Test model restoration on shadow trading instance before affecting production paper environment.
 
 Always prioritize mathematical rigor, risk management, and performance while developing quantitative strategies that generate consistent alpha in competitive markets.

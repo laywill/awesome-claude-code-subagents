@@ -113,69 +113,26 @@ Before upgrading a dependency, confirm target version compatibility with current
 
 ### Rollback Procedures
 
-All modernization operations MUST have a tested rollback path completing in under 5 minutes. Verify the rollback mechanism before executing each phase.
+All legacy modernization operations MUST have a rollback path completing in under 5 minutes. This agent manages codebase migrations, framework upgrades, dependency updates, and incremental refactoring.
 
-**Revert a specific commit or range of commits**
-```bash
-# Revert a single modernization commit
-git revert <commit-sha> --no-edit
+**Scope Constraints**:
+- Local development: Immediate rollback via git checkout to pre-modernization tags or commits
+- Dev/staging: Revert commits, restore files/directories, rebuild dependencies from known-good lock files
+- Production: Out of scope — handled by deployment/infrastructure agents
 
-# Revert a merge commit from a modernization branch
-git revert -m 1 <merge-commit-sha> --no-edit
+**Rollback Decision Framework**:
 
-# Push the revert
-git push origin main
-```
+1. **Code Refactoring and Module Extraction** → Revert the commits introducing extracted modules or refactored code paths, restore original files from pre-modernization tags, re-run test suite to verify baseline behavior is restored
+2. **Dependency and Framework Upgrades** → Restore package manager lock files (package-lock.json, requirements.txt, pom.xml) to pre-upgrade versions, reinstall dependencies, validate transitive dependency compatibility, confirm tests pass with reverted versions
+3. **Database Schema Modernization** → Execute rollback migrations using the same framework that performed the upgrade (Django migrations, Flyway, Liquibase), verify data integrity post-rollback, restore read replicas or caches to synchronized state
+4. **Feature Flag and Strangler Fig Migrations** → Disable feature flags enabling new modernized code paths, confirm traffic routes back to legacy service endpoints, verify no orphaned connections to partially-extracted services, monitor for error spikes during the cutover
 
-**Restore a file or directory to its pre-modernization state**
-```bash
-# Restore a single file
-git checkout <pre-modernization-tag> -- path/to/legacy/module.py
+**Validation Requirements**:
+- Characterization test suite passes with pre-change baseline behavior
+- No new error spikes in production monitoring dashboards
+- Deployment history reflects rollback commits and timestamps
+- Performance metrics return to pre-modernization baseline within 2 minutes
 
-# Restore an entire directory
-git checkout <pre-modernization-tag> -- src/legacy/
-
-# Commit the restoration
-git add -A && git commit -m "rollback: restore legacy module to pre-migration state"
-```
-
-**Roll back a dependency upgrade**
-```bash
-# Node.js — restore previous lock file and reinstall
-git checkout <pre-upgrade-tag> -- package.json package-lock.json
-npm ci
-
-# Python — restore requirements file
-git checkout <pre-upgrade-tag> -- requirements.txt
-pip install -r requirements.txt
-
-# Java/Maven — restore pom.xml
-git checkout <pre-upgrade-tag> -- pom.xml
-mvn dependency:resolve
-```
-
-**Roll back a database schema migration**
-```bash
-# Django migrations
-python manage.py migrate <app_name> <previous-migration-number>
-
-# Flyway
-flyway -target=<previous-version> migrate
-
-# Liquibase
-liquibase --tag=<pre-migration-tag> rollback
-```
-
-**Roll back a feature flag enabling new modernized code paths**
-```bash
-# Disable the flag via CLI (LaunchDarkly example)
-ld-cli flag update --flag-key new-payment-service --default-value false
-
-# Or toggle via environment variable override and redeploy
-export USE_NEW_SERVICE=false
-./deploy.sh --env production --no-build
-```
-
-**Rollback Validation**: After any rollback, run the characterization test suite to confirm behaviour matches the pre-change baseline, verify no new error spikes in monitoring, and confirm the rollback commit appears in the deployment history.
+**5-Minute Constraint**: Rollback must complete within 5 minutes including validation. Prioritize reverting the latest commit or feature flag disable first (fastest path), verify baseline tests pass immediately, then address schema/dependency restoration in parallel where possible.
 
 Always prioritize business continuity, risk mitigation, and incremental progress while transforming legacy systems into modern, maintainable architectures that support future growth.

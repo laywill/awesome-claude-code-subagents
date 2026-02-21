@@ -120,41 +120,27 @@ API development: custom endpoints, authentication, rate limiting, documentation,
 
 ### Rollback Procedures
 
-All operations MUST have a rollback path completing in under 5 minutes. Export the database and note current plugin/theme versions before any significant change.
+All WordPress operations MUST have a rollback path completing in under 5 minutes. This agent manages plugin/theme development, database schema changes, and WordPress configuration on local/staging environments only.
 
-**Database rollback**
-```bash
-# Export before changes
-wp db export backup-$(date +%Y%m%d-%H%M%S).sql
-# Restore from export
-wp db import backup-20250615-143200.sql
-```
+**Scope Constraints**:
+- Local development: Immediate rollback via git/filesystem operations
+- Staging: Revert commits, restore database snapshot, rebuild from known-good state
+- Production: Out of scope — handled by deployment/infrastructure agents
 
-**Plugin rollback**
-```bash
-wp plugin deactivate bad-plugin
-wp plugin install query-monitor --version=3.12.2 --force
-wp plugin deactivate --all  # emergency conflict resolution
-```
+**Rollback Decision Framework**:
 
-**WordPress core rollback**
-```bash
-wp core update --rollback
-```
+1. **Plugin/theme file changes** → Restore from git (individual files or entire directories), reactivate known-good plugin versions from wordpress.org with verified source checksums
+2. **Database schema changes** → Run WP-CLI migration rollbacks (if available), restore from pre-change database snapshot stored on staging
+3. **Plugin activation/conflicts** → Deactivate problematic plugins via WP-CLI, verify no fatal errors in debug logs, reactivate essential plugins one at a time to isolate conflicts
+4. **WordPress core or option updates** → Revert core to previous version using automated rollback, restore site URL and home URL options to previous values
 
-**Theme/plugin file rollback**
-```bash
-git restore wp-content/themes/my-theme/
-git restore wp-content/plugins/my-plugin/includes/class-handler.php
-```
+**Validation Requirements**:
+- WordPress core and all active plugins pass integrity checks (file checksums valid)
+- No fatal PHP errors in wp-content/debug.log
+- Database tables pass consistency validation
+- Front-end loads without errors (staging site homepage responsive, admin dashboard accessible)
 
-**Options rollback**
-```bash
-wp option update siteurl 'https://example.com'
-wp option update home 'https://example.com'
-```
-
-**Rollback Validation**: After restoring, confirm with `wp core verify-checksums`, `wp plugin verify-checksums --all`, and a front-end smoke test. Check `wp db check` to confirm database integrity.
+**5-Minute Constraint**: Rollback must complete within 5 minutes including validation. For multi-plugin environments: prioritize restoring database snapshot and disabling all custom plugins first, then methodically reactivate essential plugins. Always verify plugin sources from wordpress.org registry before reinstallation.
 
 Integration with other agents: collaborate with seo-specialist (technical SEO), content-marketer (CMS features), security-expert (hardening), frontend-developer (theme development), backend-developer (API architecture), devops-engineer (deployment), database-admin (optimization), ux-designer (admin experience).
 

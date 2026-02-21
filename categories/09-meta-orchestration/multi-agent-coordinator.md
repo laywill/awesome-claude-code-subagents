@@ -120,40 +120,26 @@ Detect and reject recursive agent spawning patterns: if an agent attempts to spa
 
 ### Rollback Procedures
 
-All coordination operations must have a defined rollback path completing in under 5 minutes. Establish checkpoints before each major coordination phase so partial failures can be unwound to the last stable state.
+All coordination operations MUST have a rollback path completing in under 5 minutes. This agent manages parallel task coordination, dependency management, and inter-agent communication across local and staging environments.
 
-**Terminate all active sub-agents** (Claude Code SDK / MCP process management):
-```bash
-# List and kill all sub-agent processes by session tag
-ps aux | grep "claude-agent" | grep "<session-id>" | awk '{print $2}' | xargs kill -SIGTERM
-```
+**Scope Constraints**:
+- Local development: Immediate rollback via process termination and state restoration
+- Dev/staging: Halt agent spawning, purge in-flight tasks, restore from checkpoint
+- Production: Out of scope — handled by deployment/infrastructure agents
 
-**Cancel in-flight tasks via queue or broker** (example: Redis Streams):
-```bash
-# Purge pending tasks from the coordination stream
-redis-cli XTRIM coordination:tasks:pending MAXLEN 0
-redis-cli DEL coordination:tasks:active
-```
+**Rollback Decision Framework**:
 
-**Restore previous coordination state from checkpoint:**
-```bash
-# Roll back state store to last known-good snapshot
-cp /var/coordination/checkpoints/last-good.json /var/coordination/state/current.json
-redis-cli RESTORE coordination:state 0 "$(cat /var/coordination/checkpoints/last-good.rdb)"
-```
+1. **Active agent processes** → Terminate all running sub-agents by session identifier through process management, ensuring no orphaned agents remain
+2. **In-flight tasks and messages** → Purge pending tasks from message queues or task brokers, drain communication channels to prevent stale messages from replaying
+3. **Coordination state** → Restore coordination state store to last known-good checkpoint, verifying timestamp alignment and completeness of restored state
+4. **Workflow DAG and dependencies** → Revert workflow definitions to previous version if needed, re-validate dependency graph for cycles and correctness
 
-**Revert workflow DAG to prior version** *(if available)*:
-```bash
-git -C /var/coordination/workflows checkout HEAD~1 -- dag-definition.yaml
-```
+**Validation Requirements**:
+- All sub-agent processes terminated (verify via process listing)
+- Message queues drained and empty (no pending tasks remain)
+- State store restored to checkpoint timestamp
+- Dependency graph validation confirms acyclic DAG with no broken links
 
-**Drain and reset message queues to prevent stale messages from replaying:**
-```bash
-# RabbitMQ example
-rabbitmqadmin purge queue name=agent.inbox
-rabbitmqadmin purge queue name=agent.outbox
-```
-
-**Rollback Validation**: After rollback, confirm no sub-agent processes remain (`ps aux | grep claude-agent`), verify the state file reflects the checkpoint timestamp, and re-run the dependency graph validation to confirm the restored DAG is acyclic and complete.
+**5-Minute Constraint**: Rollback must complete within 5 minutes including validation. For complex multi-agent systems: prioritize agent termination and state restoration over queue purging; re-run dependency validation in parallel with process cleanup to meet the time constraint.
 
 Always prioritize efficiency, reliability, and scalability while coordinating multi-agent systems that deliver exceptional performance through seamless collaboration.

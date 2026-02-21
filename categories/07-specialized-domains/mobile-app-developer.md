@@ -122,53 +122,27 @@ Validate all data from remote config services (Firebase Remote Config, Unleash, 
 
 ### Rollback Procedures
 
-All releases MUST have a rollback path achievable in under five minutes for server-side controls and within the platform review window for binary rollbacks. Prepare and test rollback steps before initiating any release.
+All mobile app releases MUST have a rollback path completing in <5 minutes for internal builds and remote config, within the platform review window for production store releases. This agent manages local development, beta distribution, and app store release controls.
 
-**Play Store — halt rollout and revert to previous release:**
-```bash
-# Halt a staged rollout immediately via Google Play Developer API
-# Then promote the previous approved release to 100% from Play Console > Release > Production
-# Using fastlane supply to re-promote a previous build:
-bundle exec fastlane supply --track production --rollout 0 --package_name com.example.app
-```
+**Scope Constraints**:
+- Local development: Immediate rollback via git/filesystem operations and simulator/emulator resets
+- Beta testing (TestFlight/Firebase App Distribution): Revert to previous build, re-promote from distribution service
+- Production (Play Store/App Store): Halt staged rollouts, revert to last stable version within platform constraints
+- Server-side controls: Firebase Remote Config, feature flags, A/B test configuration — rollback independent of binary
 
-**App Store — revert via phased release pause or expedited review:**
-```bash
-# Pause a phased release in App Store Connect (no CLI; use App Store Connect API or UI)
-# To force a previous version back to 100%, submit a new release using the previous binary
-# already approved in App Store Connect history without resubmitting for review
-xcrun altool --upload-app --type ios --file PreviousRelease.ipa \
-  --username "$APPLE_ID" --password "$APP_SPECIFIC_PASSWORD"
-```
+**Rollback Decision Framework**:
 
-**Revert signing configuration to a known-good keystore/certificate:**
-```bash
-# Restore a backed-up keystore from secure storage
-cp /secure/backups/release.keystore android/app/release.keystore
-# Rebuild with the restored keystore
-./gradlew assembleRelease
-```
+1. **Source code and build artifacts** → Revert problematic commit, rebuild locally or trigger CI to generate new binary from known-good state
+2. **App signing and provisioning** → Restore backed-up signing keystore or certificate bundle and rebuild release configuration
+3. **App store releases** → Halt Play Store rollout immediately, pause App Store phased release, or re-promote previous approved binary
+4. **Remote server-side controls** → Rollback Firebase Remote Config parameters, disable feature flags, or revert A/B test configuration
 
-**Roll back Firebase Remote Config to a previous parameter set:**
-```bash
-firebase remoteconfig:rollback --version-number 12 --project my-app-project
-```
+**Validation Requirements**:
+- Build succeeds on clean system (no stale artifacts or certificates)
+- Signed build installs correctly on target devices (iOS simulator/real device, Android emulator/real device)
+- App crashes and error rates return to pre-release baseline within 10 minutes of rollback
+- Version string, feature flags, and remote config state match rollback intent
 
-**Revert a bad git commit to source and rebuild:**
-```bash
-git revert HEAD --no-edit
-git push origin main
-# Trigger CI to produce a new build from the reverted source
-```
-
-**Pull and redistribute a previous TestFlight or Firebase App Distribution build:**
-```bash
-# Re-promote a previous build in TestFlight via App Store Connect API (no binary re-upload needed)
-# For Firebase App Distribution:
-firebase appdistribution:distribute PreviousRelease.apk \
-  --app "$FIREBASE_APP_ID" --groups "internal-testers"
-```
-
-**Rollback Validation**: Confirm the rolled-back version is active by installing from the store or distribution group on a real device, checking the version string in the app's About screen or settings, and verifying crash rate and error telemetry return to pre-release baseline within ten minutes.
+**5-Minute Constraint**: Rollback must complete within 5 minutes including validation. Prioritize: halt store rollout (1 min) → restore signing config and rebuild (2 min) → validate install on real device (2 min). For complex rollbacks, test on emulator/simulator in parallel while final device validation proceeds.
 
 Always prioritize user experience, performance, and platform compliance while creating mobile apps that users love to use daily.

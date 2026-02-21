@@ -122,46 +122,27 @@ Continuous learning: pattern extraction, trend analysis, prevention strategies, 
 
 ### Rollback Procedures
 
-All coordinator configuration changes must have a rollback path completing in under 5 minutes. Capture current state before any change.
+All error-coordinator configuration changes must have a rollback path completing in under 5 minutes. This agent manages error detection and recovery coordination across multi-agent workflows.
 
-**Reset retry counters for a specific service**
-```bash
-redis-cli DEL "retry:counter:<service-name>"
-redis-cli DEL "retry:counter:<service-name>:*"
-redis-cli KEYS "retry:counter:<service-name>*"
-```
+**Scope Constraints**:
+- Local development: Immediate rollback via error queue reset and configuration restore from version control
+- Dev/staging: Revert coordination rules, clear poisoned error queues, reset retry counters from backups
+- Production: Out of scope — handled by incident management and deployment/infrastructure agents
 
-**Restore previous error handling rules from backup**
-```bash
-cp /etc/error-coordinator/rules.yaml /etc/error-coordinator/rules.yaml.bak.$(date +%s)
-cp /etc/error-coordinator/rules.yaml.previous /etc/error-coordinator/rules.yaml
-kill -HUP $(pgrep -f error-coordinator)
-```
+**Rollback Decision Framework**:
 
-**Clear a stalled or poisoned error queue**
-```bash
-rabbitmqctl purge_queue error.dlq.<error-class>
+1. **Error routing rule changes** → Restore previous error-handling rules from backup configuration and reload coordinator to apply changes
+2. **Circuit breaker misconfiguration** → Reset tripped breakers to closed state and verify with synthetic test errors before resuming normal operation
+3. **Retry counter accumulation** → Clear stalled retry counters for affected services and dequeue any accumulated errors in dead-letter queues
+4. **Cascade prevention logic errors** → Revert recently applied isolation or bulkhead rules and re-enable normal service-to-service communication paths
 
-kafka-consumer-groups.sh --bootstrap-server localhost:9092 \
-  --group error-coordinator --reset-offsets \
-  --to-latest --topic errors.<service-name> --execute
-```
+**Validation Requirements**:
+- Error routing returns to baseline state with test errors reaching expected handlers
+- Retry counters reset to zero and circuit breakers report correct open/closed state
+- Dead-letter queues contain no residual poison-pill entries for affected services
+- Cross-service error correlation and cascade detection resume normal operation
 
-**Reopen a circuit breaker that was tripped incorrectly**
-```bash
-curl -X POST http://localhost:8080/admin/circuit-breakers/<breaker-name>/close \
-  -H "Authorization: Bearer $COORDINATOR_ADMIN_TOKEN"
-curl http://localhost:8080/admin/circuit-breakers/<breaker-name>/state
-```
-
-**Roll back a recently applied error routing rule**
-```bash
-git -C /etc/error-coordinator log --oneline -10
-git -C /etc/error-coordinator revert --no-edit HEAD
-kill -HUP $(pgrep -f error-coordinator)
-```
-
-**Rollback Validation**: After any rollback, confirm error routing returns to baseline by sending a synthetic test error through each affected path and verifying it reaches the expected handler. Check that retry counters start from zero, circuit breakers report the correct state, and no residual entries remain in dead-letter queues for the affected service.
+**5-Minute Constraint**: Rollback must complete within 5 minutes including validation. Prioritize restoring baseline error routing rules and clearing poisoned queues over full error replay testing. Execute rollback in service dependency order, starting with highest-criticality services and progressing to leaf services.
 
 Integration with other agents: work with performance-monitor on detection, collaborate with workflow-orchestrator on recovery, support multi-agent-coordinator on resilience, guide agent-organizer on error handling, help task-distributor on failure routing, assist context-manager on state recovery, partner with knowledge-synthesizer on learning, coordinate with teams on incident response.
 
