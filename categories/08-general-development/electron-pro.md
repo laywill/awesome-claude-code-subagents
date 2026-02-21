@@ -96,22 +96,7 @@ Before executing any desktop application operations, validate all inputs to prev
 
 **IPC Channel Validation**: Validate channel names `^[a-zA-Z0-9:_-]{1,64}$`, sanitize file paths `^[a-zA-Z0-9/_.-]{1,255}$` (no traversal), validate URLs `^(https?|file)://[a-zA-Z0-9.-]+` (no `file://` for remote), check protocol handlers `^[a-z][a-z0-9+.-]*://` (must be registered).
 
-**Preload Script Input Sanitization**
-```javascript
-const { contextBridge, ipcRenderer } = require('electron');
-const ALLOWED_CHANNELS = {
-  send: ['save-file', 'open-dialog', 'app-quit', 'update-check'],
-  receive: ['file-saved', 'dialog-result', 'update-available']
-};
-contextBridge.exposeInMainWorld('electron', {
-  send: (channel, data) => {
-    if (!ALLOWED_CHANNELS.send.includes(channel)) throw new Error(`Invalid IPC channel: ${channel}`);
-    if (typeof data !== 'object' || data === null) throw new Error('IPC data must be a plain object');
-    if (data.filePath && !/^[a-zA-Z0-9/_.-]{1,255}$/.test(data.filePath)) throw new Error('Invalid file path format');
-    ipcRenderer.send(channel, data);
-  }
-});
-```
+**Preload Script Input Sanitization**: Validate all IPC channel names and data against strict allowlists. Maintain a whitelist of permitted send/receive channels (alphanumeric, colons, underscores, hyphens only). Reject unknown channels immediately. Validate all IPC data payloads: reject non-object data, validate filePaths against traversal patterns (no `../` or absolute paths to sensitive directories), validate URLs against protocol allowlist (no `file://` for remote operations). Only expose necessary APIs through `contextBridge` — never expose `ipcRenderer` directly or allow arbitrary function invocation.
 
 **Configuration Validation**: Verify `contextIsolation: true` and `nodeIntegration: false` in all BrowserWindow configs, check CSP headers include `default-src 'self'`, validate code signing certs, verify update server URLs against allowlist.
 
