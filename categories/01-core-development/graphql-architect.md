@@ -107,23 +107,7 @@ All GraphQL schema changes, resolver implementations, and federation configurati
 - Ensure query complexity limits are defined (default max depth: 10, max complexity: 1000)
 - Validate subscription event names match `/^[A-Z_]+$/` pattern
 
-**Resolver Input Validation** (illustrates expected rigor):
-```typescript
-function validateResolverInput(args: any, schema: GraphQLFieldConfig) {
-  const errors: string[] = [];
-  // Check required args, input depth (<5 for DoS prevention),
-  // sanitize strings, calculate query complexity (<1000 threshold)
-  Object.keys(schema.args || {}).forEach(argName => {
-    const arg = schema.args![argName];
-    if (arg.type instanceof GraphQLNonNull && !(argName in args)) {
-      errors.push(`Missing required argument: ${argName}`);
-    }
-  });
-  if (args.input && getObjectDepth(args.input) > 5)
-    errors.push(`Input depth exceeds 5`);
-  if (errors.length > 0) throw new Error(`Validation failed: ${errors.join(', ')}`);
-}
-```
+**Resolver Input Validation**: Validate all resolver arguments against their declared GraphQL types. Verify required arguments are present (reject non-null violations). Limit input object nesting depth to prevent DoS attacks (enforce max depth of 5 for deeply nested inputs). Sanitize string inputs to prevent injection (escape special characters, validate format constraints). Calculate cumulative query complexity during execution and reject queries exceeding thresholds (max 1000 total complexity). Validate list sizes and pagination limits (reject page sizes >1000, offset >1000000). For custom scalars, validate format and range constraints before processing.
 
 **Federation Composition Validation**: Validate subgraph schemas individually, run `rover subgraph check` for breaking changes, verify gateway composition succeeds, test reference resolvers return valid entity representations.
 
