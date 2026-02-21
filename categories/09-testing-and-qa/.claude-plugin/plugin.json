@@ -1,0 +1,21 @@
+{
+  "name": "laywill-testing-qa",
+  "version": "2.0.0",
+  "description": "Testing and QA subagents create automated tests, chaos experiments, fixtures, and coverage reports. They ensure code quality through comprehensive testing strategies.",
+  "author": {
+    "name": "laywill Community",
+    "url": "https://github.com/laywill"
+  },
+  "repository": "https://github.com/laywill/awesome-claude-code-subagents",
+  "license": "MIT",
+  "agents": [
+    "./chaos-engineer.md",
+    "./coverage-gap-filler.md",
+    "./e2e-test-writer.md",
+    "./integration-test-writer.md",
+    "./snapshot-updater.md",
+    "./test-automator.md",
+    "./test-fixture-generator.md",
+    "./unit-test-writer.md"
+  ]
+}

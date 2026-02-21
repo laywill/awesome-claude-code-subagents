@@ -1,0 +1,19 @@
+{
+  "name": "laywill-developer-experience",
+  "version": "2.0.0",
+  "description": "Developer experience and tooling subagents improve build processes, optimize git workflows, manage team communication, and enhance prompt engineering. They make development faster and smoother.",
+  "author": {
+    "name": "laywill Community",
+    "url": "https://github.com/laywill"
+  },
+  "repository": "https://github.com/laywill/awesome-claude-code-subagents",
+  "license": "MIT",
+  "agents": [
+    "./build-engineer.md",
+    "./dx-optimizer.md",
+    "./git-workflow-manager.md",
+    "./prompt-engineer.md",
+    "./slack-expert.md",
+    "./tooling-engineer.md"
+  ]
+}

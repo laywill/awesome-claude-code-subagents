@@ -1,0 +1,24 @@
+{
+  "name": "laywill-infrastructure-code",
+  "version": "2.0.0",
+  "description": "Infrastructure as code subagents manage cloud infrastructure, Kubernetes, containerization, networking, and platform engineering. They ensure reliable, scalable infrastructure.",
+  "author": {
+    "name": "laywill Community",
+    "url": "https://github.com/laywill"
+  },
+  "repository": "https://github.com/laywill/awesome-claude-code-subagents",
+  "license": "MIT",
+  "agents": [
+    "./azure-infra-engineer.md",
+    "./cloud-architect.md",
+    "./cloudformation-builder.md",
+    "./devops-engineer.md",
+    "./docker-composer.md",
+    "./helm-chart-builder.md",
+    "./kubernetes-specialist.md",
+    "./network-engineer.md",
+    "./platform-engineer.md",
+    "./terraform-engineer.md",
+    "./windows-infra-admin.md"
+  ]
+}

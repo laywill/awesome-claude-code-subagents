@@ -1,0 +1,23 @@
+{
+  "name": "laywill-meta-orchestration",
+  "version": "2.0.0",
+  "description": "Meta and orchestration subagents coordinate and manage other subagents rather than performing work directly. They decompose complex tasks, distribute work to specialists, synthesize outputs, and handle errors across multi-agent workflows.",
+  "author": {
+    "name": "laywill Community",
+    "url": "https://github.com/laywill"
+  },
+  "repository": "https://github.com/laywill/awesome-claude-code-subagents",
+  "license": "MIT",
+  "agents": [
+    "./agent-installer.md",
+    "./agent-organizer.md",
+    "./context-manager.md",
+    "./error-coordinator.md",
+    "./it-ops-orchestrator.md",
+    "./knowledge-synthesizer.md",
+    "./multi-agent-coordinator.md",
+    "./performance-monitor.md",
+    "./task-distributor.md",
+    "./workflow-orchestrator.md"
+  ]
+}

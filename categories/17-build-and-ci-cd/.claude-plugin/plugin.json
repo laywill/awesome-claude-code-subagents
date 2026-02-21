@@ -1,0 +1,18 @@
+{
+  "name": "laywill-build-ci-cd",
+  "version": "2.0.0",
+  "description": "Build and CI/CD subagents design pipelines, write workflows, configure environments, optimize builds, and publish artifacts. They automate and accelerate software delivery.",
+  "author": {
+    "name": "laywill Community",
+    "url": "https://github.com/laywill"
+  },
+  "repository": "https://github.com/laywill/awesome-claude-code-subagents",
+  "license": "MIT",
+  "agents": [
+    "./artifact-publisher.md",
+    "./build-optimizer.md",
+    "./environment-configurator.md",
+    "./pipeline-builder.md",
+    "./workflow-author.md"
+  ]
+}

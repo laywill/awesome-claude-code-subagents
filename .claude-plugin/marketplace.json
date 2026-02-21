@@ -1,7 +1,7 @@
 {
   "metadata": {
-    "description": "Curated collection of specialized Claude Code subagents organized into focused categories",
-    "version": "1.1.0"
+    "description": "Curated collection of 179+ specialized Claude Code subagents organized into 25 focused categories with risk-tiered structure",
+    "version": "2.0.0"
   },
   "name": "laywill-subagents",
   "owner": {
@@ -10,27 +10,143 @@
   },
   "plugins": [
     {
-      "category": "development",
-      "description": "Essential development subagents for everyday coding tasks - backend, frontend, fullstack, mobile, and API design",
+      "category": "orchestration",
+      "description": "Meta and orchestration subagents coordinate and manage other subagents rather than performing work directly. They decompose complex tasks, distribute work to specialists, synthesize outputs, and handle errors across multi-agent workflows.",
       "keywords": [
-        "api",
-        "backend",
-        "electron",
-        "frontend",
-        "fullstack",
+        "agent-installation",
+        "agent-organization",
+        "coordination",
+        "context-management",
+        "error-handling",
+        "it-ops",
+        "knowledge-management",
+        "meta-programming",
+        "multi-agent",
+        "orchestration",
+        "performance-monitoring",
+        "task-distribution",
+        "task-management",
+        "workflow-automation"
+      ],
+      "name": "laywill-meta-orchestration",
+      "source": "./categories/00-meta-and-orchestration",
+      "version": "2.0.0"
+    },
+    {
+      "category": "research",
+      "description": "Research and discovery subagents explore new technologies, assess feasibility, analyze markets and trends, and conduct deep investigations. They help teams understand the landscape before committing to major decisions.",
+      "keywords": [
+        "analysis",
+        "codebase-exploration",
+        "competitive-analysis",
+        "data-research",
+        "feasibility",
+        "market-research",
+        "research",
+        "search",
+        "technology-exploration",
+        "trend-analysis"
+      ],
+      "name": "laywill-research-discovery",
+      "source": "./categories/01-research-and-discovery",
+      "version": "2.0.0"
+    },
+    {
+      "category": "architecture",
+      "description": "Architecture and design subagents design systems, APIs, databases, and data flows. They create blueprints for scalable, maintainable solutions before implementation begins.",
+      "keywords": [
+        "api-design",
+        "architecture",
+        "data-flows",
+        "database-design",
+        "design-patterns",
         "graphql",
         "microservices",
-        "mobile",
-        "ui",
-        "websocket"
+        "schema-design",
+        "solution-architecture",
+        "system-design"
       ],
-      "name": "laywill-core-dev",
-      "source": "./categories/01-core-development",
-      "version": "1.1.0"
+      "name": "laywill-architecture-design",
+      "source": "./categories/02-architecture-and-design",
+      "version": "2.0.0"
+    },
+    {
+      "category": "quality",
+      "description": "Analysis and review subagents audit code quality, security, performance, accessibility, and compliance. They identify risks and improvements before code reaches production.",
+      "keywords": [
+        "accessibility",
+        "audit",
+        "code-review",
+        "compliance",
+        "complexity-analysis",
+        "dependency-audit",
+        "performance-review",
+        "qa",
+        "quality-assurance",
+        "security-audit"
+      ],
+      "name": "laywill-analysis-review",
+      "source": "./categories/03-analysis-and-review",
+      "version": "2.0.0"
+    },
+    {
+      "category": "documentation",
+      "description": "Documentation subagents create and maintain API docs, ADRs, runbooks, READMEs, changelogs, and technical guides. They ensure knowledge is captured and accessible.",
+      "keywords": [
+        "adr",
+        "api-documentation",
+        "changelog",
+        "documentation",
+        "guides",
+        "readme",
+        "runbooks",
+        "technical-writing"
+      ],
+      "name": "laywill-documentation",
+      "source": "./categories/04-documentation",
+      "version": "2.0.0"
+    },
+    {
+      "category": "planning",
+      "description": "Planning and estimation subagents help teams scope work, estimate effort, plan migrations and releases, and assess risks. They enable better project management and delivery confidence.",
+      "keywords": [
+        "estimation",
+        "migration-planning",
+        "planning",
+        "project-management",
+        "release-planning",
+        "risk-assessment",
+        "scrum",
+        "task-planning"
+      ],
+      "name": "laywill-planning-estimation",
+      "source": "./categories/05-planning-and-estimation",
+      "version": "2.0.0"
+    },
+    {
+      "category": "business",
+      "description": "Business and product subagents support business strategy, market analysis, UX research, legal compliance, content marketing, and financial modeling. They bridge technology and business decisions.",
+      "keywords": [
+        "business-analysis",
+        "content-marketing",
+        "customer-success",
+        "financial-modeling",
+        "legal",
+        "market-research",
+        "product-strategy",
+        "quantitative-finance",
+        "risk-management",
+        "sales-engineering",
+        "seo",
+        "ux-research"
+      ],
+      "name": "laywill-business-product",
+      "source": "./categories/06-business-and-product",
+      "version": "2.0.0"
     },
     {
       "category": "development",
-      "description": "Language-specific expert agents with deep framework knowledge - Python, TypeScript, Go, Rust, Java, and more",
+      "description": "Language and framework specialists provide expert knowledge for specific programming languages and frameworks. They handle language-specific idioms, best practices, and optimization techniques.",
       "keywords": [
         "angular",
         "cpp",
@@ -39,15 +155,20 @@
         "dotnet",
         "elixir",
         "flutter",
+        "fsharp",
         "golang",
+        "haskell",
         "java",
         "javascript",
         "kotlin",
         "laravel",
+        "lua",
         "nextjs",
+        "ocaml",
         "php",
         "powershell",
         "python",
+        "r",
         "rails",
         "react",
         "rust",
@@ -55,182 +176,305 @@
         "sql",
         "swift",
         "typescript",
-        "vue"
+        "vue",
+        "wordpress"
       ],
-      "name": "laywill-lang",
-      "source": "./categories/02-language-specialists",
-      "version": "1.1.0"
+      "name": "laywill-language-specialists",
+      "source": "./categories/07-language-and-framework-specialists",
+      "version": "2.0.0"
     },
     {
-      "category": "infrastructure",
-      "description": "DevOps, cloud, and deployment specialists - Kubernetes, Terraform, AWS, Azure, GCP, and SRE",
+      "category": "development",
+      "description": "General development subagents handle core development roles including backend, frontend, fullstack, mobile, CLI, game, and UI development. They provide broad development expertise across platforms.",
       "keywords": [
-        "aws",
-        "azure",
-        "cloud",
-        "database",
-        "deployment",
-        "devops",
-        "gcp",
-        "incident-response",
-        "kubernetes",
-        "network",
-        "platform",
-        "security",
-        "sre",
-        "terraform",
-        "windows-server"
+        "backend",
+        "cli",
+        "electron",
+        "frontend",
+        "fullstack",
+        "game-development",
+        "mcp",
+        "mobile",
+        "ui-design",
+        "websockets"
       ],
-      "name": "laywill-infra",
-      "source": "./categories/03-infrastructure",
-      "version": "1.1.0"
+      "name": "laywill-general-development",
+      "source": "./categories/08-general-development",
+      "version": "2.0.0"
     },
     {
       "category": "quality",
-      "description": "Testing, security, and code quality experts - code review, penetration testing, QA automation",
+      "description": "Testing and QA subagents create automated tests, chaos experiments, fixtures, and coverage reports. They ensure code quality through comprehensive testing strategies.",
       "keywords": [
-        "accessibility",
-        "ad-security",
-        "architectural-review",
-        "audit",
         "chaos-engineering",
-        "code-review",
-        "compliance",
-        "debugging",
-        "error-detection",
-        "penetration-testing",
-        "performance",
-        "powershell-security",
+        "coverage-analysis",
+        "e2e-testing",
+        "integration-testing",
         "qa",
-        "security",
-        "testing"
+        "testing",
+        "test-automation",
+        "unit-testing"
       ],
-      "name": "laywill-qa-sec",
-      "source": "./categories/04-quality-security",
-      "version": "1.1.0"
+      "name": "laywill-testing-qa",
+      "source": "./categories/09-testing-and-qa",
+      "version": "2.0.0"
     },
     {
-      "category": "data",
-      "description": "Data engineering, ML, and AI specialists - data pipelines, machine learning, LLM architecture",
+      "category": "development",
+      "description": "Refactoring and modernization subagents improve code quality by reducing technical debt, applying design patterns, upgrading frameworks, and modernizing language features.",
       "keywords": [
-        "ai",
-        "data-analytics",
-        "data-engineering",
-        "data-science",
-        "database-optimization",
-        "llm",
-        "machine-learning",
-        "mlops",
-        "nlp",
-        "postgresql",
-        "prompts"
+        "design-patterns",
+        "framework-upgrade",
+        "language-modernization",
+        "legacy-code",
+        "linting",
+        "refactoring",
+        "technical-debt"
       ],
-      "name": "laywill-data-ai",
-      "source": "./categories/05-data-ai",
-      "version": "1.1.0"
+      "name": "laywill-refactoring-modernization",
+      "source": "./categories/10-refactoring-and-modernization",
+      "version": "2.0.0"
+    },
+    {
+      "category": "quality",
+      "description": "Bug fixing and debugging subagents diagnose and fix bugs, analyze logs and stack traces, and hunt regressions. They help teams resolve production issues quickly.",
+      "keywords": [
+        "bug-fixing",
+        "debugging",
+        "error-detection",
+        "log-analysis",
+        "regression-testing",
+        "stack-traces",
+        "troubleshooting"
+      ],
+      "name": "laywill-bug-fixing-debugging",
+      "source": "./categories/11-bug-fixing-and-debugging",
+      "version": "2.0.0"
+    },
+    {
+      "category": "development",
+      "description": "Frontend and UI subagents build responsive components, manage themes, handle internationalization, and refactor styles. They ensure polished, accessible user interfaces.",
+      "keywords": [
+        "component-building",
+        "css",
+        "frontend",
+        "i18n",
+        "internationalization",
+        "responsive-design",
+        "styling",
+        "theme-management",
+        "ui"
+      ],
+      "name": "laywill-frontend-ui",
+      "source": "./categories/12-frontend-and-ui",
+      "version": "2.0.0"
     },
     {
       "category": "tooling",
-      "description": "Tooling and developer productivity experts - CLI tools, documentation, DX optimization",
+      "description": "Developer experience and tooling subagents improve build processes, optimize git workflows, manage team communication, and enhance prompt engineering. They make development faster and smoother.",
       "keywords": [
-        "build",
-        "cli",
-        "dependency-management",
+        "build-automation",
         "developer-experience",
-        "documentation",
-        "dx",
+        "dx-optimization",
         "git-workflow",
-        "legacy-code",
-        "mcp",
-        "powershell-modules",
-        "powershell-ui",
-        "refactoring",
-        "slack",
+        "prompt-engineering",
+        "slack-integration",
         "tooling"
       ],
-      "name": "laywill-dev-exp",
-      "source": "./categories/06-developer-experience",
-      "version": "1.1.0"
+      "name": "laywill-developer-experience",
+      "source": "./categories/13-developer-experience-and-tooling",
+      "version": "2.0.0"
+    },
+    {
+      "category": "data",
+      "description": "Data and database subagents design schemas, optimize queries, manage migrations, generate test data, and validate data integrity. They ensure reliable data layer performance.",
+      "keywords": [
+        "database-design",
+        "database-optimization",
+        "data-engineering",
+        "data-validation",
+        "migrations",
+        "orm",
+        "postgresql",
+        "schema-design",
+        "seed-data"
+      ],
+      "name": "laywill-data-database",
+      "source": "./categories/14-data-and-database",
+      "version": "2.0.0"
+    },
+    {
+      "category": "data",
+      "description": "Data science and AI subagents build machine learning models, analyze data, architect LLM solutions, and handle MLOps. They bring intelligent capabilities to applications.",
+      "keywords": [
+        "ai",
+        "data-analysis",
+        "data-science",
+        "deep-learning",
+        "llm",
+        "machine-learning",
+        "mlops",
+        "nlp"
+      ],
+      "name": "laywill-data-science-ai",
+      "source": "./categories/15-data-science-and-ai",
+      "version": "2.0.0"
+    },
+    {
+      "category": "tooling",
+      "description": "Dependency and package management subagents manage dependencies, handle upgrades, patch vulnerabilities, resolve lockfiles, publish packages, and manage monorepos.",
+      "keywords": [
+        "dependency-management",
+        "dependency-upgrade",
+        "lockfile-resolution",
+        "monorepo",
+        "package-publishing",
+        "vulnerability-patching"
+      ],
+      "name": "laywill-dependency-management",
+      "source": "./categories/16-dependency-and-package-management",
+      "version": "2.0.0"
+    },
+    {
+      "category": "infrastructure",
+      "description": "Build and CI/CD subagents design pipelines, write workflows, configure environments, optimize builds, and publish artifacts. They automate and accelerate software delivery.",
+      "keywords": [
+        "artifact-publishing",
+        "build-automation",
+        "build-optimization",
+        "ci-cd",
+        "continuous-integration",
+        "deployment-automation",
+        "pipeline-design",
+        "workflow-automation"
+      ],
+      "name": "laywill-build-ci-cd",
+      "source": "./categories/17-build-and-ci-cd",
+      "version": "2.0.0"
+    },
+    {
+      "category": "infrastructure",
+      "description": "API and service integration subagents generate API clients, integrate third-party services, build SDK wrappers, configure webhooks, and set up message queues.",
+      "keywords": [
+        "api-client-generation",
+        "api-integration",
+        "message-queues",
+        "sdk-development",
+        "service-integration",
+        "third-party-apis",
+        "webhooks"
+      ],
+      "name": "laywill-api-service-integration",
+      "source": "./categories/18-api-and-service-integration",
+      "version": "2.0.0"
+    },
+    {
+      "category": "infrastructure",
+      "description": "Infrastructure as code subagents manage cloud infrastructure, Kubernetes, containerization, networking, and platform engineering. They ensure reliable, scalable infrastructure.",
+      "keywords": [
+        "aws",
+        "azure",
+        "cloud-infrastructure",
+        "cloudformation",
+        "containers",
+        "devops",
+        "docker",
+        "gcp",
+        "helm",
+        "kubernetes",
+        "network-engineering",
+        "platform-engineering",
+        "terraform",
+        "windows-server"
+      ],
+      "name": "laywill-infrastructure-code",
+      "source": "./categories/19-infrastructure-as-code",
+      "version": "2.0.0"
+    },
+    {
+      "category": "security",
+      "description": "Security and secrets subagents harden systems, conduct penetration testing, manage secrets and certificates, handle IAM policies, and configure CORS. They protect applications and data.",
+      "keywords": [
+        "active-directory",
+        "certificate-management",
+        "cors",
+        "iam-policies",
+        "penetration-testing",
+        "powershell-security",
+        "secret-management",
+        "security-engineering",
+        "vault"
+      ],
+      "name": "laywill-security-secrets",
+      "source": "./categories/20-security-and-secrets",
+      "version": "2.0.0"
     },
     {
       "category": "specialized",
-      "description": "Domain-specific technology experts - blockchain, fintech, gaming, IoT, payments",
+      "description": "Specialized domains subagents handle blockchain, embedded systems, fintech, IoT, Microsoft 365, and payment integration. They bring domain-specific expertise to niche areas.",
       "keywords": [
-        "api-documentation",
-        "apps",
         "blockchain",
-        "embedded",
+        "embedded-systems",
         "fintech",
-        "gaming",
         "iot",
         "m365",
-        "mobile",
         "payments",
-        "quantitative-finance",
-        "risk-management",
-        "seo"
+        "web3"
       ],
-      "name": "laywill-domains",
-      "source": "./categories/07-specialized-domains",
-      "version": "1.1.0"
+      "name": "laywill-specialized-domains",
+      "source": "./categories/21-specialized-domains",
+      "version": "2.0.0"
     },
     {
-      "category": "business",
-      "description": "Product management and business analysis - product strategy, project management, UX research",
+      "category": "infrastructure",
+      "description": "Deployment and release subagents manage deployments, handle blue-green and canary strategies, manage feature flags, and control rollbacks. They enable safe, controlled releases.",
       "keywords": [
-        "business-analysis",
-        "content-marketing",
-        "customer-success",
-        "legal",
-        "product-management",
-        "project-management",
-        "sales",
-        "scrum",
-        "technical-writing",
-        "ux",
-        "wordpress"
+        "blue-green-deployment",
+        "canary-releases",
+        "deployment",
+        "deployment-automation",
+        "feature-flags",
+        "release-management",
+        "rollback"
       ],
-      "name": "laywill-biz",
-      "source": "./categories/08-business-product",
-      "version": "1.1.0"
+      "name": "laywill-deployment-release",
+      "source": "./categories/22-deployment-and-release",
+      "version": "2.0.0"
     },
     {
-      "category": "orchestration",
-      "description": "Agent coordination and meta-programming - multi-agent orchestration, workflow automation. Works best with other laywill plugins installed.",
+      "category": "infrastructure",
+      "description": "Production ops and observability subagents manage incidents, configure monitoring and logging, build dashboards, manage SLAs, and handle scaling. They ensure systems run smoothly in production.",
       "keywords": [
-        "agent-installation",
-        "agent-organization",
-        "context-management",
-        "errors",
-        "it-ops",
-        "knowledge-management",
-        "coordination",
-        "performance",
-        "task-management",
-        "meta",
-        "multi-agent",
-        "orchestration",
-        "workflow"
+        "alerting",
+        "dashboards",
+        "incident-management",
+        "incident-response",
+        "logging",
+        "monitoring",
+        "observability",
+        "scaling",
+        "sla-management",
+        "sre"
       ],
-      "name": "laywill-meta",
-      "source": "./categories/09-meta-orchestration",
-      "version": "1.1.0"
+      "name": "laywill-production-ops",
+      "source": "./categories/23-production-ops-and-observability",
+      "version": "2.0.0"
     },
     {
-      "category": "research",
-      "description": "Research, search, and analysis specialists - market research, competitive analysis, trend forecasting",
+      "category": "data",
+      "description": "Production data ops subagents manage data migrations, anonymization, backup and restore, replication, and retention policies. They ensure data safety and compliance in production.",
       "keywords": [
-        "analysis",
-        "competitive-analysis",
-        "data-research",
-        "market-research",
-        "research",
-        "search",
-        "trends"
+        "backup",
+        "data-anonymization",
+        "data-migration",
+        "data-protection",
+        "recovery",
+        "replication",
+        "retention-policies"
       ],
-      "name": "laywill-research",
-      "source": "./categories/10-research-analysis",
-      "version": "1.1.0"
+      "name": "laywill-production-data-ops",
+      "source": "./categories/24-production-data-ops",
+      "version": "2.0.0"
     }
   ]
 }

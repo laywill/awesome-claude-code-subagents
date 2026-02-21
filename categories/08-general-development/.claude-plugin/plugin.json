@@ -1,0 +1,24 @@
+{
+  "name": "laywill-general-development",
+  "version": "2.0.0",
+  "description": "General development subagents handle core development roles including backend, frontend, fullstack, mobile, CLI, game, and UI development. They provide broad development expertise across platforms.",
+  "author": {
+    "name": "laywill Community",
+    "url": "https://github.com/laywill"
+  },
+  "repository": "https://github.com/laywill/awesome-claude-code-subagents",
+  "license": "MIT",
+  "agents": [
+    "./backend-developer.md",
+    "./cli-developer.md",
+    "./electron-pro.md",
+    "./frontend-developer.md",
+    "./fullstack-developer.md",
+    "./game-developer.md",
+    "./mcp-developer.md",
+    "./mobile-app-developer.md",
+    "./mobile-developer.md",
+    "./ui-designer.md",
+    "./websocket-engineer.md"
+  ]
+}

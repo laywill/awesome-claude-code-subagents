@@ -6,7 +6,7 @@
 
 <div align="center">
 
-![Subagent Count](https://img.shields.io/badge/subagents-128+-blue?style=flat-square)
+![Subagent Count](https://img.shields.io/badge/subagents-179+-blue?style=flat-square)
 [![Last Update](https://img.shields.io/github/last-commit/laywill/awesome-claude-code-subagents?label=Last%20update&style=flat-square)](https://github.com/laywill/awesome-claude-code-subagents)
 [![GitHub forks](https://img.shields.io/github/forks/laywill/awesome-claude-code-subagents?style=social)](https://github.com/laywill/awesome-claude-code-subagents/network/members)
 
@@ -14,7 +14,7 @@
 
 # Awesome Claude Code Subagents
 
-This repository serves as the definitive collection of Claude Code subagents, specialized AI assitants designed for specific development tasks.
+This repository serves as the definitive collection of Claude Code subagents, specialized AI assistants designed for specific development tasks. Organized into 25 categories with a risk-tiered structure for production-safe automation.
 
 ## Installation
 
@@ -28,13 +28,14 @@ claude plugin install <plugin-name>
 Examples:
 
 ```bash
-claude plugin install laywill-lang    # Language specialists
-claude plugin install laywill-infra   # Infrastructure & DevOps
+claude plugin install laywill-language-specialists    # Language experts
+claude plugin install laywill-infrastructure-code     # Infrastructure & IaC
+claude plugin install laywill-meta-orchestration      # Multi-agent coordination
 ```
 
 See [Categories](#-categories) below for all available plugins.
 
-> **Note**: The `laywill-meta` orchestration agents work best when other categories installed.
+> **Note**: The `laywill-meta-orchestration` agents work best when other categories are installed.
 
 ### Option 1: Manual Installation
 
@@ -67,217 +68,386 @@ Downloads agents directly from GitHub without cloning the repository. Requires `
 ### Option 4: Agent Installer (use Claude Code to install agents)
 
 ```bash
-curl -s https://raw.githubusercontent.com/laywill/awesome-claude-code-subagents/main/categories/09-meta-orchestration/agent-installer.md -o ~/.claude/agents/agent-installer.md
+curl -s https://raw.githubusercontent.com/laywill/awesome-claude-code-subagents/main/categories/00-meta-and-orchestration/agent-installer.md -o ~/.claude/agents/agent-installer.md
 ```
 
-Then in Claude Code: "Use the agent-installer to show me available categories" or "Find PHP agents and install php-pro globally".
+Then in Claude Code: "Use the agent-installer to show me available categories" or "Find TypeScript agents and install typescript-pro globally".
 
 <br />
 
-<a href="https://github.com/laywill/laywill">
-<img width="1390" height="296" alt="social" src="https://github.com/user-attachments/assets/4c40affa-8e20-443a-9ec5-1abb6679b170" />
-</a>
+## 🔒 Risk Tiers at a Glance
+
+| Tier | Icon | Categories | Risk Level | Key Characteristics |
+|------|------|------------|------------|---------------------|
+| 0 | ⚪ | 00 | Meta | Orchestration and coordination only |
+| 1 | 🟢 | 01–06 | Low (Read-Only/Advisory) | Analysis, research, planning, documentation |
+| 2 | 🟡 | 07–13 | Medium (Local Code) | Development, testing, refactoring |
+| 3 | 🟠 | 14–17 | Medium-High (Data/Deps/Build) | Database, dependencies, CI/CD |
+| 4 | 🔴 | 18–21 | High (External Systems) | APIs, infrastructure, security |
+| 5 | ⛔ | 22–24 | Critical (Production) | Deployment, operations, data migration |
+
+<br />
 
 ## 📚 Categories
 
-### [01. Core Development](categories/01-core-development/)
+### ⚪ 00. [Meta and Orchestration](categories/00-meta-and-orchestration/)
 
-**Plugin:** `laywill-core-dev`
+**Plugin:** `laywill-meta-orchestration`
 
-Essential development subagents for everyday coding tasks.
+Meta and orchestration subagents coordinate and manage other subagents rather than performing work directly. They decompose complex tasks, distribute work to specialists, synthesize outputs, and handle errors across multi-agent workflows.
 
-- [**api-designer**](categories/01-core-development/api-designer.md) - REST and GraphQL API architect
-- [**backend-developer**](categories/01-core-development/backend-developer.md) - Server-side expert for scalable APIs
-- [**electron-pro**](categories/01-core-development/electron-pro.md) - Desktop application expert
-- [**frontend-developer**](categories/01-core-development/frontend-developer.md) - UI/UX specialist for React, Vue, and Angular
-- [**fullstack-developer**](categories/01-core-development/fullstack-developer.md) - End-to-end feature development
-- [**graphql-architect**](categories/01-core-development/graphql-architect.md) - GraphQL schema and federation expert
-- [**microservices-architect**](categories/01-core-development/microservices-architect.md) - Distributed systems designer
-- [**mobile-developer**](categories/01-core-development/mobile-developer.md) - Cross-platform mobile specialist
-- [**ui-designer**](categories/01-core-development/ui-designer.md) - Visual design and interaction specialist
-- [**websocket-engineer**](categories/01-core-development/websocket-engineer.md) - Real-time communication specialist
-- [**wordpress-master**](categories/08-business-product/wordpress-master.md) - WordPress development and optimization expert
+- [**agent-installer**](categories/00-meta-and-orchestration/agent-installer.md) - Browse and install agents from this repository
+- [**agent-organizer**](categories/00-meta-and-orchestration/agent-organizer.md) - Multi-agent coordinator
+- [**context-manager**](categories/00-meta-and-orchestration/context-manager.md) - Context optimization expert
+- [**error-coordinator**](categories/00-meta-and-orchestration/error-coordinator.md) - Error handling and recovery specialist
+- [**it-ops-orchestrator**](categories/00-meta-and-orchestration/it-ops-orchestrator.md) - IT operations workflow orchestration
+- [**knowledge-synthesizer**](categories/00-meta-and-orchestration/knowledge-synthesizer.md) - Knowledge aggregation expert
+- [**multi-agent-coordinator**](categories/00-meta-and-orchestration/multi-agent-coordinator.md) - Advanced multi-agent orchestration
+- [**performance-monitor**](categories/00-meta-and-orchestration/performance-monitor.md) - Agent performance optimization
+- [**task-distributor**](categories/00-meta-and-orchestration/task-distributor.md) - Task allocation specialist
+- [**workflow-orchestrator**](categories/00-meta-and-orchestration/workflow-orchestrator.md) - Complex workflow automation
 
-### [02. Language Specialists](categories/02-language-specialists/)
+### 🟢 01. [Research and Discovery](categories/01-research-and-discovery/)
 
-**Plugin:** `laywill-lang`
+**Plugin:** `laywill-research-discovery`
 
-Language-specific experts with deep framework knowledge.
+Research and discovery subagents explore new technologies, assess feasibility, analyze markets and trends, and conduct deep investigations. They help teams understand the landscape before committing to major decisions.
 
-- [**typescript-pro**](categories/02-language-specialists/typescript-pro.md) - TypeScript specialist
-- [**sql-pro**](categories/02-language-specialists/sql-pro.md) - Database query expert
-- [**swift-expert**](categories/02-language-specialists/swift-expert.md) - iOS and macOS specialist
-- [**vue-expert**](categories/02-language-specialists/vue-expert.md) - Vue 3 Composition API expert
-- [**angular-architect**](categories/02-language-specialists/angular-architect.md) - Angular 15+ enterprise patterns expert
-- [**cpp-pro**](categories/02-language-specialists/cpp-pro.md) - C++ performance expert
-- [**csharp-developer**](categories/02-language-specialists/csharp-developer.md) - .NET ecosystem specialist
-- [**django-developer**](categories/02-language-specialists/django-developer.md) - Django 4+ web development expert
-- [**dotnet-core-expert**](categories/02-language-specialists/dotnet-core-expert.md) - .NET 8 cross-platform specialist
-- [**dotnet-framework-4.8-expert**](categories/02-language-specialists/dotnet-framework-4.8-expert.md) - .NET Framework legacy enterprise specialist
-- [**elixir-expert**](categories/02-language-specialists/elixir-expert.md) - Elixir and OTP fault-tolerant systems expert
-- [**flutter-expert**](categories/02-language-specialists/flutter-expert.md) - Flutter 3+ cross-platform mobile expert
-- [**golang-pro**](categories/02-language-specialists/golang-pro.md) - Go concurrency specialist
-- [**java-architect**](categories/02-language-specialists/java-architect.md) - Enterprise Java expert
-- [**javascript-pro**](categories/02-language-specialists/javascript-pro.md) - JavaScript development expert
-- [**powershell-5.1-expert**](categories/02-language-specialists/powershell-5.1-expert.md) - Windows PowerShell 5.1 and full .NET Framework automation specialist
-- [**powershell-7-expert**](categories/02-language-specialists/powershell-7-expert.md) - Cross-platform PowerShell 7+ automation and modern .NET specialist
-- [**kotlin-specialist**](categories/02-language-specialists/kotlin-specialist.md) - Modern JVM language expert
-- [**laravel-specialist**](categories/02-language-specialists/laravel-specialist.md) - Laravel 10+ PHP framework expert
-- [**nextjs-developer**](categories/02-language-specialists/nextjs-developer.md) - Next.js 14+ full-stack specialist
-- [**php-pro**](categories/02-language-specialists/php-pro.md) - PHP web development expert
-- [**python-pro**](categories/02-language-specialists/python-pro.md) - Python ecosystem master
-- [**rails-expert**](categories/02-language-specialists/rails-expert.md) - Rails 8.1 rapid development expert
-- [**react-specialist**](categories/02-language-specialists/react-specialist.md) - React 18+ modern patterns expert
-- [**rust-engineer**](categories/02-language-specialists/rust-engineer.md) - Systems programming expert
-- [**spring-boot-engineer**](categories/02-language-specialists/spring-boot-engineer.md) - Spring Boot 3+ microservices expert
+- [**codebase-explorer**](categories/01-research-and-discovery/codebase-explorer.md) - Codebase analysis and exploration
+- [**competitive-analyst**](categories/01-research-and-discovery/competitive-analyst.md) - Competitive intelligence specialist
+- [**data-researcher**](categories/01-research-and-discovery/data-researcher.md) - Data discovery and analysis expert
+- [**feasibility-assessor**](categories/01-research-and-discovery/feasibility-assessor.md) - Technical feasibility assessment
+- [**market-researcher**](categories/01-research-and-discovery/market-researcher.md) - Market analysis and consumer insights
+- [**research-analyst**](categories/01-research-and-discovery/research-analyst.md) - Comprehensive research specialist
+- [**search-specialist**](categories/01-research-and-discovery/search-specialist.md) - Advanced information retrieval expert
+- [**technology-researcher**](categories/01-research-and-discovery/technology-researcher.md) - Technology landscape explorer
+- [**trend-analyst**](categories/01-research-and-discovery/trend-analyst.md) - Emerging trends and forecasting expert
 
-### [03. Infrastructure](categories/03-infrastructure/)
+### 🟢 02. [Architecture and Design](categories/02-architecture-and-design/)
 
-**Plugin:** `laywill-infra`
+**Plugin:** `laywill-architecture-design`
 
-DevOps, cloud, and deployment specialists.
+Architecture and design subagents design systems, APIs, databases, and data flows. They create blueprints for scalable, maintainable solutions before implementation begins.
 
-- [**azure-infra-engineer**](categories/03-infrastructure/azure-infra-engineer.md) - Azure infrastructure and Az PowerShell automation expert
-- [**cloud-architect**](categories/03-infrastructure/cloud-architect.md) - AWS/GCP/Azure specialist
-- [**database-administrator**](categories/03-infrastructure/database-administrator.md) - Database management expert
-- [**deployment-engineer**](categories/03-infrastructure/deployment-engineer.md) - Deployment automation specialist
-- [**devops-engineer**](categories/03-infrastructure/devops-engineer.md) - CI/CD and automation expert
-- [**devops-incident-responder**](categories/03-infrastructure/devops-incident-responder.md) - DevOps incident management
-- [**incident-responder**](categories/03-infrastructure/incident-responder.md) - System incident response expert
-- [**kubernetes-specialist**](categories/03-infrastructure/kubernetes-specialist.md) - Container orchestration master
-- [**network-engineer**](categories/03-infrastructure/network-engineer.md) - Network infrastructure specialist
-- [**platform-engineer**](categories/03-infrastructure/platform-engineer.md) - Platform architecture expert
-- [**security-engineer**](categories/03-infrastructure/security-engineer.md) - Infrastructure security specialist
-- [**sre-engineer**](categories/03-infrastructure/sre-engineer.md) - Site reliability engineering expert
-- [**terraform-engineer**](categories/03-infrastructure/terraform-engineer.md) - Infrastructure as Code expert
-- [**windows-infra-admin**](categories/03-infrastructure/windows-infra-admin.md) - Active Directory, DNS, DHCP, and GPO automation specialist
+- [**api-designer**](categories/02-architecture-and-design/api-designer.md) - REST and GraphQL API architect
+- [**architect-reviewer**](categories/02-architecture-and-design/architect-reviewer.md) - Architecture review specialist
+- [**data-flow-designer**](categories/02-architecture-and-design/data-flow-designer.md) - Data flow and pipeline designer
+- [**graphql-architect**](categories/02-architecture-and-design/graphql-architect.md) - GraphQL schema and federation expert
+- [**microservices-architect**](categories/02-architecture-and-design/microservices-architect.md) - Distributed systems designer
+- [**schema-designer**](categories/02-architecture-and-design/schema-designer.md) - Database schema architect
+- [**solution-architect**](categories/02-architecture-and-design/solution-architect.md) - End-to-end solution design specialist
+- [**system-modeler**](categories/02-architecture-and-design/system-modeler.md) - System design and modeling expert
 
-### [04. Quality & Security](categories/04-quality-security/)
+### 🟢 03. [Analysis and Review](categories/03-analysis-and-review/)
 
-**Plugin:** `laywill-qa-sec`
+**Plugin:** `laywill-analysis-review`
 
-Testing, security, and code quality experts.
+Analysis and review subagents audit code quality, security, performance, accessibility, and compliance. They identify risks and improvements before code reaches production.
 
-- [**accessibility-tester**](categories/04-quality-security/accessibility-tester.md) - A11y compliance expert
-- [**ad-security-reviewer**](categories/04-quality-security/ad-security-reviewer.md) - Active Directory security and GPO audit specialist
-- [**architect-reviewer**](categories/04-quality-security/architect-reviewer.md) - Architecture review specialist
-- [**chaos-engineer**](categories/04-quality-security/chaos-engineer.md) - System resilience testing expert
-- [**code-reviewer**](categories/04-quality-security/code-reviewer.md) - Code quality guardian
-- [**compliance-auditor**](categories/04-quality-security/compliance-auditor.md) - Regulatory compliance expert
-- [**debugger**](categories/04-quality-security/debugger.md) - Advanced debugging specialist
-- [**error-detective**](categories/04-quality-security/error-detective.md) - Error analysis and resolution expert
-- [**penetration-tester**](categories/04-quality-security/penetration-tester.md) - Ethical hacking specialist
-- [**performance-engineer**](categories/04-quality-security/performance-engineer.md) - Performance optimization expert
-- [**powershell-security-hardening**](categories/04-quality-security/powershell-security-hardening.md) - PowerShell security hardening and compliance specialist
-- [**qa-expert**](categories/04-quality-security/qa-expert.md) - Test automation specialist
-- [**security-auditor**](categories/04-quality-security/security-auditor.md) - Security vulnerability expert
-- [**test-automator**](categories/04-quality-security/test-automator.md) - Test automation framework expert
+- [**accessibility-tester**](categories/03-analysis-and-review/accessibility-tester.md) - A11y compliance expert
+- [**code-reviewer**](categories/03-analysis-and-review/code-reviewer.md) - Code quality guardian
+- [**compliance-auditor**](categories/03-analysis-and-review/compliance-auditor.md) - Regulatory compliance expert
+- [**complexity-analyzer**](categories/03-analysis-and-review/complexity-analyzer.md) - Code complexity analysis specialist
+- [**dependency-auditor**](categories/03-analysis-and-review/dependency-auditor.md) - Dependency audit and risk assessment
+- [**performance-engineer**](categories/03-analysis-and-review/performance-engineer.md) - Performance optimization expert
+- [**qa-expert**](categories/03-analysis-and-review/qa-expert.md) - Test automation specialist
+- [**security-auditor**](categories/03-analysis-and-review/security-auditor.md) - Security vulnerability expert
 
-### [05. Data & AI](categories/05-data-ai/)
+### 🟢 04. [Documentation](categories/04-documentation/)
 
-**Plugin:** `laywill-data-ai`
+**Plugin:** `laywill-documentation`
 
-Data engineering, ML, and AI specialists.
+Documentation subagents create and maintain API docs, ADRs, runbooks, READMEs, changelogs, and technical guides. They ensure knowledge is captured and accessible.
 
-- [**ai-engineer**](categories/05-data-ai/ai-engineer.md) - AI system design and deployment expert
-- [**data-analyst**](categories/05-data-ai/data-analyst.md) - Data insights and visualization specialist
-- [**data-engineer**](categories/05-data-ai/data-engineer.md) - Data pipeline architect
-- [**data-scientist**](categories/05-data-ai/data-scientist.md) - Analytics and insights expert
-- [**database-optimizer**](categories/05-data-ai/database-optimizer.md) - Database performance specialist
-- [**llm-architect**](categories/05-data-ai/llm-architect.md) - Large language model architect
-- [**machine-learning-engineer**](categories/05-data-ai/machine-learning-engineer.md) - Machine learning systems expert
-- [**ml-engineer**](categories/05-data-ai/ml-engineer.md) - Machine learning specialist
-- [**mlops-engineer**](categories/05-data-ai/mlops-engineer.md) - MLOps and model deployment expert
-- [**nlp-engineer**](categories/05-data-ai/nlp-engineer.md) - Natural language processing expert
-- [**postgres-pro**](categories/05-data-ai/postgres-pro.md) - PostgreSQL database expert
-- [**prompt-engineer**](categories/05-data-ai/prompt-engineer.md) - Prompt optimization specialist
+- [**adr-author**](categories/04-documentation/adr-author.md) - Architecture decision record writer
+- [**api-documenter**](categories/04-documentation/api-documenter.md) - API documentation specialist
+- [**changelog-generator**](categories/04-documentation/changelog-generator.md) - Changelog creation expert
+- [**documentation-engineer**](categories/04-documentation/documentation-engineer.md) - Technical documentation expert
+- [**readme-generator**](categories/04-documentation/readme-generator.md) - README creation specialist
+- [**runbook-writer**](categories/04-documentation/runbook-writer.md) - Operations runbook author
+- [**technical-writer**](categories/04-documentation/technical-writer.md) - Technical writing specialist
 
-### [06. Developer Experience](categories/06-developer-experience/)
+### 🟢 05. [Planning and Estimation](categories/05-planning-and-estimation/)
 
-**Plugin:** `laywill-dev-exp`
+**Plugin:** `laywill-planning-estimation`
 
-Tooling and developer productivity experts.
+Planning and estimation subagents help teams scope work, estimate effort, plan migrations and releases, and assess risks. They enable better project management and delivery confidence.
 
-- [**build-engineer**](categories/06-developer-experience/build-engineer.md) - Build system specialist
-- [**cli-developer**](categories/06-developer-experience/cli-developer.md) - Command-line tool creator
-- [**dependency-manager**](categories/06-developer-experience/dependency-manager.md) - Package and dependency specialist
-- [**documentation-engineer**](categories/06-developer-experience/documentation-engineer.md) - Technical documentation expert
-- [**dx-optimizer**](categories/06-developer-experience/dx-optimizer.md) - Developer experience optimization specialist
-- [**git-workflow-manager**](categories/06-developer-experience/git-workflow-manager.md) - Git workflow and branching expert
-- [**legacy-modernizer**](categories/06-developer-experience/legacy-modernizer.md) - Legacy code modernization specialist
-- [**mcp-developer**](categories/06-developer-experience/mcp-developer.md) - Model Context Protocol specialist
-- [**powershell-ui-architect**](categories/06-developer-experience/powershell-ui-architect.md) - PowerShell UI/UX specialist for WinForms, WPF, Metro frameworks, and TUIs
-- [**powershell-module-architect**](categories/06-developer-experience/powershell-module-architect.md) - PowerShell module and profile architecture specialist
-- [**refactoring-specialist**](categories/06-developer-experience/refactoring-specialist.md) - Code refactoring expert
-- [**slack-expert**](categories/06-developer-experience/slack-expert.md) - Slack platform and @slack/bolt specialist
-- [**tooling-engineer**](categories/06-developer-experience/tooling-engineer.md) - Developer tooling specialist
+- [**effort-estimator**](categories/05-planning-and-estimation/effort-estimator.md) - Work effort estimation specialist
+- [**migration-planner**](categories/05-planning-and-estimation/migration-planner.md) - Migration project planning expert
+- [**product-manager**](categories/05-planning-and-estimation/product-manager.md) - Product strategy expert
+- [**project-manager**](categories/05-planning-and-estimation/project-manager.md) - Project management specialist
+- [**release-planner**](categories/05-planning-and-estimation/release-planner.md) - Release planning expert
+- [**risk-assessor**](categories/05-planning-and-estimation/risk-assessor.md) - Risk assessment specialist
+- [**scrum-master**](categories/05-planning-and-estimation/scrum-master.md) - Agile methodology expert
+- [**task-planner**](categories/05-planning-and-estimation/task-planner.md) - Task decomposition and planning
 
-### [07. Specialized Domains](categories/07-specialized-domains/)
+### 🟢 06. [Business and Product](categories/06-business-and-product/)
 
-**Plugin:** `laywill-domains`
+**Plugin:** `laywill-business-product`
 
-Domain-specific technology experts.
+Business and product subagents support business strategy, market analysis, UX research, legal compliance, content marketing, and financial modeling. They bridge technology and business decisions.
 
-- [**api-documenter**](categories/07-specialized-domains/api-documenter.md) - API documentation specialist
-- [**blockchain-developer**](categories/07-specialized-domains/blockchain-developer.md) - Web3 and crypto specialist
-- [**embedded-systems**](categories/07-specialized-domains/embedded-systems.md) - Embedded and real-time systems expert
-- [**fintech-engineer**](categories/07-specialized-domains/fintech-engineer.md) - Financial technology specialist
-- [**game-developer**](categories/07-specialized-domains/game-developer.md) - Game development expert
-- [**iot-engineer**](categories/07-specialized-domains/iot-engineer.md) - IoT systems developer
-- [**m365-admin**](categories/07-specialized-domains/m365-admin.md) - Microsoft 365, Exchange Online, Teams, and SharePoint administration specialist
-- [**mobile-app-developer**](categories/07-specialized-domains/mobile-app-developer.md) - Mobile application specialist
-- [**payment-integration**](categories/07-specialized-domains/payment-integration.md) - Payment systems expert
-- [**quant-analyst**](categories/07-specialized-domains/quant-analyst.md) - Quantitative analysis specialist
-- [**risk-manager**](categories/07-specialized-domains/risk-manager.md) - Risk assessment and management expert
-- [**seo-specialist**](categories/07-specialized-domains/seo-specialist.md) - Search engine optimization expert
+- [**business-analyst**](categories/06-business-and-product/business-analyst.md) - Requirements and business analysis specialist
+- [**content-marketer**](categories/06-business-and-product/content-marketer.md) - Content marketing specialist
+- [**customer-success-manager**](categories/06-business-and-product/customer-success-manager.md) - Customer success expert
+- [**legal-advisor**](categories/06-business-and-product/legal-advisor.md) - Legal and compliance specialist
+- [**quant-analyst**](categories/06-business-and-product/quant-analyst.md) - Quantitative analysis specialist
+- [**risk-manager**](categories/06-business-and-product/risk-manager.md) - Risk assessment and management expert
+- [**sales-engineer**](categories/06-business-and-product/sales-engineer.md) - Technical sales expert
+- [**seo-specialist**](categories/06-business-and-product/seo-specialist.md) - Search engine optimization expert
+- [**ux-researcher**](categories/06-business-and-product/ux-researcher.md) - User research expert
 
-### [08. Business & Product](categories/08-business-product/)
+### 🟡 07. [Language and Framework Specialists](categories/07-language-and-framework-specialists/)
 
-**Plugin:** `laywill-biz`
+**Plugin:** `laywill-language-specialists`
 
-Product management and business analysis.
+Language and framework specialists provide expert knowledge for specific programming languages and frameworks. They handle language-specific idioms, best practices, and optimization techniques.
 
-- [**business-analyst**](categories/08-business-product/business-analyst.md) - Requirements specialist
-- [**content-marketer**](categories/08-business-product/content-marketer.md) - Content marketing specialist
-- [**customer-success-manager**](categories/08-business-product/customer-success-manager.md) - Customer success expert
-- [**legal-advisor**](categories/08-business-product/legal-advisor.md) - Legal and compliance specialist
-- [**product-manager**](categories/08-business-product/product-manager.md) - Product strategy expert
-- [**project-manager**](categories/08-business-product/project-manager.md) - Project management specialist
-- [**sales-engineer**](categories/08-business-product/sales-engineer.md) - Technical sales expert
-- [**scrum-master**](categories/08-business-product/scrum-master.md) - Agile methodology expert
-- [**technical-writer**](categories/08-business-product/technical-writer.md) - Technical documentation specialist
-- [**ux-researcher**](categories/08-business-product/ux-researcher.md) - User research expert
+**34 language specialists including:** Angular, C++, C#, Django, .NET Core, .NET Framework, Elixir, Flutter, F#, Go, Haskell, Java, JavaScript, Kotlin, Laravel, Lua, Next.js, OCaml, PHP, PowerShell (5.1, 7, modules, UI), Python, R, Rails, React, Rust, Spring Boot, SQL, Swift, TypeScript, Vue, WordPress
 
-### [09. Meta & Orchestration](categories/09-meta-orchestration/)
+[View all 34 language specialists →](categories/07-language-and-framework-specialists/)
 
-**Plugin:** `laywill-meta`
+### 🟡 08. [General Development](categories/08-general-development/)
 
-Agent coordination and meta-programming.
+**Plugin:** `laywill-general-development`
 
-- [**agent-installer**](categories/09-meta-orchestration/agent-installer.md) - Browse and install agents from this repository via GitHub
-- [**agent-organizer**](categories/09-meta-orchestration/agent-organizer.md) - Multi-agent coordinator
-- [**context-manager**](categories/09-meta-orchestration/context-manager.md) - Context optimization expert
-- [**error-coordinator**](categories/09-meta-orchestration/error-coordinator.md) - Error handling and recovery specialist
-- [**it-ops-orchestrator**](categories/09-meta-orchestration/it-ops-orchestrator.md) - IT operations workflow orchestration specialist
-- [**knowledge-synthesizer**](categories/09-meta-orchestration/knowledge-synthesizer.md) - Knowledge aggregation expert
-- [**multi-agent-coordinator**](categories/09-meta-orchestration/multi-agent-coordinator.md) - Advanced multi-agent orchestration
-- [**performance-monitor**](categories/09-meta-orchestration/performance-monitor.md) - Agent performance optimization
-- [**pied-piper**](https://github.com/sathish316/pied-piper/) - Orchestrate Team of AI Subagents for repetitive SDLC workflows
-- [**task-distributor**](categories/09-meta-orchestration/task-distributor.md) - Task allocation specialist
-- [**workflow-orchestrator**](categories/09-meta-orchestration/workflow-orchestrator.md) - Complex workflow automation
+General development subagents handle core development roles including backend, frontend, fullstack, mobile, CLI, game, and UI development. They provide broad development expertise across platforms.
 
-### [10. Research & Analysis](categories/10-research-analysis/)
+- [**backend-developer**](categories/08-general-development/backend-developer.md) - Server-side expert for scalable APIs
+- [**cli-developer**](categories/08-general-development/cli-developer.md) - Command-line tool creator
+- [**electron-pro**](categories/08-general-development/electron-pro.md) - Desktop application expert
+- [**frontend-developer**](categories/08-general-development/frontend-developer.md) - UI/UX specialist for React, Vue, and Angular
+- [**fullstack-developer**](categories/08-general-development/fullstack-developer.md) - End-to-end feature development
+- [**game-developer**](categories/08-general-development/game-developer.md) - Game development expert
+- [**mcp-developer**](categories/08-general-development/mcp-developer.md) - Model Context Protocol specialist
+- [**mobile-app-developer**](categories/08-general-development/mobile-app-developer.md) - Mobile application specialist
+- [**mobile-developer**](categories/08-general-development/mobile-developer.md) - Cross-platform mobile specialist
+- [**ui-designer**](categories/08-general-development/ui-designer.md) - Visual design and interaction specialist
+- [**websocket-engineer**](categories/08-general-development/websocket-engineer.md) - Real-time communication specialist
 
-**Plugin:** `laywill-research`
+### 🟡 09. [Testing and QA](categories/09-testing-and-qa/)
 
-Research, search, and analysis specialists.
+**Plugin:** `laywill-testing-qa`
 
-- [**research-analyst**](categories/10-research-analysis/research-analyst.md) - Comprehensive research specialist
-- [**search-specialist**](categories/10-research-analysis/search-specialist.md) - Advanced information retrieval expert
-- [**trend-analyst**](categories/10-research-analysis/trend-analyst.md) - Emerging trends and forecasting expert
-- [**competitive-analyst**](categories/10-research-analysis/competitive-analyst.md) - Competitive intelligence specialist
-- [**market-researcher**](categories/10-research-analysis/market-researcher.md) - Market analysis and consumer insights
-- [**data-researcher**](categories/10-research-analysis/data-researcher.md) - Data discovery and analysis expert
+Testing and QA subagents create automated tests, chaos experiments, fixtures, and coverage reports. They ensure code quality through comprehensive testing strategies.
+
+- [**chaos-engineer**](categories/09-testing-and-qa/chaos-engineer.md) - System resilience testing expert
+- [**coverage-gap-filler**](categories/09-testing-and-qa/coverage-gap-filler.md) - Test coverage improvement specialist
+- [**e2e-test-writer**](categories/09-testing-and-qa/e2e-test-writer.md) - End-to-end test automation expert
+- [**integration-test-writer**](categories/09-testing-and-qa/integration-test-writer.md) - Integration test specialist
+- [**snapshot-updater**](categories/09-testing-and-qa/snapshot-updater.md) - Snapshot test management
+- [**test-automator**](categories/09-testing-and-qa/test-automator.md) - Test automation framework expert
+- [**test-fixture-generator**](categories/09-testing-and-qa/test-fixture-generator.md) - Test fixture and mock data creator
+- [**unit-test-writer**](categories/09-testing-and-qa/unit-test-writer.md) - Unit test specialist
+
+### 🟡 10. [Refactoring and Modernization](categories/10-refactoring-and-modernization/)
+
+**Plugin:** `laywill-refactoring-modernization`
+
+Refactoring and modernization subagents improve code quality by reducing technical debt, applying design patterns, upgrading frameworks, and modernizing language features.
+
+- [**framework-upgrader**](categories/10-refactoring-and-modernization/framework-upgrader.md) - Framework upgrade and migration expert
+- [**language-modernizer**](categories/10-refactoring-and-modernization/language-modernizer.md) - Language feature modernization specialist
+- [**legacy-modernizer**](categories/10-refactoring-and-modernization/legacy-modernizer.md) - Legacy code modernization specialist
+- [**linter-fixer**](categories/10-refactoring-and-modernization/linter-fixer.md) - Linting and code style automation
+- [**pattern-migrator**](categories/10-refactoring-and-modernization/pattern-migrator.md) - Design pattern migration expert
+- [**refactoring-specialist**](categories/10-refactoring-and-modernization/refactoring-specialist.md) - Code refactoring expert
+- [**tech-debt-reducer**](categories/10-refactoring-and-modernization/tech-debt-reducer.md) - Technical debt elimination specialist
+
+### 🟡 11. [Bug Fixing and Debugging](categories/11-bug-fixing-and-debugging/)
+
+**Plugin:** `laywill-bug-fixing-debugging`
+
+Bug fixing and debugging subagents diagnose and fix bugs, analyze logs and stack traces, and hunt regressions. They help teams resolve production issues quickly.
+
+- [**bug-fixer**](categories/11-bug-fixing-and-debugging/bug-fixer.md) - Bug resolution and fixing specialist
+- [**debugger**](categories/11-bug-fixing-and-debugging/debugger.md) - Advanced debugging specialist
+- [**error-detective**](categories/11-bug-fixing-and-debugging/error-detective.md) - Error analysis and resolution expert
+- [**log-analyzer**](categories/11-bug-fixing-and-debugging/log-analyzer.md) - Log analysis and diagnostics expert
+- [**regression-hunter**](categories/11-bug-fixing-and-debugging/regression-hunter.md) - Regression detection specialist
+- [**stack-trace-interpreter**](categories/11-bug-fixing-and-debugging/stack-trace-interpreter.md) - Stack trace analysis expert
+
+### 🟡 12. [Frontend and UI](categories/12-frontend-and-ui/)
+
+**Plugin:** `laywill-frontend-ui`
+
+Frontend and UI subagents build responsive components, manage themes, handle internationalization, and refactor styles. They ensure polished, accessible user interfaces.
+
+- [**i18n-extractor**](categories/12-frontend-and-ui/i18n-extractor.md) - Internationalization extraction specialist
+- [**responsive-adapter**](categories/12-frontend-and-ui/responsive-adapter.md) - Responsive design adaptation expert
+- [**style-refactorer**](categories/12-frontend-and-ui/style-refactorer.md) - CSS and styling refactoring expert
+- [**theme-generator**](categories/12-frontend-and-ui/theme-generator.md) - Theme system creation specialist
+- [**ui-component-builder**](categories/12-frontend-and-ui/ui-component-builder.md) - Reusable component creation expert
+
+### 🟡 13. [Developer Experience and Tooling](categories/13-developer-experience-and-tooling/)
+
+**Plugin:** `laywill-developer-experience`
+
+Developer experience and tooling subagents improve build processes, optimize git workflows, manage team communication, and enhance prompt engineering. They make development faster and smoother.
+
+- [**build-engineer**](categories/13-developer-experience-and-tooling/build-engineer.md) - Build system specialist
+- [**dx-optimizer**](categories/13-developer-experience-and-tooling/dx-optimizer.md) - Developer experience optimization specialist
+- [**git-workflow-manager**](categories/13-developer-experience-and-tooling/git-workflow-manager.md) - Git workflow and branching expert
+- [**prompt-engineer**](categories/13-developer-experience-and-tooling/prompt-engineer.md) - Prompt optimization specialist
+- [**slack-expert**](categories/13-developer-experience-and-tooling/slack-expert.md) - Slack platform and integration specialist
+- [**tooling-engineer**](categories/13-developer-experience-and-tooling/tooling-engineer.md) - Developer tooling specialist
+
+### 🟠 14. [Data and Database](categories/14-data-and-database/)
+
+**Plugin:** `laywill-data-database`
+
+Data and database subagents design schemas, optimize queries, manage migrations, generate test data, and validate data integrity. They ensure reliable data layer performance.
+
+- [**data-engineer**](categories/14-data-and-database/data-engineer.md) - Data pipeline architect
+- [**data-validator**](categories/14-data-and-database/data-validator.md) - Data integrity and validation specialist
+- [**database-optimizer**](categories/14-data-and-database/database-optimizer.md) - Database performance specialist
+- [**orm-model-builder**](categories/14-data-and-database/orm-model-builder.md) - ORM and model architecture specialist
+- [**postgres-pro**](categories/14-data-and-database/postgres-pro.md) - PostgreSQL database expert
+- [**schema-migrator**](categories/14-data-and-database/schema-migrator.md) - Database schema migration expert
+- [**seed-data-generator**](categories/14-data-and-database/seed-data-generator.md) - Test data generation specialist
+
+### 🟠 15. [Data Science and AI](categories/15-data-science-and-ai/)
+
+**Plugin:** `laywill-data-science-ai`
+
+Data science and AI subagents build machine learning models, analyze data, architect LLM solutions, and handle MLOps. They bring intelligent capabilities to applications.
+
+- [**ai-engineer**](categories/15-data-science-and-ai/ai-engineer.md) - AI system design and deployment expert
+- [**data-analyst**](categories/15-data-science-and-ai/data-analyst.md) - Data insights and visualization specialist
+- [**data-scientist**](categories/15-data-science-and-ai/data-scientist.md) - Analytics and insights expert
+- [**llm-architect**](categories/15-data-science-and-ai/llm-architect.md) - Large language model architect
+- [**machine-learning-engineer**](categories/15-data-science-and-ai/machine-learning-engineer.md) - Machine learning systems expert
+- [**ml-engineer**](categories/15-data-science-and-ai/ml-engineer.md) - Machine learning specialist
+- [**mlops-engineer**](categories/15-data-science-and-ai/mlops-engineer.md) - MLOps and model deployment expert
+- [**nlp-engineer**](categories/15-data-science-and-ai/nlp-engineer.md) - Natural language processing expert
+
+### 🟠 16. [Dependency and Package Management](categories/16-dependency-and-package-management/)
+
+**Plugin:** `laywill-dependency-management`
+
+Dependency and package management subagents manage dependencies, handle upgrades, patch vulnerabilities, resolve lockfiles, publish packages, and manage monorepos.
+
+- [**dependency-manager**](categories/16-dependency-and-package-management/dependency-manager.md) - Package and dependency specialist
+- [**dependency-upgrader**](categories/16-dependency-and-package-management/dependency-upgrader.md) - Dependency upgrade automation specialist
+- [**lockfile-resolver**](categories/16-dependency-and-package-management/lockfile-resolver.md) - Lockfile conflict resolution expert
+- [**monorepo-manager**](categories/16-dependency-and-package-management/monorepo-manager.md) - Monorepo architecture and management
+- [**package-publisher**](categories/16-dependency-and-package-management/package-publisher.md) - Package publishing and release specialist
+- [**vulnerability-patcher**](categories/16-dependency-and-package-management/vulnerability-patcher.md) - Security vulnerability patching
+
+### 🟠 17. [Build and CI/CD](categories/17-build-and-ci-cd/)
+
+**Plugin:** `laywill-build-ci-cd`
+
+Build and CI/CD subagents design pipelines, write workflows, configure environments, optimize builds, and publish artifacts. They automate and accelerate software delivery.
+
+- [**artifact-publisher**](categories/17-build-and-ci-cd/artifact-publisher.md) - Build artifact publishing specialist
+- [**build-optimizer**](categories/17-build-and-ci-cd/build-optimizer.md) - Build performance optimization expert
+- [**environment-configurator**](categories/17-build-and-ci-cd/environment-configurator.md) - Build environment setup specialist
+- [**pipeline-builder**](categories/17-build-and-ci-cd/pipeline-builder.md) - CI/CD pipeline design expert
+- [**workflow-author**](categories/17-build-and-ci-cd/workflow-author.md) - GitHub Actions and workflow automation
+
+### 🔴 18. [API and Service Integration](categories/18-api-and-service-integration/)
+
+**Plugin:** `laywill-api-service-integration`
+
+API and service integration subagents generate API clients, integrate third-party services, build SDK wrappers, configure webhooks, and set up message queues.
+
+- [**api-client-generator**](categories/18-api-and-service-integration/api-client-generator.md) - API client code generation specialist
+- [**message-queue-configurator**](categories/18-api-and-service-integration/message-queue-configurator.md) - Message queue setup and configuration
+- [**sdk-wrapper-builder**](categories/18-api-and-service-integration/sdk-wrapper-builder.md) - SDK wrapper and abstraction builder
+- [**third-party-integrator**](categories/18-api-and-service-integration/third-party-integrator.md) - Third-party service integration expert
+- [**webhook-configurator**](categories/18-api-and-service-integration/webhook-configurator.md) - Webhook setup and management specialist
+
+### 🔴 19. [Infrastructure as Code](categories/19-infrastructure-as-code/)
+
+**Plugin:** `laywill-infrastructure-code`
+
+Infrastructure as code subagents manage cloud infrastructure, Kubernetes, containerization, networking, and platform engineering. They ensure reliable, scalable infrastructure.
+
+- [**azure-infra-engineer**](categories/19-infrastructure-as-code/azure-infra-engineer.md) - Azure infrastructure and automation expert
+- [**cloud-architect**](categories/19-infrastructure-as-code/cloud-architect.md) - AWS/GCP/Azure specialist
+- [**cloudformation-builder**](categories/19-infrastructure-as-code/cloudformation-builder.md) - AWS CloudFormation expert
+- [**devops-engineer**](categories/19-infrastructure-as-code/devops-engineer.md) - DevOps and automation expert
+- [**docker-composer**](categories/19-infrastructure-as-code/docker-composer.md) - Docker and containerization specialist
+- [**helm-chart-builder**](categories/19-infrastructure-as-code/helm-chart-builder.md) - Helm chart creation and packaging expert
+- [**kubernetes-specialist**](categories/19-infrastructure-as-code/kubernetes-specialist.md) - Container orchestration master
+- [**network-engineer**](categories/19-infrastructure-as-code/network-engineer.md) - Network infrastructure specialist
+- [**platform-engineer**](categories/19-infrastructure-as-code/platform-engineer.md) - Platform architecture expert
+- [**terraform-engineer**](categories/19-infrastructure-as-code/terraform-engineer.md) - Infrastructure as Code expert
+- [**windows-infra-admin**](categories/19-infrastructure-as-code/windows-infra-admin.md) - Active Directory and Windows infrastructure expert
+
+### 🔴 20. [Security and Secrets](categories/20-security-and-secrets/)
+
+**Plugin:** `laywill-security-secrets`
+
+Security and secrets subagents harden systems, conduct penetration testing, manage secrets and certificates, handle IAM policies, and configure CORS. They protect applications and data.
+
+- [**ad-security-reviewer**](categories/20-security-and-secrets/ad-security-reviewer.md) - Active Directory security expert
+- [**certificate-manager**](categories/20-security-and-secrets/certificate-manager.md) - SSL/TLS certificate management specialist
+- [**cors-policy-manager**](categories/20-security-and-secrets/cors-policy-manager.md) - CORS policy configuration expert
+- [**iam-policy-author**](categories/20-security-and-secrets/iam-policy-author.md) - IAM policy creation and management
+- [**penetration-tester**](categories/20-security-and-secrets/penetration-tester.md) - Ethical hacking specialist
+- [**powershell-security-hardening**](categories/20-security-and-secrets/powershell-security-hardening.md) - PowerShell security hardening expert
+- [**secret-rotator**](categories/20-security-and-secrets/secret-rotator.md) - Secret rotation and management specialist
+- [**security-engineer**](categories/20-security-and-secrets/security-engineer.md) - Infrastructure security specialist
+- [**vault-configurator**](categories/20-security-and-secrets/vault-configurator.md) - Secrets vault setup and management
+
+### 🔴 21. [Specialized Domains](categories/21-specialized-domains/)
+
+**Plugin:** `laywill-specialized-domains`
+
+Specialized domains subagents handle blockchain, embedded systems, fintech, IoT, Microsoft 365, and payment integration. They bring domain-specific expertise to niche areas.
+
+- [**blockchain-developer**](categories/21-specialized-domains/blockchain-developer.md) - Web3 and crypto specialist
+- [**embedded-systems**](categories/21-specialized-domains/embedded-systems.md) - Embedded and real-time systems expert
+- [**fintech-engineer**](categories/21-specialized-domains/fintech-engineer.md) - Financial technology specialist
+- [**iot-engineer**](categories/21-specialized-domains/iot-engineer.md) - IoT systems developer
+- [**m365-admin**](categories/21-specialized-domains/m365-admin.md) - Microsoft 365 administration specialist
+- [**payment-integration**](categories/21-specialized-domains/payment-integration.md) - Payment systems expert
+
+### ⛔ 22. [Deployment and Release](categories/22-deployment-and-release/)
+
+**Plugin:** `laywill-deployment-release`
+
+Deployment and release subagents manage deployments, handle blue-green and canary strategies, manage feature flags, and control rollbacks. They enable safe, controlled releases.
+
+- [**blue-green-switcher**](categories/22-deployment-and-release/blue-green-switcher.md) - Blue-green deployment automation
+- [**canary-release-controller**](categories/22-deployment-and-release/canary-release-controller.md) - Canary release management expert
+- [**deployer**](categories/22-deployment-and-release/deployer.md) - Deployment automation specialist
+- [**deployment-engineer**](categories/22-deployment-and-release/deployment-engineer.md) - Deployment automation specialist
+- [**feature-flag-manager**](categories/22-deployment-and-release/feature-flag-manager.md) - Feature flag management specialist
+- [**rollback-manager**](categories/22-deployment-and-release/rollback-manager.md) - Deployment rollback management expert
+
+### ⛔ 23. [Production Ops and Observability](categories/23-production-ops-and-observability/)
+
+**Plugin:** `laywill-production-ops`
+
+Production ops and observability subagents manage incidents, configure monitoring and logging, build dashboards, manage SLAs, and handle scaling. They ensure systems run smoothly in production.
+
+- [**alert-configurator**](categories/23-production-ops-and-observability/alert-configurator.md) - Alert and notification configuration expert
+- [**dashboard-builder**](categories/23-production-ops-and-observability/dashboard-builder.md) - Monitoring dashboard creation specialist
+- [**database-administrator**](categories/23-production-ops-and-observability/database-administrator.md) - Database management expert
+- [**devops-incident-responder**](categories/23-production-ops-and-observability/devops-incident-responder.md) - DevOps incident management
+- [**incident-responder**](categories/23-production-ops-and-observability/incident-responder.md) - System incident response expert
+- [**log-pipeline-manager**](categories/23-production-ops-and-observability/log-pipeline-manager.md) - Logging infrastructure specialist
+- [**scaling-manager**](categories/23-production-ops-and-observability/scaling-manager.md) - Auto-scaling configuration expert
+- [**sla-monitor**](categories/23-production-ops-and-observability/sla-monitor.md) - SLA monitoring and enforcement
+- [**sre-engineer**](categories/23-production-ops-and-observability/sre-engineer.md) - Site reliability engineering expert
+
+### ⛔ 24. [Production Data Ops](categories/24-production-data-ops/)
+
+**Plugin:** `laywill-production-data-ops`
+
+Production data ops subagents manage data migrations, anonymization, backup and restore, replication, and retention policies. They ensure data safety and compliance in production.
+
+- [**backup-restore-manager**](categories/24-production-data-ops/backup-restore-manager.md) - Backup and recovery specialist
+- [**data-anonymizer**](categories/24-production-data-ops/data-anonymizer.md) - Data privacy and anonymization expert
+- [**data-migrator**](categories/24-production-data-ops/data-migrator.md) - Data migration specialist
+- [**replication-configurator**](categories/24-production-data-ops/replication-configurator.md) - Database replication setup specialist
+- [**retention-policy-enforcer**](categories/24-production-data-ops/retention-policy-enforcer.md) - Data retention policy management
+
+<br />
 
 ## 🤖 Understanding Subagents
 
@@ -323,8 +493,14 @@ You can configure each subagent with specific tool access rights, enabling fine-
 **3. Deploy and Utilize**
 Your subagent becomes immediately available. Claude Code will automatically engage it when suitable, or you can explicitly request its help:
 
-```
+Implicitly requesting an agent:
+```plaintext
 > Have the code-reviewer subagent analyze my latest commits
+```
+
+Explicitly requesting an agent with `@agent` syntax:
+```plaintext
+> Have the @"code-reviewer (agent)" analyze my latest commits
 ```
 
 ### Subagent Storage Locations
@@ -348,77 +524,41 @@ tools: Read, Write, Edit, Bash, Glob, Grep
 model: sonnet
 ---
 
-You are a [role description and expertise areas]...
+You are a [role description]...
 
-[Agent-specific checklists, patterns, and guidelines]...
+## Key steps to summarise what to do
+[When invoked:]
+
+## Define agent specific behaviour in detail
+[Agent-specific checklists, patterns, guidelines]
 
 ## Communication Protocol
-Inter-agent communication specifications...
+[Inter-agent communication specs]
 
 ## Development Workflow
-Structured implementation phases...
+[Structured implementation phases]
 ```
 
-### Tool Assignment Philosophy
+## 📝 Contributing
 
-### Smart Model Routing
+Contributions are welcome! Please follow these guidelines:
 
-Each subagent includes a `model` field that automatically routes it to the right Claude model — balancing quality and cost:
-
-| Model    | When It's Used                                                          | Examples                                                     |
-| -------- | ----------------------------------------------------------------------- | ------------------------------------------------------------ |
-| `opus`   | Deep reasoning — architecture reviews, security audits, financial logic | `security-auditor`, `architect-reviewer`, `fintech-engineer` |
-| `sonnet` | Everyday coding — writing, debugging, refactoring                       | `python-pro`, `backend-developer`, `devops-engineer`         |
-| `haiku`  | Quick tasks — docs, search, dependency checks                           | `documentation-engineer`, `seo-specialist`, `build-engineer` |
-
-You can override any agent's model by editing the `model` field in its frontmatter. Set `model: inherit` to use whatever model your main conversation is using.
-
-### Tool Assignment Philosophy
-
-Each subagent's `tools` field specifies Claude Code built-in tools, optimized for their role:
-
-- **Read-only agents** (reviewers, auditors): `Read, Grep, Glob` - analyze without modifying
-- **Research agents** (analysts, researchers): `Read, Grep, Glob, WebFetch, WebSearch` - gather information
-- **Code writers** (developers, engineers): `Read, Write, Edit, Bash, Glob, Grep` - create and execute
-- **Documentation agents** (writers, documenters): `Read, Write, Edit, Glob, Grep, WebFetch, WebSearch` - document with research
-
-Each agent has minimal necessary permissions. You can extend agents by adding MCP servers or external tools to the `tools` field.
-
-## 🧰 Tools
-
-### [subagent-catalog](tools/subagent-catalog/)
-
-Claude Code skill for browsing and fetching subagents from this catalog.
-
-| Command                            | Description                                   |
-| ---------------------------------- | --------------------------------------------- |
-| `/subagent-catalog:search <query>` | Find agents by name, description, or category |
-| `/subagent-catalog:fetch <name>`   | Get full agent definition                     |
-| `/subagent-catalog:list`           | Browse all categories                         |
-| `/subagent-catalog:invalidate`     | Refresh cache                                 |
-
-**Installation:**
-
-```bash
-cp -r tools/subagent-catalog ~/.claude/commands/
-```
-
-## 🤝 Contributing
-
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-- Submit new subagents via PR
-- Improve existing definitions
-- Report issues and bugs
-
-## Contributor ♥️ Thanks
-
-![Contributors](https://contrib.rocks/image?repo=laywill/awesome-claude-code-subagents&max=500&columns=20&anon=1)
+1. **New Subagent**: Create a new `.md` file in the appropriate category directory
+2. **Update Category README**: Add your subagent to the category's `README.md`
+3. **Update Main README**: Add a link in this file under the correct category
+4. **Plugin Update**: Verify the `.claude-plugin/plugin.json` includes your agent
+5. **Test**: Verify the agent works as intended in Claude Code
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE)
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-This repository is a curated collection of subagent definitions contributed by both the maintainers and the community. All subagents are provided "as is" without warranty. We do not audit or guarantee the security or correctness of any subagent. Review before use, the maintainers accept no liability for any issues arising from their use.
+## 🤝 Support
 
-If you find an issue with a listed subagent or want your contribution removed, please [open an issue](https://github.com/laywill/awesome-claude-code-subagents/issues) and we'll address it promptly.
+- **Questions?** Open an issue on GitHub
+- **Found a bug?** Report it with a detailed example
+- **Want to suggest improvements?** We'd love to hear your ideas!
+
+---
+
+**Built with ❤️ by the Claude Code community**

@@ -1,0 +1,19 @@
+{
+  "name": "laywill-deployment-release",
+  "version": "2.0.0",
+  "description": "Deployment and release subagents manage deployments, handle blue-green and canary strategies, manage feature flags, and control rollbacks. They enable safe, controlled releases.",
+  "author": {
+    "name": "laywill Community",
+    "url": "https://github.com/laywill"
+  },
+  "repository": "https://github.com/laywill/awesome-claude-code-subagents",
+  "license": "MIT",
+  "agents": [
+    "./blue-green-switcher.md",
+    "./canary-release-controller.md",
+    "./deployer.md",
+    "./deployment-engineer.md",
+    "./feature-flag-manager.md",
+    "./rollback-manager.md"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "name": "laywill-planning-estimation",
+  "version": "2.0.0",
+  "description": "Planning and estimation subagents help teams scope work, estimate effort, plan migrations and releases, and assess risks. They enable better project management and delivery confidence.",
+  "author": {
+    "name": "laywill Community",
+    "url": "https://github.com/laywill"
+  },
+  "repository": "https://github.com/laywill/awesome-claude-code-subagents",
+  "license": "MIT",
+  "agents": [
+    "./effort-estimator.md",
+    "./migration-planner.md",
+    "./product-manager.md",
+    "./project-manager.md",
+    "./release-planner.md",
+    "./risk-assessor.md",
+    "./scrum-master.md",
+    "./task-planner.md"
+  ]
+}
