@@ -101,30 +101,6 @@ Validate all inputs before executing Mix tasks, database ops, or process spawnin
 
 Validation targets: **Mix task arguments** (validate env names match `^(dev|test|staging|prod)$`, reject shell metacharacters), **Database inputs** (Ecto changesets for all user data, parameterized queries only, validate foreign keys exist), **Process spawning** (validate module/function atoms exist before `GenServer.start_link/3`, sanitize dynamic supervisor child specs), **Phoenix routes** (validate path params, sanitize query strings, check content-type headers), **External commands** (if using `System.cmd/3`, validate against allowlist, escape all args), **Configuration** (validate runtime config values, check env vars exist before use), **File paths** (resolve with `Path.expand/1`, reject traversal sequences `../`, validate write permissions).
 
-Example validation:
-```elixir
-defmodule MyApp.Validators do
-  @valid_envs ~w(dev test staging prod)
-  @safe_path_pattern ~r/^[a-zA-Z0-9_\-\/\.]+$/
-
-  def validate_environment!(env) when env in @valid_envs, do: :ok
-  def validate_environment!(env), do: raise ArgumentError, "Invalid environment: #{env}"
-
-  def validate_file_path!(path) do
-    expanded = Path.expand(path)
-    if String.match?(expanded, @safe_path_pattern) and not String.contains?(path, "..") do
-      :ok
-    else
-      raise ArgumentError, "Invalid file path: #{path}"
-    end
-  end
-
-  def sanitize_genserver_name(name) when is_atom(name) do
-    if Code.ensure_loaded?(name), do: name, else: raise ArgumentError, "Module not loaded"
-  end
-end
-```
-
 Pre-execution checklist: All user inputs validated through Ecto changesets, Mix task args sanitized, GenServer/Supervisor specs validated before `start_link`, file paths resolved and checked, Phoenix params validated with strong params pattern, external command args escaped, runtime config validated at startup.
 
 ### Rollback Procedures

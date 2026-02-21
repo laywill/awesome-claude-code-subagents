@@ -102,51 +102,13 @@ Security practices: XSS prevention, CSRF protection, Content Security Policy, se
 All user inputs, file paths, and external data MUST be validated before processing to prevent code injection, path traversal, and malicious script execution.
 
 **Required Validations**:
-- **File paths**: Must be within project directory, no `..` sequences
-  ```javascript
-  function validateFilePath(userPath, projectRoot) {
-    const resolved = path.resolve(projectRoot, userPath);
-    if (!resolved.startsWith(projectRoot)) throw new Error(`Invalid path: ${userPath}`);
-    return resolved;
-  }
-  ```
+- **File paths**: Resolve against project root with `path.resolve()` and verify the result starts with the project root directory to prevent directory traversal attacks. Reject paths containing `..` sequences or absolute paths outside the project scope.
 
-- **Package names**: Match npm naming rules `^(@[a-z0-9-~][a-z0-9-._~]*/)?[a-z0-9-~][a-z0-9-._~]*$`
-  ```javascript
-  function validatePackageName(name) {
-    const npmPattern = /^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/;
-    if (!npmPattern.test(name)) throw new Error(`Invalid package name: ${name}`);
-    const blocklist = ['malicious-pkg', 'evil-lib'];
-    if (blocklist.includes(name)) throw new Error(`Blocked package: ${name}`);
-    return name;
-  }
-  ```
+- **Package names**: Validate against npm naming rules (`^(@[a-z0-9-~][a-z0-9-._~]*/)?[a-z0-9-~][a-z0-9-._~]*$`). Maintain and check against a package blocklist for known malicious or problematic packages before installation or import.
 
-- **Script content**: Scan for dangerous patterns
-  ```javascript
-  function validateScriptContent(code) {
-    const dangerousPatterns = [
-      /require\s*\(\s*['"]child_process['"]\s*\)/,
-      /eval\s*\(/,
-      /Function\s*\(/,
-      /process\.exit/,
-      /fs\.unlinkSync/,
-      /rm\s+-rf/
-    ];
-    for (const pattern of dangerousPatterns) {
-      if (pattern.test(code)) throw new Error(`Dangerous pattern: ${pattern}`);
-    }
-    return code;
-  }
-  ```
+- **Script content**: Scan uploaded or user-provided JavaScript code for dangerous patterns before execution or storage: `require()` calls to privileged modules (`child_process`, `fs`, `os`), `eval()`, `Function()` constructors, `process.exit` calls, filesystem operations (`fs.unlinkSync`, `fs.rmSync`), and shell command patterns. Reject code containing these patterns.
 
-- **User-provided HTML/DOM**: Sanitize to prevent XSS
-  ```javascript
-  function sanitizeHTML(dirty) {
-    const map = {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;', "/": '&#x2F;'};
-    return dirty.replace(/[&<>"'/]/g, (char) => map[char]);
-  }
-  ```
+- **User-provided HTML/DOM**: Sanitize all user-generated content before inserting into the DOM to prevent XSS attacks. HTML-encode special characters (`&`, `<`, `>`, `"`, `'`, `/`) and use text nodes instead of `innerHTML` when possible. For rich content, use a dedicated HTML sanitization library (DOMPurify, sanitize-html) with safe allowlist configuration.
 
 ### Rollback Procedures
 
