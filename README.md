@@ -28,9 +28,31 @@ claude plugin install <plugin-name>
 Examples:
 
 ```bash
-claude plugin install laywill-language-specialists    # Language experts
-claude plugin install laywill-infrastructure-code     # Infrastructure & IaC
-claude plugin install laywill-meta-orchestration      # Multi-agent coordination
+claude plugin install laywill-meta-orchestration         # category 00 Meta Agent Orchestration
+claude plugin install laywill-research-discovery         # category 01 Research and Discovery
+claude plugin install laywill-architecture-design        # category 02 Architecture and Design
+claude plugin install laywill-analysis-review            # category 03 Analysis and Review
+claude plugin install laywill-documentation              # category 04 Documentation
+claude plugin install laywill-planning-estimation        # category 05 Planning and Estimation
+claude plugin install laywill-business-product           # category 06 Business and Product Ownership
+claude plugin install laywill-language-specialists       # category 07 Language Specialists
+claude plugin install laywill-general-development        # category 08 Development Generalists
+claude plugin install laywill-testing-qa                 # category 09 Testing and QA
+claude plugin install laywill-refactoring-modernization  # category 10 Refactoring and Modernization of legacy code
+claude plugin install laywill-bug-fixing-debugging       # category 11 Debugging and bug fixing
+claude plugin install laywill-frontend-ui                # category 12 Frontend and UI
+claude plugin install laywill-developer-experience       # category 13 Developer Experience
+claude plugin install laywill-data-database              # category 14 Data, Database, and Datalake specialists
+claude plugin install laywill-data-science-ai            # category 15 Data Science, AI and ML
+claude plugin install laywill-dependency-management      # category 16 Dependency Management
+claude plugin install laywill-build-ci-cd                # category 17 Build Agents, and CI/CD
+claude plugin install laywill-api-service-integration    # category 18 API Service Integration
+claude plugin install laywill-infrastructure-code        # category 19 Infrastructure as Code
+claude plugin install laywill-security-secrets           # category 20 Security and Secrets management
+claude plugin install laywill-specialized-domains        # category 21 Specialised Industries and Domains
+claude plugin install laywill-deployment-release         # category 22 Deployment and Release
+claude plugin install laywill-production-ops             # category 23 Production and Operations
+claude plugin install laywill-production-data-ops        # category 24 Production Data Operations
 ```
 
 See [Categories](#-categories) below for all available plugins.
