@@ -8,11 +8,10 @@ This is a curated collection of Claude Code subagent definitions - specialized A
 
 ## Repository Structure
 
-The repository uses a 25-category risk-tiered structure organized as follows:
+The repository uses a 24-category risk-tiered structure organized as follows:
 
 ```
 categories/
-  00-meta-and-orchestration/              # ⚪ Meta | Agent coordination
   01-research-and-discovery/              # 🟢 Tier 1 | Research & exploration
   02-architecture-and-design/             # 🟢 Tier 1 | System design
   03-analysis-and-review/                 # 🟢 Tier 1 | Code analysis & audit
@@ -40,7 +39,6 @@ categories/
 ```
 
 **Risk Tier Guide:**
-- **Tier 0 (⚪)**: Meta/orchestration - coordination only
 - **Tier 1 (🟢)**: Low risk - read-only, advisory, analysis
 - **Tier 2 (🟡)**: Medium risk - local code changes
 - **Tier 3 (🟠)**: Medium-high risk - data/dependencies/build
