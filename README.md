@@ -6,7 +6,7 @@
 
 <div align="center">
 
-![Subagent Count](https://img.shields.io/badge/subagents-179+-blue?style=flat-square)
+![Subagent Count](https://img.shields.io/badge/subagents-169+-blue?style=flat-square)
 [![Last Update](https://img.shields.io/github/last-commit/laywill/awesome-claude-code-subagents?label=Last%20update&style=flat-square)](https://github.com/laywill/awesome-claude-code-subagents)
 [![GitHub forks](https://img.shields.io/github/forks/laywill/awesome-claude-code-subagents?style=social)](https://github.com/laywill/awesome-claude-code-subagents/network/members)
 
@@ -14,7 +14,7 @@
 
 # Awesome Claude Code Subagents
 
-This repository serves as the definitive collection of Claude Code subagents, specialized AI assistants designed for specific development tasks. Organized into 25 categories with a risk-tiered structure for production-safe automation.
+This repository serves as the definitive collection of Claude Code subagents, specialized AI assistants designed for specific development tasks. Organized into 24 categories with a risk-tiered structure for production-safe automation.
 
 ## Installation
 
@@ -28,7 +28,6 @@ claude plugin install <plugin-name>
 Examples:
 
 ```bash
-claude plugin install laywill-meta-orchestration         # category 00 Meta Agent Orchestration
 claude plugin install laywill-research-discovery         # category 01 Research and Discovery
 claude plugin install laywill-architecture-design        # category 02 Architecture and Design
 claude plugin install laywill-analysis-review            # category 03 Analysis and Review
@@ -56,8 +55,6 @@ claude plugin install laywill-production-data-ops        # category 24 Productio
 ```
 
 See [Categories](#-categories) below for all available plugins.
-
-> **Note**: The `laywill-meta-orchestration` agents work best when other categories are installed.
 
 ### Option 1: Manual Installation
 
@@ -87,21 +84,12 @@ chmod +x install-agents.sh
 
 Downloads agents directly from GitHub without cloning the repository. Requires `curl`.
 
-### Option 4: Agent Installer (use Claude Code to install agents)
-
-```bash
-curl -s https://raw.githubusercontent.com/laywill/awesome-claude-code-subagents/main/categories/00-meta-and-orchestration/agent-installer.md -o ~/.claude/agents/agent-installer.md
-```
-
-Then in Claude Code: "Use the agent-installer to show me available categories" or "Find TypeScript agents and install typescript-pro globally".
-
 <br />
 
 ## 🔒 Risk Tiers at a Glance
 
 | Tier | Icon | Categories | Risk Level | Key Characteristics |
 |------|------|------------|------------|---------------------|
-| 0 | ⚪ | 00 | Meta | Orchestration and coordination only |
 | 1 | 🟢 | 01–06 | Low (Read-Only/Advisory) | Analysis, research, planning, documentation |
 | 2 | 🟡 | 07–13 | Medium (Local Code) | Development, testing, refactoring |
 | 3 | 🟠 | 14–17 | Medium-High (Data/Deps/Build) | Database, dependencies, CI/CD |
@@ -111,23 +99,6 @@ Then in Claude Code: "Use the agent-installer to show me available categories" o
 <br />
 
 ## 📚 Categories
-
-### ⚪ 00. [Meta and Orchestration](categories/00-meta-and-orchestration/)
-
-**Plugin:** `laywill-meta-orchestration`
-
-Meta and orchestration subagents coordinate and manage other subagents rather than performing work directly. They decompose complex tasks, distribute work to specialists, synthesize outputs, and handle errors across multi-agent workflows.
-
-- [**agent-installer**](categories/00-meta-and-orchestration/agent-installer.md) - Browse and install agents from this repository
-- [**agent-organizer**](categories/00-meta-and-orchestration/agent-organizer.md) - Multi-agent coordinator
-- [**context-manager**](categories/00-meta-and-orchestration/context-manager.md) - Context optimization expert
-- [**error-coordinator**](categories/00-meta-and-orchestration/error-coordinator.md) - Error handling and recovery specialist
-- [**it-ops-orchestrator**](categories/00-meta-and-orchestration/it-ops-orchestrator.md) - IT operations workflow orchestration
-- [**knowledge-synthesizer**](categories/00-meta-and-orchestration/knowledge-synthesizer.md) - Knowledge aggregation expert
-- [**multi-agent-coordinator**](categories/00-meta-and-orchestration/multi-agent-coordinator.md) - Advanced multi-agent orchestration
-- [**performance-monitor**](categories/00-meta-and-orchestration/performance-monitor.md) - Agent performance optimization
-- [**task-distributor**](categories/00-meta-and-orchestration/task-distributor.md) - Task allocation specialist
-- [**workflow-orchestrator**](categories/00-meta-and-orchestration/workflow-orchestrator.md) - Complex workflow automation
 
 ### 🟢 01. [Research and Discovery](categories/01-research-and-discovery/)
 

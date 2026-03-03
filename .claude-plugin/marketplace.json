@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "description": "Curated collection of 179+ specialized Claude Code subagents organized into 25 focused categories with risk-tiered structure",
+    "description": "Curated collection of 169+ specialized Claude Code subagents organized into 24 focused categories with risk-tiered structure",
     "version": "2.1.0"
   },
   "name": "laywill-subagents",
@@ -9,29 +9,6 @@
     "url": "https://github.com/laywill"
   },
   "plugins": [
-    {
-      "category": "orchestration",
-      "description": "Meta and orchestration subagents coordinate and manage other subagents rather than performing work directly. They decompose complex tasks, distribute work to specialists, synthesize outputs, and handle errors across multi-agent workflows.",
-      "keywords": [
-        "agent-installation",
-        "agent-organization",
-        "coordination",
-        "context-management",
-        "error-handling",
-        "it-ops",
-        "knowledge-management",
-        "meta-programming",
-        "multi-agent",
-        "orchestration",
-        "performance-monitoring",
-        "task-distribution",
-        "task-management",
-        "workflow-automation"
-      ],
-      "name": "laywill-meta-orchestration",
-      "source": "./categories/00-meta-and-orchestration",
-      "version": "2.1.0"
-    },
     {
       "category": "research",
       "description": "Research and discovery subagents explore new technologies, assess feasibility, analyze markets and trends, and conduct deep investigations. They help teams understand the landscape before committing to major decisions.",
