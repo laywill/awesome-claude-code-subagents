@@ -1,7 +1,7 @@
 {
   "metadata": {
     "description": "Curated collection of 169+ specialized Claude Code subagents organized into 24 focused categories with risk-tiered structure",
-    "version": "2.1.0"
+    "version": "2.2.0"
   },
   "name": "laywill-subagents",
   "owner": {
