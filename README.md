@@ -56,7 +56,7 @@ claude plugin install laywill-production-data-ops        # category 24 Productio
 
 See [Categories](#-categories) below for all available plugins.
 
-### Option 1: Manual Installation
+### Manual Installation
 
 1. Clone this repository
 2. Copy desired agent files to:
@@ -64,7 +64,7 @@ See [Categories](#-categories) below for all available plugins.
    - `.claude/agents/` for project-specific use
 3. Customize based on your project requirements
 
-### Option 2: Interactive Installer
+### Interactive Installer
 
 ```bash
 git clone https://github.com/laywill/awesome-claude-code-subagents.git
@@ -85,6 +85,39 @@ chmod +x install-agents.sh
 Downloads agents directly from GitHub without cloning the repository. Requires `curl`.
 
 <br />
+
+## Uninstall
+
+Run the `/plugins` command to see which plugins you have installed, or the `/agents` command to see which agents Claude Code currently has access to.
+
+### As Claude Code Plugin (Recommended)
+
+```bash
+claude plugin uninstall <plugin-name>
+```
+
+Examples:
+
+```bash
+claude plugin install laywill-research-discovery         # category 01 Research and Discovery
+```
+
+### Manual Uninstallation
+
+1. Delete no-longer desired agent files from:
+   - `~/.claude/agents/` for agents with global access
+   - `.claude/agents/` for project-specific agents
+
+### Interactive Installer
+
+```bash
+git clone https://github.com/laywill/awesome-claude-code-subagents.git
+cd awesome-claude-code-subagents
+./install-agents.sh
+```
+
+This interactive script lets you browse categories, select agents, and uninstall them with a single command.
+
 
 ## 🔒 Risk Tiers at a Glance
 
