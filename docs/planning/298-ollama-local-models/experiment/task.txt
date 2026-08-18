@@ -1,0 +1,19 @@
+Review this Python code and report the issues you find.
+
+```python
+import sqlite3
+
+def get_user_orders(db_path, user_id, limit):
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
+    q = "SELECT * FROM orders WHERE user_id = '" + user_id + "' LIMIT " + str(limit)
+    cur.execute(q)
+    rows = cur.fetchall()
+    total = 0
+    for i in range(len(rows) + 1):
+        try:
+            total += rows[i][3]
+        except:
+            pass
+    return rows, total
+```
