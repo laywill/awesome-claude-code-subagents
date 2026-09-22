@@ -168,6 +168,18 @@ A version tag is mutable — whoever controls the action can repoint `v5` at new
 
 This applies to every `uses:`, including first-party `actions/*` and reusable workflows (`owner/repo/.github/workflows/file.yml@<sha> # v1.2.3`). No bare tags, no branch refs, no `@main`.
 
+## Line Endings and File Modes
+
+`.gitattributes` pins `*.md`, `*.json`, `*.sh` and `*.yml` to LF. Markdown and JSON are pinned because tooling parses them line by line — 38 agent files stored with CRLF once made every frontmatter value read back empty under mawk on Linux, while passing locally under Git Bash's gawk.
+
+`* text=auto` alone does not prevent this. It leaves files that already have CRLF in the index untouched, so `git add --renormalize .` is a no-op against them until an explicit `eol` rule exists.
+
+Git records the executable bit in the index, not in `.gitattributes` — there is no `chmod` attribute, and `git check-attr` will happily report one that Git does not implement. A new script needs the bit set explicitly, or it lands non-executable and CI cannot run it:
+
+```bash
+git update-index --chmod=+x scripts/your-script.sh
+```
+
 ## Git Workflow
 
 `origin` is the `laywill` fork; `upstream` is `VoltAgent/awesome-claude-code-subagents`.
