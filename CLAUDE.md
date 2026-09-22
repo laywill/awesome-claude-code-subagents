@@ -152,6 +152,22 @@ for f in $(find categories -name '*.md' ! -name 'README.md'); do
 done
 ```
 
+## GitHub Actions
+
+There are no workflows in this repository yet. Any that get added must pin every action to a full 40-character commit SHA, with a trailing comment naming the semantic version that SHA corresponds to:
+
+```yaml
+steps:
+  - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+  - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+```
+
+Resolve a tag to its SHA with `gh api repos/<owner>/<repo>/git/ref/tags/<tag> --jq .object.sha` — never hand-write one from memory.
+
+A version tag is mutable — whoever controls the action can repoint `v5` at new code, and it runs with your repository's token and secrets. The SHA is the only immutable reference. The comment is what keeps that readable and lets Dependabot bump both the SHA and the comment together.
+
+This applies to every `uses:`, including first-party `actions/*` and reusable workflows (`owner/repo/.github/workflows/file.yml@<sha> # v1.2.3`). No bare tags, no branch refs, no `@main`.
+
 ## Git Workflow
 
 `origin` is the `laywill` fork; `upstream` is `VoltAgent/awesome-claude-code-subagents`.
