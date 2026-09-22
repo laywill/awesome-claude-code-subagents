@@ -1,0 +1,84 @@
+{
+  "type": "object",
+  "properties": {
+    "epic": {
+      "type": "string"
+    },
+    "workstreams": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "total_tasks": {
+      "type": "integer"
+    },
+    "critical_path_length": {
+      "type": "integer"
+    },
+    "parallel_tracks": {
+      "type": "integer"
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "workstream": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "acceptance_criteria": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "dependencies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "complexity": {
+            "type": "string",
+            "enum": [
+              "trivial",
+              "small",
+              "medium",
+              "large",
+              "spike"
+            ]
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "workstream",
+          "scope",
+          "acceptance_criteria",
+          "dependencies",
+          "complexity",
+          "notes"
+        ]
+      }
+    }
+  },
+  "required": [
+    "epic",
+    "workstreams",
+    "total_tasks",
+    "tasks"
+  ]
+}

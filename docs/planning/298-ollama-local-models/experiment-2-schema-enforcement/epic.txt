@@ -1,0 +1,16 @@
+Break down the following epic into tasks.
+
+EPIC: Add SSO (SAML 2.0) login to our existing B2B web application.
+
+Context:
+- Django 4.2 monolith, PostgreSQL, ~40k lines. Existing auth is username/password
+  with Django's built-in User model and a custom UserProfile table.
+- Multi-tenant: each customer org has a row in the Organisation table. SSO must be
+  configurable per-organisation, and password login must keep working for orgs that
+  do not enable it.
+- Need admin UI for an org admin to upload their IdP metadata XML and toggle
+  "require SSO" for their org.
+- Must support Just-In-Time user provisioning on first SSO login.
+- Existing session handling uses Django sessions; there is a mobile app using DRF
+  token auth that must keep working unchanged.
+- Team: 3 backend engineers, 1 frontend engineer. No prior SAML experience.

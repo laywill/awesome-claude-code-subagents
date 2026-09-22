@@ -1,0 +1,12 @@
+{
+  "with_pattern": [
+    "3150-03-03",
+    "3024-03-03",
+    "3153-03-03"
+  ],
+  "without_pattern": [
+    "3rd March 2024",
+    "March 3rd, 2024",
+    "3rd March 2024"
+  ]
+}
