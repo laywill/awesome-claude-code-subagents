@@ -14,7 +14,7 @@ You are a senior software engineer collaborating with a peer. Prioritize thoroug
 
 This is a curated collection of Claude Code subagent definitions — specialized AI assistants for specific development tasks. Subagents are markdown files with YAML frontmatter that Claude Code loads as agents.
 
-There is no build system, test suite, linter, or CI. The "source" is markdown; correctness means the manifests, READMEs, and agent files stay in sync (see Verification below).
+There is no build system or test suite. The "source" is markdown; correctness means the manifests, READMEs, and agent files stay in sync, which `scripts/validate-catalog.sh` checks and CI enforces (see Verification below).
 
 ## Repository Structure
 
@@ -130,33 +130,31 @@ Two rules that get violated repeatedly:
 
 ## Verification
 
-No CI runs these; run them before opening a PR.
-
 ```bash
-# Every agent file is listed in its category's plugin.json
-for d in categories/*/; do
-  listed=$(grep -c '"\./' "$d.claude-plugin/plugin.json")
-  actual=$(ls $d*.md | grep -vc README)
-  [ "$listed" != "$actual" ] && echo "MISMATCH $d listed=$listed actual=$actual"
-done
-
-# Every agent file has all four required frontmatter keys
-for f in $(find categories -name '*.md' ! -name 'README.md'); do
-  for k in name description tools model; do
-    grep -q "^$k:" "$f" || echo "$f missing $k"
-  done
-done
-
-# frontmatter name matches filename
-for f in $(find categories -name '*.md' ! -name 'README.md'); do
-  n=$(grep -m1 '^name:' "$f" | sed 's/name: *//')
-  [ "$n" != "$(basename $f .md)" ] && echo "$f name=$n"
-done
+./scripts/validate-catalog.sh
 ```
+
+One script, checked in, run by both humans and CI — `.github/workflows/validate.yml` invokes it on every pull request and on pushes to `main`. Keep the checks in the script; do not re-inline them here, or the documented copy becomes the stale one.
+
+It reports every failure it finds rather than stopping at the first, and exits non-zero if any fired. What it enforces:
+
+| Check | Catches |
+| --- | --- |
+| plugin.json lists exactly the category's agent files | step 2 of "Four Places" — compared by name, so a typo'd entry is caught even though the counts still match |
+| All four frontmatter keys present | a missing `name`, `description`, `tools` or `model` |
+| Frontmatter `name` matches the filename | an agent Claude Code cannot resolve |
+| `name` is unique across all 24 categories | one agent silently shadowing another once both plugins are installed |
+| Every agent documented in its category README | step 3 of "Four Places" |
+| Every agent linked from the root README | step 4 of "Four Places" — category 07 is skipped, per the exception above |
+| Root README `categories/...` links resolve | a link to a moved or deleted file |
+| marketplace.json covers each category exactly once | a category that ships unreachable |
+| Badge and marketplace counts match the real file count | the advertised subagent total drifting from reality |
+
+Adding an agent therefore means updating the count in the README badge and in `.claude-plugin/marketplace.json`, not just the four places.
 
 ## GitHub Actions
 
-There are no workflows in this repository yet. Any that get added must pin every action to a full 40-character commit SHA, with a trailing comment naming the semantic version that SHA corresponds to:
+`.github/workflows/validate.yml` is currently the only workflow. It and any that get added must pin every action to a full 40-character commit SHA, with a trailing comment naming the semantic version that SHA corresponds to:
 
 ```yaml
 steps:

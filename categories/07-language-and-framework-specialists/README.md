@@ -55,10 +55,20 @@ Mobile development specialist creating beautiful, natively compiled applications
 
 **Use when:** Building cross-platform mobile apps, creating custom Flutter widgets, implementing complex animations, or optimizing Flutter performance.
 
+### [**fsharp-specialist**](fsharp-specialist.md) - F# functional-first specialist
+Functional-first .NET developer using immutable data, discriminated unions, and type-safe domain modelling. Leans on the compiler to make illegal states unrepresentable.
+
+**Use when:** Modelling complex domains with algebraic data types, writing correctness-critical .NET code, building data transformation pipelines, or introducing functional patterns to a C# codebase.
+
 ### [**golang-pro**](golang-pro.md) - Go concurrency specialist
 Go language expert focusing on concurrent programming, channels, and goroutines. Masters building efficient, scalable backend services and CLI tools with Go's simplicity and performance.
 
 **Use when:** Building concurrent systems, creating microservices in Go, developing CLI tools, or implementing high-performance network services.
+
+### [**haskell-expert**](haskell-expert.md) - Pure functional programming expert
+Builds compositional systems with Haskell's advanced type system, purity, and monadic abstractions. Pushes correctness into types so whole classes of bug cannot compile.
+
+**Use when:** Writing type-safe Haskell, designing with monad transformers or type classes, building compilers and DSLs, or needing strong compile-time correctness guarantees.
 
 ### [**java-architect**](java-architect.md) - Enterprise Java expert
 Java ecosystem master with expertise in Spring, Jakarta EE, and enterprise patterns. Specializes in building robust, scalable applications with modern Java features and frameworks.
@@ -80,10 +90,20 @@ PHP framework specialist focusing on Laravel's elegant syntax and powerful featu
 
 **Use when:** Building Laravel applications, implementing complex queue jobs, creating Laravel packages, or optimizing Eloquent queries.
 
+### [**lua-specialist**](lua-specialist.md) - Embedded scripting and game logic expert
+Lua specialist for game engines and embedded runtimes. Knows Roblox, LOVE, and Defold, plus C interop and the performance characteristics of LuaJIT.
+
+**Use when:** Scripting game logic, embedding Lua in a host application, writing Neovim or Redis scripts, or optimising hot paths in an interpreted runtime.
+
 ### [**nextjs-developer**](nextjs-developer.md) - Next.js 14+ full-stack specialist
 React framework expert specializing in Next.js App Router, server components, and full-stack features. Builds blazing-fast, SEO-friendly web applications.
 
 **Use when:** Creating Next.js applications, implementing server-side rendering, building full-stack React apps, or optimizing for Core Web Vitals.
+
+### [**ocaml-specialist**](ocaml-specialist.md) - OCaml systems specialist
+Type-safe systems developer using OCaml's module system, exhaustive pattern matching, and compile-time verification. Builds fast, provably-correct tooling.
+
+**Use when:** Writing OCaml services or tooling, building parsers and compilers, using the module and functor system, or needing verified correctness with native performance.
 
 ### [**php-pro**](php-pro.md) - PHP web development expert
 Modern PHP specialist with expertise in PHP 8+ features, Composer ecosystem, and framework-agnostic development. Builds secure, performant PHP applications.
@@ -100,10 +120,25 @@ Expert in modern PowerShell 7+, .NET 6/7 APIs, cross-platform scripting, CI/CD i
 
 **Use when:** Building modern automation tools, cross-platform scripts, Azure integrations, CI/CD cmdlets, or modernization projects moving off Windows PowerShell.
 
+### [**powershell-module-architect**](powershell-module-architect.md) - PowerShell module and library architect
+Designs reusable PowerShell modules, profiles, and automation libraries that work across Windows PowerShell 5.1 and PowerShell 7. Focuses on structure, versioning, and publishing.
+
+**Use when:** Packaging scripts into a module, designing a shared automation library, handling cross-version compatibility, or publishing to a PowerShell repository.
+
+### [**powershell-ui-architect**](powershell-ui-architect.md) - PowerShell interface designer
+Builds WinForms, WPF, and terminal interfaces on top of PowerShell automation while keeping business logic cleanly separated from the UI layer.
+
+**Use when:** Giving an automation script a graphical front end, building an internal operations tool, choosing between WinForms and WPF, or making an existing script discoverable to non-technical users.
+
 ### [**python-pro**](python-pro.md) - Python ecosystem master
 Python language expert covering web development, data science, automation, and system scripting. Masters Pythonic code patterns and the vast Python ecosystem.
 
 **Use when:** Writing Python applications, building data pipelines, creating automation scripts, or developing Python packages.
+
+### [**r-specialist**](r-specialist.md) - Statistical computing expert
+R specialist for statistical analysis, data science pipelines, and reproducible research. Masters the tidyverse, Shiny dashboards, and R package development.
+
+**Use when:** Running statistical analysis, building Shiny dashboards, producing reproducible research with R Markdown, or packaging R code for reuse.
 
 ### [**rails-expert**](rails-expert.md) - Rails 8.1 rapid development expert
 Ruby on Rails specialist focusing on convention over configuration and rapid development. Masters Active Record, Hotwire, and Rails' comprehensive feature set.
@@ -145,6 +180,11 @@ Vue.js framework specialist mastering the Composition API, reactivity system, an
 
 **Use when:** Creating Vue applications, implementing Composition API patterns, working with Nuxt.js, or optimizing Vue performance.
 
+### [**wordpress-master**](wordpress-master.md) - WordPress platform expert
+Full-stack WordPress architect covering theme and plugin development, WooCommerce, headless APIs, and performance at scale.
+
+**Use when:** Building custom themes or plugins, running a WooCommerce store, using WordPress as a headless CMS, or fixing performance on a large WordPress site.
+
 ##   Quick Selection Guide
 
 | Language/Framework | Subagent | Best For |
@@ -157,14 +197,23 @@ Vue.js framework specialist mastering the Composition API, reactivity system, an
 | .NET Framework | **dotnet-framework-4.8-expert** | Legacy enterprise apps, Windows services |
 | Elixir | **elixir-expert** | Fault-tolerant systems, Phoenix/LiveView |
 | Flutter | **flutter-expert** | Cross-platform mobile apps |
+| F# | **fsharp-specialist** | Functional .NET, domain modelling |
 | Go | **golang-pro** | Concurrent systems, microservices |
+| Haskell | **haskell-expert** | Pure functional systems, compilers |
 | Java | **java-architect** | Enterprise applications |
 | JavaScript | **javascript-pro** | Web development, Node.js |
 | Kotlin | **kotlin-specialist** | Android apps, modern JVM |
 | Laravel | **laravel-specialist** | PHP web applications |
+| Lua | **lua-specialist** | Game scripting, embedded runtimes |
 | Next.js | **nextjs-developer** | Full-stack React apps |
+| OCaml | **ocaml-specialist** | Verified tooling, parsers |
 | PHP | **php-pro** | Web development, APIs |
+| PowerShell 5.1 | **powershell-5.1-expert** | Windows-only and legacy automation |
+| PowerShell 7 | **powershell-7-expert** | Cross-platform and cloud automation |
+| PowerShell (modules) | **powershell-module-architect** | Reusable automation libraries |
+| PowerShell (UI) | **powershell-ui-architect** | WinForms, WPF, and TUI front ends |
 | Python | **python-pro** | General purpose, data science |
+| R | **r-specialist** | Statistics, Shiny, reproducible research |
 | Rails | **rails-expert** | Rapid web development |
 | React | **react-specialist** | Modern web UIs |
 | Rust | **rust-engineer** | Systems software, WebAssembly |
@@ -173,6 +222,7 @@ Vue.js framework specialist mastering the Composition API, reactivity system, an
 | Swift | **swift-expert** | iOS/macOS development |
 | TypeScript | **typescript-pro** | Type-safe JavaScript |
 | Vue | **vue-expert** | Progressive web apps |
+| WordPress | **wordpress-master** | Themes, plugins, WooCommerce |
 
 ##   Common Technology Stacks
 
