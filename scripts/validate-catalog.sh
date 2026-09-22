@@ -35,8 +35,15 @@ agent_files() {
 
 # $1 = file, $2 = key. Reads only the frontmatter block and strips optional
 # surrounding quotes from the value.
+#
+# Some agent files were committed with CRLF endings, which `* text=auto` in
+# .gitattributes does not retroactively normalise — they stay CRLF on checkout
+# even on Linux. Strip the CR first: gawk hides it in text mode but mawk, the
+# default awk on ubuntu-latest, does not. Without this the fence comparison
+# below never matches and every value reads back empty.
 frontmatter_value() {
   awk -v key="$2" '
+    { sub(/\r$/, "") }
     NR == 1 && $0 != "---" { exit }
     NR > 1 && $0 == "---"  { exit }
     NR > 1 {
@@ -112,10 +119,16 @@ section 'Agent names are unique across all categories'
 # Claude Code resolves subagents by name, so the same name in two categories
 # means one silently shadows the other once both plugins are installed.
 
-while IFS= read -r name; do
-  [ -n "$name" ] || continue
-  locations=$(grep -rlx "name: $name" categories --include='*.md' | tr '\n' ' ')
-  fail "agent name '$name' is used more than once: $locations"
+while IFS= read -r dupe; do
+  [ -n "$dupe" ] || continue
+
+  # Resolved through frontmatter_value rather than grep -x, so a CRLF file
+  # still reports its location instead of coming back empty.
+  locations=$(while IFS= read -r file; do
+    [ "$(frontmatter_value "$file" name)" = "$dupe" ] && printf '%s ' "$file"
+  done < <(agent_files))
+
+  fail "agent name '$dupe' is used more than once: $locations"
 done < <(while IFS= read -r file; do
   frontmatter_value "$file" name
 done < <(agent_files) | sort | uniq -d)
