@@ -68,6 +68,8 @@ Adding, renaming, moving, or deleting an agent means updating all four, or the p
 3. `categories/NN-category/README.md` — description under "Available Subagents", plus the "Quick Selection Guide" table row
 4. Root `README.md` — `- [**agent-name**](categories/NN-category/agent-name.md) - Brief description`, alphabetical within the category
 
+Exception to 4: category 07 is summarised in the root README with a "View all 34 language specialists →" link rather than itemised, so a new language specialist adds nothing there — update the count and the inline list instead.
+
 Bump versions when publishing changes: the category's `plugin.json` `version`, and `.claude-plugin/marketplace.json` `metadata.version`.
 
 ## Agent File Format
