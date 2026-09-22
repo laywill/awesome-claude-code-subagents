@@ -1,29 +1,37 @@
-# Set the default behavior, in case people don't have core.autocrlf set.
+# Default for anything not matched below, in case people don't have
+# core.autocrlf set. Note this does NOT convert files that are already stored
+# with CRLF — text=auto deliberately leaves those alone to avoid churning
+# history, which is why the explicit eol rules below exist.
 * text=auto
 
-# Force batch scripts to always use CRLF line endings so that if a repo is accessed
-# on a non-Windows system, the batch scripts will still work when checked out.
-*.bat text eol=crlf
-*.BAT text eol=crlf
-*.cmd text eol=crlf
-*.CMD text eol=crlf
-*.ics text eol=crlf
-*.ICS text eol=crlf
+# Markdown is this repository's source. Agent definitions are parsed line by
+# line by tooling, and 38 files stored with CRLF broke catalog validation under
+# mawk on Linux (see scripts/validate-catalog.sh). Pin them to LF.
+*.md text eol=lf
 
-# Same as above for Powershell scripts.
-*.ps1 text eol=crlf
-*.psm1 text eol=crlf
-*.psd1 text eol=crlf
+# Plugin and marketplace manifests are read by Claude Code.
+*.json text eol=lf
 
 # Force shell scripts to always use LF line endings so that if a repo is accessed
 # on a Windows system, the shell scripts will still work when checked out.
 *.sh text eol=lf
-*.sh chmod=+x
-
-# Markdown Files don't need additional permissions
-*.md chmod=640
 
 # Force YAML files to always use LF line endings so that if a repo is accessed
 # on a Windows system, the YAML files will still work when checked out.
 *.yaml text eol=lf
 *.yml text eol=lf
+
+# Force Powershell scripts to CRLF, so they still work if the repo is accessed
+# on a Windows system. None are checked in yet; this is here for a possible
+# Windows counterpart to install-agents.sh.
+*.ps1 text eol=crlf
+*.psm1 text eol=crlf
+*.psd1 text eol=crlf
+
+# There is no "chmod" gitattribute. Git records the executable bit in the index
+# (100644 vs 100755), not here, and only ever stores 644 or 755. Earlier
+# revisions of this file carried `*.sh chmod=+x` and `*.md chmod=640`, which
+# silently did nothing — git check-attr reports any key you write, implemented
+# or not, which made them look functional. To mark a script executable:
+#
+#     git update-index --chmod=+x path/to/script.sh
