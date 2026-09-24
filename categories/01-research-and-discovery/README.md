@@ -1,25 +1,21 @@
 # Research & Discovery Subagents
 
-Research & Discovery subagents help you navigate complexity, evaluate options, and make informed decisions by gathering, analysing, and synthesising information. From exploring unfamiliar codebases to researching market opportunities and assessing technical feasibility, these agents excel at turning raw information into actionable insights—without making changes to your systems or code.
+Research & Discovery subagents help you navigate complexity, evaluate options, and make informed decisions by gathering, analysing, and synthesising information. From evaluating technologies to researching market opportunities and assessing technical feasibility, these agents excel at turning raw information into actionable insights—without making changes to your systems or code.
 
 **Risk Tier: 🟢 Tier 1 — Low** — Read-only analysis with no system, code, or infrastructure changes; findings are advisory.
 
 ## When to Use Research & Discovery Agents
 
 Use these subagents when you need to:
-- **Understand complex codebases** — Explore unfamiliar repositories, map architecture, and surface key patterns
 - **Evaluate technologies** — Compare frameworks, tools, and libraries to find the best fit for your use case
 - **Assess technical feasibility** — Validate whether a proposed approach is viable before committing resources
 - **Research market opportunities** — Analyse trends, size opportunities, and evaluate competitive landscapes
 - **Gather structured information** — Conduct deep research on datasets, data sources, and external information
 - **Make informed decisions** — Synthesise findings into clear recommendations and trade-off analyses
 
+Searching and mapping a codebase is not on this list. Claude Code's built-in `Explore` agent does that, and does it more cheaply than a catalog agent can: it skips loading CLAUDE.md and the git status snapshot. Ask Claude to explore the code, or name `Explore` directly.
+
 ## Available Subagents
-
-### [**codebase-explorer**](codebase-explorer.md) — Map unfamiliar repositories
-Navigates large or complex codebases, identifies architectural patterns, documents key components, and produces summaries of how the system works. Excellent for onboarding, due diligence, or understanding dependencies before making changes.
-
-**Use when:** You need to quickly understand how an unfamiliar codebase is structured or want to surface potential issues before integration or refactoring.
 
 ### [**competitive-analyst**](competitive-analyst.md) — Compare competing solutions
 Researches competing products, libraries, and frameworks, evaluates their strengths and weaknesses, and produces side-by-side comparisons. Helps identify trade-offs, feature gaps, and market positioning.
@@ -65,7 +61,7 @@ Identifies and analyses emerging technology and market trends, assesses their re
 
 | Task | Subagent | Notes |
 |------|----------|-------|
-| Understand a new codebase before integrating or refactoring | **codebase-explorer** | Best for architecture discovery and pattern identification |
+| Understand a new codebase before integrating or refactoring | built-in **Explore** | Ships with Claude Code; not part of this plugin |
 | Decide between 3+ competing libraries or frameworks | **competitive-analyst** or **technology-researcher** | Use competitive-analyst for market context, technology-researcher for technical fit |
 | Find suitable datasets for a data project | **data-researcher** | Includes data quality and fitness-for-use assessment |
 | Validate a proposed architecture or approach | **feasibility-assessor** | Identifies risks, effort, and alternatives before implementation |
@@ -84,7 +80,7 @@ Identifies and analyses emerging technology and market trends, assesses their re
 - **market-researcher** + **trend-analyst** — Market-researcher sizes the opportunity; trend-analyst tracks whether adoption is accelerating or slowing.
 
 **"Integrate a new library — how big a change is it?"**
-- **codebase-explorer** + **feasibility-assessor** — Codebase-explorer maps your current architecture; feasibility-assessor estimates the effort and risk of integration.
+- built-in **Explore** + **feasibility-assessor** — Explore maps your current architecture; feasibility-assessor estimates the effort and risk of integration.
 
 **"Deep competitive analysis for a product decision"**
 - **competitive-analyst** + **market-researcher** + **technology-researcher** — Competitive-analyst compares feature sets; market-researcher assesses addressable market; technology-researcher evaluates technical maturity and community.

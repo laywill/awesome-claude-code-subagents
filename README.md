@@ -6,7 +6,7 @@
 
 <div align="center">
 
-![Subagent Count](https://img.shields.io/badge/subagents-203-blue?style=flat-square)
+![Subagent Count](https://img.shields.io/badge/subagents-202-blue?style=flat-square)
 [![Last Update](https://img.shields.io/github/last-commit/laywill/awesome-claude-code-subagents?label=Last%20update&style=flat-square)](https://github.com/laywill/awesome-claude-code-subagents)
 [![GitHub forks](https://img.shields.io/github/forks/laywill/awesome-claude-code-subagents?style=social)](https://github.com/laywill/awesome-claude-code-subagents/network/members)
 
@@ -139,7 +139,6 @@ This interactive script lets you browse categories, select agents, and uninstall
 
 Research and discovery subagents explore new technologies, assess feasibility, analyze markets and trends, and conduct deep investigations. They help teams understand the landscape before committing to major decisions.
 
-- [**codebase-explorer**](categories/01-research-and-discovery/codebase-explorer.md) - Codebase analysis and exploration
 - [**competitive-analyst**](categories/01-research-and-discovery/competitive-analyst.md) - Competitive intelligence specialist
 - [**data-researcher**](categories/01-research-and-discovery/data-researcher.md) - Data discovery and analysis expert
 - [**feasibility-assessor**](categories/01-research-and-discovery/feasibility-assessor.md) - Technical feasibility assessment
@@ -148,6 +147,8 @@ Research and discovery subagents explore new technologies, assess feasibility, a
 - [**search-specialist**](categories/01-research-and-discovery/search-specialist.md) - Advanced information retrieval expert
 - [**technology-researcher**](categories/01-research-and-discovery/technology-researcher.md) - Technology landscape explorer
 - [**trend-analyst**](categories/01-research-and-discovery/trend-analyst.md) - Emerging trends and forecasting expert
+
+Codebase search and plan-mode research are covered by Claude Code's built-in `Explore` and `Plan` agents, so this category does not duplicate them.
 
 ### 🟢 02. [Architecture and Design](categories/02-architecture-and-design/)
 

@@ -74,7 +74,7 @@ Produces formal system models using C4, UML sequence diagrams, state machines, o
 - **solution-architect** → high-level blueprint → **microservices-architect** → service boundaries → **api-designer** → API contracts → **schema-designer** → data models.
 
 **"Review and improve our current architecture"**
-- **codebase-explorer** (from Research category) → maps current state → **architect-reviewer** → critique and recommendations → **system-modeler** → updated diagrams.
+- Claude Code's built-in **Explore** agent → maps current state → **architect-reviewer** → critique and recommendations → **system-modeler** → updated diagrams.
 
 **"Design a data-intensive application"**
 - **data-flow-designer** → data movement map → **schema-designer** → data models → **api-designer** → query/mutation contracts.
