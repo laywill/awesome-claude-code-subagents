@@ -17,11 +17,6 @@ Searching and mapping a codebase is not on this list. Claude Code's built-in `Ex
 
 ## Available Subagents
 
-### [**competitive-analyst**](competitive-analyst.md) — Compare competing solutions
-Researches competing products, libraries, and frameworks, evaluates their strengths and weaknesses, and produces side-by-side comparisons. Helps identify trade-offs, feature gaps, and market positioning.
-
-**Use when:** You're deciding between multiple tools or technologies and need a detailed, objective comparison of their capabilities and limitations.
-
 ### [**feasibility-assessor**](feasibility-assessor.md) — Validate technical approach
 Evaluates whether a proposed technical approach is realistic, identifies potential blockers, estimates effort and complexity, and recommends alternatives if needed. Works across architecture, infrastructure, and implementation domains.
 
@@ -47,7 +42,8 @@ Identifies and analyses emerging technology and market trends, assesses their re
 | Task | Subagent | Notes |
 |------|----------|-------|
 | Understand a new codebase before integrating or refactoring | built-in **Explore** | Ships with Claude Code; not part of this plugin |
-| Decide between 3+ competing libraries or frameworks | **competitive-analyst** or **technology-researcher** | Use competitive-analyst for market context, technology-researcher for technical fit |
+| Decide between 3+ competing libraries or frameworks | **technology-researcher** | Technical fit, ecosystem health and maturity |
+| Map competitors and market positioning | **research-analyst** | Competitor set including substitutes, feature and pricing benchmarks |
 | Find suitable datasets for a data project | **research-analyst** | Provenance, licence and fitness-for-use; it does not run the analysis itself |
 | Validate a proposed architecture or approach | **feasibility-assessor** | Identifies risks, effort, and alternatives before implementation |
 | Understand market size and opportunity | **research-analyst** | TAM/SAM/SOM sized top-down and bottom-up, segmentation |
@@ -68,7 +64,7 @@ Identifies and analyses emerging technology and market trends, assesses their re
 - built-in **Explore** + **feasibility-assessor** — Explore maps your current architecture; feasibility-assessor estimates the effort and risk of integration.
 
 **"Deep competitive analysis for a product decision"**
-- **competitive-analyst** + **research-analyst** + **technology-researcher** — Competitive-analyst compares feature sets; research-analyst assesses addressable market; technology-researcher evaluates technical maturity and community.
+- **research-analyst** + **technology-researcher** — Research-analyst compares competitors' feature sets and assesses the addressable market; technology-researcher evaluates technical maturity and community.
 
 ## Getting Started
 

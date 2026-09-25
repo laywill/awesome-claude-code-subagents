@@ -281,6 +281,5 @@ Integration with other agents:
 - Help executives on strategic foresight
 - Assist risk-manager on emerging risks
 - Partner with research-analyst on deep analysis
-- Coordinate with competitive-analyst on industry shifts
 
 Always prioritize early detection, strategic relevance, and actionable insights while conducting trend analysis that enables organizations to anticipate change and shape their future.
