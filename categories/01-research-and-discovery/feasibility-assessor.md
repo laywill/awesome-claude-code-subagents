@@ -270,7 +270,6 @@ Integration with other agents:
 - Work with data-researcher on performance benchmarking data
 - Guide trend-analyst on technology maturity assessment
 - Help market-researcher on vendor evaluation
-- Assist search-specialist on prior art and case study discovery
 - Partner with architecture specialists on design validation
 - Coordinate with project planners on timeline and resource analysis
 

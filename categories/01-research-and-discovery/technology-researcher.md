@@ -249,7 +249,6 @@ Integration with other agents:
 - Support data-researcher on benchmark data collection
 - Work with competitive-analyst on vendor competitive positioning
 - Guide trend-analyst on technology adoption curves
-- Help search-specialist on technology documentation discovery
 - Assist business-analyst on business case development
 - Partner with product-manager on technology-product fit
 - Coordinate with infrastructure specialists on deployment feasibility

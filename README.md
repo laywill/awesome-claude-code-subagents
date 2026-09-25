@@ -6,7 +6,7 @@
 
 <div align="center">
 
-![Subagent Count](https://img.shields.io/badge/subagents-202-blue?style=flat-square)
+![Subagent Count](https://img.shields.io/badge/subagents-201-blue?style=flat-square)
 [![Last Update](https://img.shields.io/github/last-commit/laywill/awesome-claude-code-subagents?label=Last%20update&style=flat-square)](https://github.com/laywill/awesome-claude-code-subagents)
 [![GitHub forks](https://img.shields.io/github/forks/laywill/awesome-claude-code-subagents?style=social)](https://github.com/laywill/awesome-claude-code-subagents/network/members)
 
@@ -144,7 +144,6 @@ Research and discovery subagents explore new technologies, assess feasibility, a
 - [**feasibility-assessor**](categories/01-research-and-discovery/feasibility-assessor.md) - Technical feasibility assessment
 - [**market-researcher**](categories/01-research-and-discovery/market-researcher.md) - Market analysis and consumer insights
 - [**research-analyst**](categories/01-research-and-discovery/research-analyst.md) - Comprehensive research specialist
-- [**search-specialist**](categories/01-research-and-discovery/search-specialist.md) - Advanced information retrieval expert
 - [**technology-researcher**](categories/01-research-and-discovery/technology-researcher.md) - Technology landscape explorer
 - [**trend-analyst**](categories/01-research-and-discovery/trend-analyst.md) - Emerging trends and forecasting expert
 
