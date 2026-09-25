@@ -80,6 +80,8 @@ name: agent-name
 description: "When this agent should be invoked — one sentence, under ~50 tokens"
 tools: Read, Grep, Glob
 model: sonnet
+color: green                                # optional fields per the tier table below
+disallowedTools: Write, Edit, NotebookEdit, Bash
 ---
 
 You are a [senior role] with expertise in [domain]...
@@ -92,18 +94,54 @@ When invoked:
 ## Security Safeguards   # only if the agent's risk level requires it
 ```
 
-All four frontmatter keys are required on every agent file — `name`, `description`, `tools`, `model`. `name` must match the filename.
+All four frontmatter keys are required on every agent file — `name`, `description`, `tools`, `model` — although Claude Code itself requires only the first two. `name` must match the filename.
 
-- **`model`**: `haiku` for narrow/mechanical roles, `sonnet` for the default case, `opus` for high-stakes reasoning (architecture, production ops, security).
 - **`description`**: a single sentence Claude Code uses for auto-selection. Keep it under 50 tokens — the `description-compressor` agent in `.claude/agents/` does this.
-- **`tools`**: assign the minimum for the role. If an agent doesn't need Bash, don't give it Bash — this is the single biggest risk reducer.
+- **`tools`**: assign the minimum for the role. If an agent doesn't need Bash, don't give it Bash — this is the single biggest risk reducer. Always set it: an explicit list already excludes every MCP tool, so `mcp__*` in `disallowedTools` is redundant here. Omitting `tools` inherits everything, MCP included.
+- **`model`**: an alias — `haiku`, `sonnet` or `opus`. No full model IDs (they go stale), no `fable` or `inherit`. Frontmatter outranks the user's `CLAUDE_CODE_SUBAGENT_MODEL`, so an `opus` pin overrides a user who set a cheaper model:
+  - `haiku`: narrow, mechanical roles where the output follows from the input with little judgement (formatting, lookup, changelogs). Never set `effort` on it; Haiku doesn't support effort.
+  - `sonnet`: the default. When a mistake would be costly but tools, tests or a plan output can check the result, use `sonnet` + `effort: high` rather than `opus`.
+  - `opus`: only when both of these hold, stated in the PR. First, the output is a judgement that is costly to get wrong (architecture decisions, security or threat assessment, compliance or financial-risk findings). Second, no tool run can check it: the value comes from reasoning, not from running commands and reading their output. 18 agents are pinned to `opus` today. Each per-category issue re-tests them against these criteria.
 
-| Role type | Tools |
-| --- | --- |
-| Read-only (reviewers, auditors) | `Read, Grep, Glob` |
-| Research (analysts) | `Read, Grep, Glob, WebFetch, WebSearch` |
-| Documentation | `Read, Write, Edit, Glob, Grep` |
-| Code writers / infrastructure | `Read, Write, Edit, Bash, Glob, Grep` |
+| Role type | `tools` | `disallowedTools` |
+| --- | --- | --- |
+| Read-only (reviewers, auditors) | `Read, Grep, Glob` | `Write, Edit, NotebookEdit`, plus `Bash` in Tier 1 |
+| Research (analysts) | `Read, Grep, Glob, WebFetch, WebSearch` | as read-only |
+| Documentation | `Read, Write, Edit, Glob, Grep` | `Bash` |
+| Code writers / infrastructure | `Read, Write, Edit, Bash, Glob, Grep` | — |
+
+A **read-only role** is one whose deliverable is findings returned to the conversation, so its job is done with the file tree unchanged. `disallowedTools` is applied before `tools`, and it wins when a tool appears in both. That makes it a lock: it survives someone later adding `Write` to `tools`, and it gives the validator an explicit read-only marker. Listing a tool in both fields is an error. A specifier such as `Bash(git push *)` removes the whole tool, so don't use one.
+
+### Optional fields by tier
+
+| Field | Tier 1 🟢 | Tier 2 🟡 | Tier 3 🟠 | Tier 4 🔴 | Tier 5 ⛔ |
+| --- | --- | --- | --- | --- | --- |
+| `color` | `green` | `yellow` | `orange` | `red` | `purple` |
+| `disallowedTools` | `Bash` always; read-only roles add `Write, Edit, NotebookEdit` | read-only roles: `Write, Edit, NotebookEdit` | same | same | same |
+| `effort` | omit | omit | omit | `high` | `high` |
+| `maxTurns` | omit | omit | omit | `40` | `25` |
+| `isolation` | omit | omit, unless it qualifies (below) | same | same | omit |
+| `model` | by the criteria above | same | same | same | same |
+
+- **`color`**: the tier, so it is visible while the agent runs. The eight valid values are `red`, `blue`, `green`, `yellow`, `purple`, `orange`, `pink`, `cyan`.
+- **`effort`**: omit it so the user's session level applies, with three exceptions. Tier 4–5 agents get `high`, except on `haiku`. Every `opus` agent gets `high`, which pins its behaviour; otherwise the default varies by version, `medium` on Opus 5.5 but `xhigh` on Opus 4.7. A `sonnet` agent that fails only the second `opus` criterion also gets `high`. Don't use `low` or `medium` (a task that cheap belongs on `haiku`), or `xhigh` or `max`.
+- **`maxTurns`**: a hard stop. The output comes back marked partial and Claude can resume the agent, so treat the cap as a checkpoint where a human sees progress against external or production systems. A normal task fits well inside it; a retry or polling loop hits it. Override it per agent only with a reason.
+- **`isolation: worktree`**: the worktree branches from the **default branch**, not the caller's `HEAD`, unless the user has set `worktree.baseRef: "head"`. An agent that edits the user's in-progress work would silently work on stale code, so leave it to the caller, which can pass `isolation` per invocation. A file qualifies only if it edits the repo, its task is complete from a clean default-branch checkout, and its result is reviewed as a branch rather than applied in place (for example, a dependency-upgrade trial). Tier 5 work isn't in the repo.
+
+### Frontmatter fields
+
+Claude Code recognises 18 fields and silently ignores unknown or misspelled ones.
+
+| Field | Values | Policy |
+| --- | --- | --- |
+| `name`, `description`, `tools`, `model` | see above | required |
+| `color`, `disallowedTools`, `effort`, `maxTurns`, `isolation` | `effort`: `low`, `medium`, `high`, `xhigh`, `max`; `maxTurns`: integer; `isolation`: `worktree` | per the tier table |
+| `memory` | `user`, `project`, `local` | not used. It writes into the user's home or repo, and it enables `Read, Write, Edit` automatically, which breaks a read-only role's tool restriction |
+| `skills` | skill names | not used. The catalog ships no skills, and preloading a user's skills by name isn't portable. Revisit in a spike |
+| `background` | `true` | not used. Foreground or background is the caller's choice |
+| `omitClaudeMd` | `true` | not used. The project's conventions matter to almost every agent here |
+| `experimental` | `cacheTtl: 5m \| 1h` | not used. The cache TTL is a billing choice for the user |
+| `permissionMode`, `hooks`, `mcpServers`, `initialPrompt` | — | **forbidden**. Ignored in plugin agents, so they would ship as dead config |
 
 ## Security Safeguards
 
