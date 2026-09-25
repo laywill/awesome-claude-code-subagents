@@ -82,7 +82,7 @@ Designs research plans, synthesises user feedback, identifies usability issues, 
 - **ux-researcher** → user insights → **business-analyst** → functional requirements → **content-marketer** → launch messaging → **seo-specialist** → content optimisation.
 
 **"Enter a new market"**
-- **market-researcher** (Research category) → market sizing → **risk-manager** → business risks → **quant-analyst** → financial model → **business-analyst** → go-to-market requirements.
+- **research-analyst** (Research category) → market sizing → **risk-manager** → business risks → **quant-analyst** → financial model → **business-analyst** → go-to-market requirements.
 
 **"Win an enterprise RFP"**
 - **sales-engineer** → technical response → **legal-advisor** → compliance and licensing review → **quant-analyst** → commercial modelling.
