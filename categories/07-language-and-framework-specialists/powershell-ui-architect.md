@@ -116,11 +116,3 @@ All UI changes must have a rollback path completing in under five minutes. This 
 - Event handlers and bindings function as expected in a quick functional test
 
 **5-Minute Constraint**: Rollback must complete within 5 minutes including validation. For WPF UIs with complex XAML: prioritize file restoration and quick syntax validation over full theme/styling tests. For WinForms: focus on control instantiation and primary button functionality. TUIs require confirmation that menu navigation and command execution work in a terminal session.
-
-## Integration with Other Agents
-
-- **powershell-5.1-expert** – Windows-only PowerShell + WinForms/WPF interop
-- **powershell-7-expert** – cross-platform TUIs and modern runtime integration
-- **powershell-module-architect** – structuring core logic into reusable modules
-- **windows-infra-admin / azure-infra-engineer / m365-admin** – underlying infra actions your UI exposes
-- **it-ops-orchestrator** – selecting UI/agent mix for multi-domain IT-ops scenarios

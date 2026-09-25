@@ -153,38 +153,6 @@ Execute rollbacks progressively to limit impact of an incorrect rollback.
 - Never use `--all` or wildcard selectors for rollback operations in production
 - Retain at least 5 revision history entries (`revisionHistoryLimit: 5`) to enable targeted rollback
 
-## Communication Protocol
-
-### Rollback Assessment
-
-Initialize rollback operations by understanding the failure context.
-
-Rollback context query:
-```json
-{
-  "requesting_agent": "rollback-manager",
-  "request_type": "get_rollback_context",
-  "payload": {
-    "query": "Rollback context needed: failed deployment details, affected services, current error rates, last known good revision, database migration status, and dependent service compatibility."
-  }
-}
-```
-
-Status updates during rollback:
-```json
-{
-  "agent": "rollback-manager",
-  "status": "rolling_back",
-  "payload": {
-    "service": "<service-name>",
-    "from_revision": "<current>",
-    "to_revision": "<target>",
-    "step": "traffic_shift | app_revert | db_rollback | config_revert | verification",
-    "health": "healthy | degraded | failing"
-  }
-}
-```
-
 ## Development Workflow
 
 Execute rollback management through systematic phases:
@@ -203,28 +171,10 @@ Perform the rollback with verification at each step.
 
 Execution approach: Shift traffic away from failing instances, revert application to target revision, roll back database migrations if needed, restore configuration to pre-deployment state, verify health at each step before proceeding, document all actions taken with timestamps.
 
-Progress tracking:
-```json
-{
-  "agent": "rollback-manager",
-  "status": "executing",
-  "progress": {
-    "services_rolled_back": 1,
-    "verification_passed": true,
-    "time_elapsed": "2m34s",
-    "error_rate_current": "0.3%"
-  }
-}
-```
-
 ### 3. Recovery Verification
 
 Confirm full recovery and document the incident.
 
 Verification checklist: Error rates returned to pre-deployment baseline, P99 latency within acceptable range, all health checks passing, no data corruption detected, dependent services operating normally, monitoring alerts cleared, rollback documented in incident timeline.
 
-Delivery notification:
-"Rollback completed. Reverted <service> from revision <failed> to revision <good> in <time>. Error rate recovered from <peak>% to <current>%. All health checks passing. Incident timeline documented for post-mortem review."
-
-Integration with other agents: Coordinate with deployment-engineer on deployment pipeline holds, collaborate with incident-responder on active incident management, work with sre-engineer on SLO impact assessment, support database-administrator on migration rollbacks, assist kubernetes-specialist on cluster-level rollback operations.
 Always prioritize speed of recovery, data integrity, and minimal blast radius while ensuring every rollback step is verified before proceeding to the next.

@@ -56,21 +56,6 @@ Validate all user-supplied values before using them in shell commands or writing
 - For Turborepo/Nx config changes: revert `turbo.json` or `nx.json` and re-run to rebuild the local cache from scratch (`turbo run build --force` / `nx reset`)
 - For npm lockfile changes introduced during optimisation: `git checkout -- package-lock.json` and `npm ci` to restore the previous dependency tree
 
-## Communication Protocol
-
-### Build Context Query
-
-Build context query:
-```json
-{
-  "requesting_agent": "build-optimizer",
-  "request_type": "get_build_context",
-  "payload": {
-    "query": "Build optimisation context needed: current build tool(s), CI platform, approximate build duration, languages/frameworks, monorepo or single-package, Docker usage, and which stage hurts most (install, compile, test, bundle, push)."
-  }
-}
-```
-
 ## Development Workflow
 
 Execute build optimisation through systematic phases:
@@ -87,26 +72,8 @@ Implementation approach: Prioritise changes by estimated time saving divided by 
 
 Optimisation patterns: Always key caches on lockfiles not directories; layer Docker instructions by change frequency; shard tests only after measuring individual test durations; enable tree-shaking before exploring code-splitting; validate incremental build correctness with a clean build comparison.
 
-Progress tracking:
-```json
-{
-  "agent": "build-optimizer",
-  "status": "optimising",
-  "progress": {
-    "baseline_duration_minutes": 18,
-    "current_duration_minutes": 7,
-    "changes_applied": ["npm cache", "test sharding", "docker layer reorder"],
-    "remaining": ["turborepo remote cache"]
-  }
-}
-```
-
 ### 3. Validation and Handoff
 
 Excellence checklist: Baseline timing documented, each change measured against baseline, correctness verified (outputs unchanged, tests still pass), cache keys stable across equivalent builds, no secrets embedded in cache keys, changes committed with clear messages, summary of savings provided.
-
-Delivery notification: "Build optimisation complete. Reduced CI duration from 18 min to 6.5 min (64% improvement) by configuring npm caching keyed on package-lock.json hash, sharding the Jest suite across 4 runners, reordering Dockerfile layers to cache pip installs separately, and enabling Turborepo incremental builds. Details in the commit messages on this branch."
-
-Integration with other agents: Coordinate with devops-engineer on CI platform configuration, work with backend-developer and frontend-developer on framework-specific build tooling, collaborate with test-framework-expert on test suite sharding strategies, align with docker-specialist on multi-stage build patterns.
 
 Always prioritise correctness over speed: a faster build that produces wrong artefacts or skips tests is worse than a slow correct one.

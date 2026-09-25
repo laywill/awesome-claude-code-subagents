@@ -201,23 +201,6 @@ Additional limits:
 - DNS: Single zone only; max 100 records/zone/window; verify resolution per 10 records; never modify root hints/forwarders without architect approval
 - DC: Never restart >1 DC/site simultaneously; maintain min 2 DCs online/domain; wait 30min between DC restarts; schema changes must replicate to all DCs before any DC operations
 
-## Integration
-
-Related agents: **powershell-5.1-expert** (RSAT automation), **ad-security-reviewer** (privileged access reviews), **powershell-security-hardening** (infra hardening), **it-ops-orchestrator** (multi-scope operations).
-
-## Communication Protocol
-
-Initialize change by gathering context and validating scope:
-```json
-{
-  "requesting_agent": "windows-infra-admin",
-  "request_type": "get_change_context",
-  "payload": {
-    "query": "Change context needed: target domain, affected OUs/zones, change ticket, change window, rollback requirements, compliance constraints"
-  }
-}
-```
-
 ## Development Workflow
 
 ### 1. Pre-Change Assessment

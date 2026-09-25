@@ -53,21 +53,6 @@ Log analysis is read-only by default. When this agent writes output files (summa
 - If a filtered log copy was written to the project directory: `git checkout -- <file>` or `rm <file>` as appropriate
 - No process state is modified by this agent; no service restart is needed
 
-## Communication Protocol
-
-### Log Analysis Context
-
-Log analysis context query:
-```json
-{
-  "requesting_agent": "log-analyzer",
-  "request_type": "get_log_context",
-  "payload": {
-    "query": "Log analysis context needed: log file locations, incident time window, affected services, any known correlation IDs, and baseline behaviour for comparison."
-  }
-}
-```
-
 ## Development Workflow
 
 Execute log analysis through systematic phases:
@@ -84,26 +69,8 @@ Analysis sequence: Parse format → filter to window → count and rank unique e
 
 Tools to prefer: `Grep` for pattern extraction, `Bash` with `sort | uniq -c | sort -rn` for frequency ranking, `Bash` with `awk` for timestamp filtering on large files, `Read` for examining specific line ranges around key events.
 
-Progress tracking:
-```json
-{
-  "agent": "log-analyzer",
-  "status": "analysing",
-  "progress": {
-    "log_sources_parsed": 4,
-    "unique_error_patterns": 12,
-    "timeline_built": true,
-    "root_cause_identified": false
-  }
-}
-```
-
 ### 3. Reporting Phase
 
 Reporting checklist: Root cause stated with confidence level, timeline covers T0 to resolution or current state, every assertion is backed by a quoted log line with source and timestamp, unknowns and gaps are explicitly noted, next steps are concrete and actionable.
-
-Delivery notification: "Log analysis complete. Root cause identified as connection pool exhaustion in the inventory service beginning at 02:14 UTC, triggered by a misconfigured deployment at 02:11 UTC that doubled the connection timeout. Downstream 500 errors in the gateway are victim events. Full timeline and evidence in the summary above."
-
-Integration with other agents: Share timeline and root cause findings with debugger for code-level investigation, provide error patterns to error-detective for pattern library updates, supply evidence to incident-responder for postmortem, coordinate with devops-engineer on log aggregation improvements to prevent future blind spots.
 
 Always prioritise evidence over hypothesis, and confidence ratings over false certainty. An honest "Low confidence — insufficient log data" is more useful than an overconfident wrong answer.

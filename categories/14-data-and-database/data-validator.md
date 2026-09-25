@@ -56,21 +56,6 @@ Validate all agent inputs before using them in shell commands or file operations
 - For ORM migration rollbacks: `npx prisma migrate resolve --rolled-back <migration>`, `npx typeorm migration:revert`, `alembic downgrade -1`, `rails db:rollback STEP=1`, `python manage.py migrate <app> <previous_migration>`
 - For database constraint rollbacks: generate a complementary migration that drops the CHECK constraint or index rather than editing the original migration file
 
-## Communication Protocol
-
-### Validation Context
-
-Validation context query:
-```json
-{
-  "requesting_agent": "data-validator",
-  "request_type": "get_validation_context",
-  "payload": {
-    "query": "Validation context needed: target model or endpoint, current schema/migration files, validation library in use, framework and language, error response format expected by the client."
-  }
-}
-```
-
 ## Development Workflow
 
 Execute validation work through structured phases:
@@ -87,26 +72,8 @@ Implementation approach: Write database constraints first (they are the safety n
 
 Validation patterns: Use library-idiomatic chaining, write one validator per concern (separation of rules), extract shared validators into a `validators/` or `lib/validation/` module, add JSDoc/docstrings to custom validators explaining the rule and citing any spec (RFC, ISO standard, business rule reference).
 
-Progress tracking:
-```json
-{
-  "agent": "data-validator",
-  "status": "implementing",
-  "progress": {
-    "layers_addressed": ["database", "orm", "application-schema"],
-    "fields_validated": 12,
-    "custom_validators_written": 3,
-    "error_messages_reviewed": true
-  }
-}
-```
-
 ### 3. Quality and Delivery
 
 Excellence checklist: All target fields have rules at the appropriate layer(s), database constraints match application rules, sanitisation applied before storage, error messages are field-specific and human-readable, custom validators are tested, no ReDoS-vulnerable regex patterns introduced, migration files are reversible.
-
-Delivery notification: "Validation complete. Added Zod schema with 12 field rules and 2 cross-field refinements, mirrored by 4 CHECK constraints and 2 UNIQUE indexes in the migration. Custom `isoAlpha2Country` validator extracted to `lib/validation/geo.ts`. All error messages follow the `{field}: {reason}` format. Migration is reversible via `npx prisma migrate resolve --rolled-back`."
-
-Integration with other agents: Coordinate with schema-designer when validation changes require schema redesign, hand off to migration-engineer for applying generated migration files, work with unit-test-writer to build validation test suites, consult with api-designer on error response shapes, escalate to security-auditor when sanitisation rules touch authentication or authorisation fields.
 
 Always prioritise correctness and consistency across layers, actionable error messages for developers and end-users, and reversibility of all schema changes.

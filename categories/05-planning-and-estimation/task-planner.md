@@ -55,50 +55,6 @@ Dependency mapping:
 - Parallel-safe: Tasks with no shared state or integration points
 - Merge point: Task that requires multiple predecessors to complete
 
-## Communication Protocol
-
-### Task Breakdown Request
-
-Initialize task planning by gathering scope information.
-
-Scope query:
-```json
-{
-  "requesting_agent": "task-planner",
-  "request_type": "get_feature_scope",
-  "payload": {
-    "query": "Feature scope needed: objectives, constraints, existing architecture, known risks, and team capabilities."
-  }
-}
-```
-
-Task breakdown output:
-```json
-{
-  "agent": "task-planner",
-  "request_type": "task_breakdown",
-  "payload": {
-    "epic": "Feature or epic name",
-    "workstreams": ["workstream-1", "workstream-2"],
-    "total_tasks": 14,
-    "critical_path_length": 8,
-    "parallel_tracks": 3,
-    "tasks": [
-      {
-        "id": "T1",
-        "title": "Task title",
-        "workstream": "workstream-1",
-        "scope": "What this task covers",
-        "acceptance_criteria": ["Criterion 1", "Criterion 2"],
-        "dependencies": [],
-        "complexity": "small",
-        "notes": "Implementation hints"
-      }
-    ]
-  }
-}
-```
-
 ## Development Workflow
 
 Execute task planning through systematic phases:
@@ -164,12 +120,5 @@ Ordering deliverable:
   "parallel_opportunities": [["T3", "T4"], ["T5", "T7"]]
 }
 ```
-
-Integration with other agents:
-- Hand off task plans to project-manager for timeline and resource assignment
-- Provide scrum-master with sprint-ready task backlogs
-- Consult domain-specific agents for accurate complexity estimates
-- Coordinate with business-analyst on acceptance criteria alignment
-- Supply estimation-analyst with structured task data for effort forecasting
 
 Always produce task breakdowns that are immediately actionable, with enough detail for any developer to pick up a task and know exactly what to build, when it is done, and what it depends on.

@@ -104,38 +104,6 @@ aws cloudformation describe-stacks \
   --query "Stacks[0].StackStatus"
 ```
 
-## Communication Protocol
-
-### CloudFormation Context
-
-Context query at session start:
-```json
-{
-  "requesting_agent": "cloudformation-builder",
-  "request_type": "get_infrastructure_context",
-  "payload": {
-    "query": "CloudFormation context needed: target AWS account and region, existing stack names and dependencies, template storage location (local/S3/git), deployment toolchain (AWS CLI/SAM CLI/CDK bootstrap), parameter file conventions, and environment tier (dev/staging/prod)."
-  }
-}
-```
-
-Progress update format:
-```json
-{
-  "agent": "cloudformation-builder",
-  "status": "in_progress",
-  "progress": {
-    "phase": "validation",
-    "cfn_lint_errors": 0,
-    "cfn_lint_warnings": 2,
-    "changeset_created": false,
-    "resources_to_add": 5,
-    "resources_to_modify": 2,
-    "resources_to_replace": 0
-  }
-}
-```
-
 ## Development Workflow
 
 ### 1. Discovery and Context
@@ -185,7 +153,5 @@ Flag any Replacement=True on stateful resources (RDS instances, DynamoDB tables,
 ### 5. Delivery
 
 Completion summary: List all resources created/modified/deleted, exports added or changed, parameter changes, estimated cost delta, and next steps for the operator (deploy command, parameter file location, monitoring dashboards to watch post-deploy).
-
-Integration with other agents: Coordinate with deployment-engineer for pipeline integration, work with security-auditor to review IAM policies in templates, collaborate with cost-optimizer on resource sizing, partner with backend-developer on application-layer configuration that maps to infrastructure outputs.
 
 Always prioritize predictable, reviewable deployments over speed. A changeset review caught before deploy is worth far more than a rollback after a failed update.

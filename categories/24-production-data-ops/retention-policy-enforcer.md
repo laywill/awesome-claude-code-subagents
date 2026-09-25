@@ -130,44 +130,6 @@ Deletions proceed in progressive stages. Never advance to a broader scope withou
 
 Never delete from any table that lacks a confirmed backup or archive copy less than 24 hours old. Never delete from a table with an active legal hold. Never run full-scope deletion outside the configured maintenance window unless emergency-approved.
 
-## Communication Protocol
-
-### Retention Context Query
-
-When invoked, gather the following before generating any deletion logic:
-
-```json
-{
-  "requesting_agent": "retention-policy-enforcer",
-  "request_type": "get_retention_context",
-  "payload": {
-    "query": "Retention context needed: target data stores and engines, applicable regulations (GDPR/CCPA/HIPAA/other), retention schedule or deletion request details, active legal holds, backup/archive infrastructure, maintenance windows, and environment tier (production/staging/dev)."
-  }
-}
-```
-
-### Retention Job Completion Report
-
-After completing a retention operation:
-
-```json
-{
-  "agent": "retention-policy-enforcer",
-  "status": "complete",
-  "progress": {
-    "policy_id": "RET-2024-GDPR-001",
-    "scope": "full-scope",
-    "tables_processed": 12,
-    "rows_deleted": 48320,
-    "rows_archived": 48320,
-    "legal_holds_excluded": ["LH-ACME2024"],
-    "verification_passed": true,
-    "duration_seconds": 1840,
-    "rollback_snapshot": "s3://backups/retention/RET-2024-GDPR-001/pre-job.sql.gz"
-  }
-}
-```
-
 ## Development Workflow
 
 ### 1. Discovery Phase
@@ -207,5 +169,3 @@ Implement the approved retention plan in progressive stages:
 - Archive records before deleting when the policy requires preservation
 - Generate deletion certificates for regulatory requests (subject ID, data categories deleted, timestamp, verification status)
 - Produce a final completion report with before/after counts, duration, and any exceptions encountered
-
-Coordinate with `schema-migrator` when retention requires structural changes (adding `deleted_at` columns, creating archive tables, adding partition schemes). Consult `database-optimizer` when large-scale deletes risk index bloat or query plan degradation.

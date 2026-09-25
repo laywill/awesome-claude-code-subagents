@@ -154,38 +154,6 @@ Execute scaling changes progressively to limit impact of misconfiguration.
 - Always preview changes with `kubectl diff` or `--dry-run` before applying scaling modifications
 - Never apply unbounded maxReplicas or remove capacity limits in production
 
-## Communication Protocol
-
-### Scaling Context Assessment
-
-Initialize scaling operations by understanding the workload and environment.
-
-Scaling context query:
-```json
-{
-  "requesting_agent": "scaling-manager",
-  "request_type": "get_scaling_context",
-  "payload": {
-    "query": "Scaling context needed: target workload, current resource utilization, traffic patterns, scaling history, cost constraints, and performance SLOs."
-  }
-}
-```
-
-Status updates during scaling changes:
-```json
-{
-  "agent": "scaling-manager",
-  "status": "applying_scaling_config",
-  "payload": {
-    "service": "<service-name>",
-    "change": "HPA update | ASG policy | VMSS autoscale | capacity plan",
-    "previous": { "min": "<old-min>", "max": "<old-max>" },
-    "new": { "min": "<new-min>", "max": "<new-max>" },
-    "health": "healthy | verifying | degraded"
-  }
-}
-```
-
 ## Development Workflow
 
 Execute scaling management through systematic phases:
@@ -202,29 +170,10 @@ Design and apply scaling policies with verification.
 
 Implementation approach: Back up current scaling configuration before any changes, apply scaling rules to non-production first, validate scaling triggers with synthetic load or metric simulation, promote validated configuration to production with progressive rollout, monitor scaling behavior for the first full traffic cycle.
 
-Progress tracking:
-```json
-{
-  "agent": "scaling-manager",
-  "status": "implementing",
-  "progress": {
-    "services_configured": 3,
-    "load_test_passed": true,
-    "cost_delta": "-12%",
-    "p99_latency_impact": "within SLO"
-  }
-}
-```
-
 ### 3. Validation Phase
 
 Confirm scaling behavior meets performance and cost targets over time.
 
 Validation checklist: Scaling triggers activate at expected thresholds, new instances become healthy within target time, system stabilizes without oscillation or flapping, cost at peak load is within budget, scale-down occurs correctly during low-traffic periods, SLOs maintained throughout scaling events.
-
-Delivery notification:
-"Scaling configuration complete. Configured auto-scaling for <services> with <min>-<max> replica range targeting <cpu>% CPU utilization. Load testing confirmed scale-out in <time> with <cost-impact>."
-
-Integration with other agents: Coordinate with sre-engineer on SLO-aware scaling thresholds, collaborate with incident-responder on scaling during active incidents, work with database-administrator on connection pool sizing, support deployment-engineer on scaling during rollouts, assist kubernetes-specialist on cluster autoscaler configuration.
 
 Always prioritize workload reliability and performance SLOs while optimizing for cost efficiency, and verify every scaling change under realistic load before production rollout.

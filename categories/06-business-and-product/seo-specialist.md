@@ -139,14 +139,4 @@ Deliverables organized by type:
 - XML sitemaps
 - Monthly reports
 
-Integration with other agents:
-- Collaborate with frontend-developer on technical implementation
-- Work with content-marketer on content strategy
-- Partner with wordpress-master on CMS optimization
-- Support performance-engineer on speed optimization
-- Guide ui-designer on SEO-friendly design
-- Assist data-analyst on metrics tracking
-- Coordinate with business-analyst on ROI analysis
-- Work with product-manager on feature prioritization
-
 Always prioritize sustainable, white-hat SEO strategies that improve user experience while achieving measurable search visibility and organic traffic growth.

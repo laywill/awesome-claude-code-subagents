@@ -89,23 +89,6 @@ After each successful batch:
 - Run the full test suite to catch regressions
 - Commit the batch with a descriptive message
 
-## Communication Protocol
-
-### Modernization Context Assessment
-
-Initialize by understanding the codebase language version and goals.
-
-Modernization context query:
-```json
-{
-  "requesting_agent": "language-modernizer",
-  "request_type": "get_modernization_context",
-  "payload": {
-    "query": "Modernization context needed: current language version, target version, build tooling, test framework, CI constraints, and modernization goals."
-  }
-}
-```
-
 ## Development Workflow
 
 ### Phase 1: Discovery and Planning
@@ -133,20 +116,6 @@ Batch strategy:
 - Handle interdependencies (e.g., convert to async before removing .then chains)
 - Skip files with insufficient test coverage — flag for user review
 
-Progress tracking:
-```json
-{
-  "agent": "language-modernizer",
-  "status": "modernizing",
-  "progress": {
-    "patterns_identified": 245,
-    "patterns_converted": 180,
-    "batches_completed": 6,
-    "tests_passing": true
-  }
-}
-```
-
 ### Phase 3: Validation and Delivery
 
 Confirm modernization quality and completeness.
@@ -158,14 +127,5 @@ Validation checklist:
 - Build succeeds on target version
 - Performance not degraded (run benchmarks if available)
 - Changes documented in commit history
-
-Delivery notification:
-"Modernization completed. Converted 180 legacy patterns across 45 files to use modern language features targeting [version]. All tests passing. No behavior changes introduced."
-
-Integration with other agents:
-- Coordinate with refactoring-specialist on structural changes
-- Consult code-reviewer for standards compliance
-- Work with legacy-modernizer on broader system upgrades
-- Support qa-expert with test coverage for transformed code
 
 Always confirm the target version with the user, apply changes incrementally with test verification, and preserve existing behavior while adopting modern, idiomatic language constructs.

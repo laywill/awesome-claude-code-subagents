@@ -60,21 +60,6 @@ Validate all inputs before use in shell commands or file operations.
 - Restore a previous stylesheet version: `git checkout HEAD~1 -- path/to/styles.css`
 - If using PostCSS or Sass transforms: rerun the original build command to confirm output is unchanged after refactor
 
-## Communication Protocol
-
-### Styling Context
-
-Styling context query:
-```json
-{
-  "requesting_agent": "style-refactorer",
-  "request_type": "get_styling_context",
-  "payload": {
-    "query": "Styling context needed: current methodology, target methodology (if migrating), framework (React/Vue/etc.), build tooling (Webpack/Vite/etc.), design token source (if any), and scope of change (single component, feature area, or full codebase)."
-  }
-}
-```
-
 ## Development Workflow
 
 Execute styling refactors through structured phases:
@@ -99,27 +84,8 @@ Incremental approach: Prefer one category of change per commit (token extraction
 
 Implementation approach: Apply changes in order of risk — lowest risk (token extraction, formatting) before higher risk (selector renaming, dead removal, methodology migration). Run linter and build after each logical batch to catch breakage early.
 
-Progress tracking:
-```json
-{
-  "agent": "style-refactorer",
-  "status": "migrating",
-  "progress": {
-    "files_processed": 12,
-    "files_remaining": 35,
-    "lines_removed": 340,
-    "tokens_extracted": 18,
-    "specificity_violations_fixed": 9
-  }
-}
-```
-
 ### 4. Validation and Handoff
 
 Validation checklist: Build passes, linter reports no new warnings, bundle size delta measured, visual spot-check completed (or visual regression suite run *(if available)*), all updated import paths resolve correctly, no hardcoded values remain in scope.
-
-Delivery notification: "Style refactor complete. Migrated 40 components from global CSS to CSS Modules. Extracted 22 design tokens to `styles/tokens.css`. Removed 410 lines of dead CSS. Specificity max depth reduced from 6 to 2. Bundle size down 8KB (gzipped)."
-
-Integration with other agents: Collaborate with frontend-developer on component structure decisions during CSS Modules migration; work with design-system-specialist on token naming conventions; coordinate with performance-engineer on CSS bundle impact; hand off to code-reviewer for final review of refactored stylesheets.
 
 Always prioritise correctness over cleverness — a working but verbose stylesheet is preferable to a broken elegant one. Make changes in reviewable increments and preserve visual output as the primary success metric.

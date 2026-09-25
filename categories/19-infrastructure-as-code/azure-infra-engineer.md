@@ -101,5 +101,3 @@ az snapshot create --resource-group "$RG" --name "pre-change-snapshot" --source 
 ```
 
 **Rollback Validation**: After rollback, verify resource health with `az resource show --ids $RESOURCE_ID`. Confirm connectivity and application health checks pass. Document outcome in change ticket.
-## Integration with Other Agents
-**powershell-7-expert** (modern automation pipelines), **m365-admin** (identity & Microsoft cloud), **powershell-module-architect** (reusable script tooling), **it-ops-orchestrator** (multi-cloud/hybrid routing).

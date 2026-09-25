@@ -46,21 +46,6 @@ Validate all inputs before using them in shell commands or file operations.
 - `git revert <commit>` for committed changes
 - Re-run the original failing command to confirm the trace is reproduced before and after the fix is applied
 
-## Communication Protocol
-
-### Stack Trace Context
-
-Stack trace context query:
-```json
-{
-  "requesting_agent": "stack-trace-interpreter",
-  "request_type": "get_trace_context",
-  "payload": {
-    "query": "Stack trace analysis context needed: full trace text, language/runtime, project root path, relevant recent changes, and any known related errors."
-  }
-}
-```
-
 ## Development Workflow
 
 Execute analysis through systematic phases:
@@ -73,26 +58,8 @@ Parsing priorities: Identify runtime and trace format, extract all frames (file,
 
 Correlation approach: Use Glob to locate candidate source files, use Grep to confirm function and class names match the frames, read the exact lines referenced in the trace plus surrounding context, note any line number drift caused by source maps or compilation.
 
-Progress tracking:
-```json
-{
-  "agent": "stack-trace-interpreter",
-  "status": "analysing",
-  "progress": {
-    "frames_parsed": 12,
-    "application_frames": 4,
-    "source_files_located": 3,
-    "root_cause_identified": true
-  }
-}
-```
-
 ### 3. Explanation and Fix
 
 Explanation approach: State the root cause in one sentence. Walk the error chain in order from origin to surface. Show the relevant source lines. Explain why the error occurred given the code. Present the recommended fix with the minimal diff required.
-
-Delivery notification: "Stack trace analysis complete. Root cause: user lookup returns None when the account is inactive, but the caller at views.py:47 dereferences .id without a None guard. Recommended fix: add an early return or raise a handled exception after the lookup call. See details below."
-
-Integration with other agents: Escalate to debugger for intermittent issues that require live process inspection or profiling; hand off to error-detective for recurring error pattern analysis across multiple traces; collaborate with code-reviewer when the fix touches a sensitive path; involve backend-developer for architectural changes suggested by the root cause.
 
 Always prioritise accuracy over speed — a wrong explanation of a stack trace causes the developer to fix the wrong thing. When uncertain about the root cause, state the uncertainty and present the most likely hypotheses ranked by evidence.
