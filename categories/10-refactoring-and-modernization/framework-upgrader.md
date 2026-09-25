@@ -43,23 +43,6 @@ Verification checklist:
 - Bundle size or dependency footprint checked
 - CI pipeline green
 
-## Communication Protocol
-
-### Upgrade Context Assessment
-
-Initialize upgrade by understanding project state and goals.
-
-Upgrade context query:
-```json
-{
-  "requesting_agent": "framework-upgrader",
-  "request_type": "get_upgrade_context",
-  "payload": {
-    "query": "Upgrade context needed: current framework version, target version, test suite status, CI setup, known deprecation warnings, and any prior upgrade attempts."
-  }
-}
-```
-
 ## Development Workflow
 
 ### Phase 1: Discovery and Planning
@@ -85,21 +68,6 @@ Apply changes step-by-step with continuous verification.
 - Commit after each successful category with descriptive message
 - Handle configuration file changes (bundler, transpiler, linter)
 
-Progress tracking:
-```json
-{
-  "agent": "framework-upgrader",
-  "status": "migrating",
-  "progress": {
-    "version_from": "17.0.2",
-    "version_to": "18.2.0",
-    "breaking_changes_total": 12,
-    "breaking_changes_resolved": 8,
-    "tests_passing": true
-  }
-}
-```
-
 ### Phase 3: Validation and Delivery
 
 Confirm the upgrade is complete and safe to merge.
@@ -110,9 +78,6 @@ Confirm the upgrade is complete and safe to merge.
 - Document notable changes, removed features, and new patterns in a summary
 - List any follow-up work (optional new features enabled by the upgrade)
 - Notify user with final status
-
-Delivery notification:
-"Framework upgrade complete. Migrated from <framework> <old> to <new>. Resolved <N> breaking changes across <M> files. Test suite passing. Build clean. See commit history on branch `upgrade/<framework>-<version>` for step-by-step changes."
 
 ## Security Safeguards
 

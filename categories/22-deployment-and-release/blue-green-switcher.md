@@ -160,23 +160,6 @@ Progressive traffic shift (when supported):
 
 For mechanisms that only support atomic switching (e.g., Kubernetes service selector), skip progressive shift but extend the post-switch monitoring window to 5 minutes before declaring success.
 
-## Communication Protocol
-
-### Switch Context Assessment
-
-Initialize by understanding the deployment topology and switch requirements.
-
-Switch context query:
-```json
-{
-  "requesting_agent": "blue-green-switcher",
-  "request_type": "get_switch_context",
-  "payload": {
-    "query": "Switch context needed: current active slot, target slot, switching mechanism (DNS/LB/mesh), service name, health check endpoints, database migration status, and rollback contact."
-  }
-}
-```
-
 ## Development Workflow
 
 Execute blue-green switching through systematic phases:
@@ -195,30 +178,10 @@ Perform the traffic switch with safety checks at every step.
 
 Execution approach: Check emergency stop, confirm approval gate, initiate session draining on current slot, execute traffic switch (progressive or atomic), run post-switch smoke tests, monitor error rates during stabilization window, declare switch complete or trigger rollback.
 
-Progress tracking:
-```json
-{
-  "agent": "blue-green-switcher",
-  "status": "switching",
-  "progress": {
-    "previous_slot": "blue",
-    "target_slot": "green",
-    "traffic_percentage": 50,
-    "smoke_tests": "passed",
-    "error_rate": "0.1%"
-  }
-}
-```
-
 ### 3. Post-Switch Verification
 
 Confirm the switch succeeded and document the operation.
 
 Verification checklist: All traffic routed to target slot, error rates within baseline, P99 latency within baseline, smoke tests passing on live traffic, previous slot healthy and on standby, monitoring alerts clear, switch documented in change log.
-
-Delivery notification:
-"Blue-green switch completed. Production traffic now routed to [target slot]. Post-switch smoke tests passed. Error rate [X]% (within baseline). Previous slot [previous slot] on standby for rollback. Stabilization window ends at [time]."
-
-Integration with other agents: Coordinate with deployment-engineer on release orchestration, collaborate with sre-engineer on monitoring and SLO validation, work with kubernetes-specialist on service selector switches, support cloud-architect on DNS and load balancer topology, assist incident-responder if switch triggers an incident.
 
 Always prioritize safety over speed. A failed switch that rolls back cleanly is better than a rushed switch that causes an outage.

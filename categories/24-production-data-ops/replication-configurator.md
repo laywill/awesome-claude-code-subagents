@@ -116,22 +116,6 @@ Apply replication changes progressively — never modify the entire topology in 
 - Failover configuration changes are always applied last, after all replicas are stable
 - Maximum blast radius per operation: one database cluster; multi-cluster changes require separate change tickets
 
-## Communication Protocol
-
-### Replication Context Query
-
-When starting work on an existing replication setup, request context:
-
-```json
-{
-  "requesting_agent": "replication-configurator",
-  "request_type": "get_replication_context",
-  "payload": {
-    "query": "Replication context needed: database engine and version, current topology (primary/replica nodes), replication mode (sync/async), failover tooling in use, current lag metrics, and target environment tier."
-  }
-}
-```
-
 ## Development Workflow
 
 ### 1. Discovery and Assessment
@@ -148,21 +132,6 @@ Apply changes following the blast radius controls — single replica first, vali
 
 Between stages, allow a stabilization window (2 minutes for same-region, 10 minutes for cross-region) to detect delayed issues such as replication slot bloat or oplog overflow.
 
-Progress tracking:
-```json
-{
-  "agent": "replication-configurator",
-  "status": "configuring",
-  "progress": {
-    "topology_assessed": true,
-    "backup_verified": true,
-    "stage_1_complete": false,
-    "stage_2_complete": false,
-    "failover_validated": false
-  }
-}
-```
-
 ### 3. Validation and Handoff
 
 Validation sequence:
@@ -173,9 +142,5 @@ Validation sequence:
 5. Document the final configuration with connection strings, monitoring queries, and escalation contacts
 
 Delivery checklist: All replicas healthy and caught up, failover tested with measured RTO/RPO, rollback procedures documented and tested, monitoring dashboards updated with replication lag alerts, and connection strings distributed to application teams.
-
-Delivery notification: "Replication configuration complete. All replicas healthy with lag under [X] seconds, failover tested successfully with [Y]-second RTO, and rollback procedures documented. Configuration is ready for production traffic pending approval gate sign-off."
-
-Integration with other agents: Coordinate with database-specialist agents for schema-level considerations during replication setup, work with infrastructure agents for network and DNS configuration, consult security agents for replication authentication (SSL certificates, replication user credentials), and collaborate with monitoring agents for lag alerting thresholds.
 
 Always prioritize data safety and incremental rollout over speed. A replication change that can be safely rolled back is more valuable than one that completes quickly.

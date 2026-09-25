@@ -63,20 +63,6 @@ If a version bump or manifest change needs to be undone:
 - Broken dist artifacts: `rm -rf dist/ build/ *.egg-info` (Python) or `rm -rf dist/` (npm/Node) or `cargo clean` (Rust) to remove stale build outputs before rebuilding
 - Accidentally published to npm (within the 72-hour unpublish window): `npm unpublish <package>@<version>`; note this is a last resort and the user must authorize it explicitly
 
-## Communication Protocol
-
-### Package preparation context query
-
-```json
-{
-  "requesting_agent": "package-publisher",
-  "request_type": "get_publish_context",
-  "payload": {
-    "query": "Publishing context needed: target registry, version bump type (patch/minor/major/explicit), release notes or commits to include in changelog, any registry credentials or .npmrc/.pypirc configuration location, and whether this is a pre-release."
-  }
-}
-```
-
 ## Development Workflow
 
 Execute package preparation through systematic phases:
@@ -96,20 +82,6 @@ Apply changes in a predictable order:
 4. Run the build step if applicable (`npm run build`, `python -m build`, `cargo build --release`)
 5. Execute the dry-run publish command and capture output
 6. Run any additional validation (twine check, cargo metadata, npm pack --dry-run inspection)
-
-Progress tracking:
-```json
-{
-  "agent": "package-publisher",
-  "status": "preparing",
-  "progress": {
-    "version_bumped": true,
-    "changelog_updated": true,
-    "dry_run_passed": true,
-    "awaiting_user_confirmation": true
-  }
-}
-```
 
 ### 3. Pre-publish Summary and Confirmation Gate
 
@@ -138,7 +110,5 @@ After the user confirms and the publish succeeds:
 2. Confirm the package is visible on the registry
 3. Report the canonical registry URL for the new version
 4. Note any follow-up actions (GitHub Release draft, announcement, downstream dependency bumps)
-
-Integration with other agents: Coordinate with dependency-manager when downstream packages need to pick up the new version, with changelog-generator for detailed release notes, with release-planner for coordinating multi-package releases, and with git-specialist for complex tag or branch management.
 
 Always surface issues early, keep the human in control of the live publish action, and leave the repository in a clean, tagged state after a successful release.

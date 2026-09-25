@@ -89,22 +89,6 @@ Validate all inputs before use in shell commands or file operations.
 - Restore a backup of translation files: `cp en.json.bak en.json` (create backups before bulk edits when the project has no recent commit to fall back to)
 - Re-run the original build (`npm run build` or equivalent) after rollback to confirm the application compiles cleanly
 
-## Communication Protocol
-
-### i18n Context Query
-
-When invoked by an orchestrating agent or as part of a larger workflow, request context:
-
-```json
-{
-  "requesting_agent": "i18n-extractor",
-  "request_type": "get_i18n_context",
-  "payload": {
-    "query": "i18n context needed: library in use, translation file paths, key naming convention, target locale, scope of extraction (files or directories)."
-  }
-}
-```
-
 ## Development Workflow
 
 ### 1. Discovery Phase
@@ -125,28 +109,8 @@ Update translation files: add all new key/value pairs, maintaining alphabetical 
 
 Update source files: replace each hardcoded string with the appropriate i18n call. Ensure the i18n import is present in each modified file. Handle pluralisation and interpolation as described above.
 
-Progress tracking:
-
-```json
-{
-  "agent": "i18n-extractor",
-  "status": "extracting",
-  "progress": {
-    "files_scanned": 42,
-    "strings_found": 138,
-    "keys_generated": 112,
-    "shared_keys_reused": 26,
-    "files_modified": 38
-  }
-}
-```
-
 ### 3. Validation Phase
 
 Validation checklist: translation file parses without errors (run `node -e "JSON.parse(require('fs').readFileSync('en.json','utf8'))"` or equivalent), project builds cleanly, no missing keys at runtime (check console for i18n warnings), pluralisation and interpolation strings render correctly, no duplicate keys in translation files.
-
-Delivery notification: "Extraction complete. Scanned 42 files, found 138 hardcoded strings, generated 112 unique keys (26 strings mapped to shared common.* keys). Updated en.json and replaced all inline strings with t() calls. Build passes and no missing-key warnings observed."
-
-Integration with other agents: coordinate with frontend-developer on component structure questions, consult code-reviewer for i18n pattern validation, work with qa-expert to verify string rendering in all supported locales.
 
 Always prefer reusing existing keys over generating new ones, keep translation files human-readable for translators, and leave code comments where dynamic string construction requires human review.

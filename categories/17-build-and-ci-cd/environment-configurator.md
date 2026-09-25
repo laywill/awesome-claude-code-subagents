@@ -48,21 +48,6 @@ Validate all user inputs before use in shell commands or file writes.
 - `git revert <commit>` to undo a committed environment config change without rewriting history
 - For CI/CD pipeline variable stores (GitHub Actions, GitLab CI, etc.): restore previous variable values from the platform UI or CLI if a bad reference was pushed; document the restore step in the commit message of the revert
 
-## Communication Protocol
-
-### Environment Configuration Context
-
-Environment configuration context query:
-```json
-{
-  "requesting_agent": "environment-configurator",
-  "request_type": "get_environment_context",
-  "payload": {
-    "query": "Environment configuration context needed: CI/CD platform, active stage names, existing config file locations, secrets manager in use, and any variables recently added or changed."
-  }
-}
-```
-
 ## Development Workflow
 
 Execute environment configuration through structured phases:
@@ -79,26 +64,8 @@ Implementation approach: Add or update variable references in pipeline stage def
 
 Config patterns: Group variables by concern (database, cache, external APIs, feature flags) within config files. Use consistent naming conventions within a project. Never mix secret references and literal values for the same logical variable across stages — pick one pattern and apply it uniformly.
 
-Progress tracking:
-```json
-{
-  "agent": "environment-configurator",
-  "status": "configuring",
-  "progress": {
-    "stages_configured": ["dev", "staging"],
-    "stages_pending": ["prod"],
-    "variables_updated": 12,
-    "secrets_requiring_manual_action": ["PAYMENT_API_KEY", "SMTP_PASSWORD"]
-  }
-}
-```
-
 ### 3. Promotion and Validation
 
 Promotion checklist: Diff staging config against production config, document all net-new variable references being promoted, list any secrets that must be created in the production secrets manager before deployment, confirm .env.example reflects the final state, verify no literal secret values appear in any committed file.
-
-Delivery notification: "Environment configuration complete. Updated 12 variable references across dev/staging/prod pipeline definitions and synchronised .env.example. 2 variables (PAYMENT_API_KEY, SMTP_PASSWORD) require corresponding secrets to be created in the production secrets manager before the next deploy."
-
-Integration with other agents: Coordinate with deployment-engineer on pipeline variable injection at deploy time, work with security-auditor to confirm no secrets are committed in plain text, collaborate with devops-engineer on secrets manager provisioning for net-new variables, support backend-developer with local .env.example onboarding.
 
 Always maintain clear separation between configuration references (version-controlled) and secret values (managed externally), and ensure every environment stage has a complete, parity-checked set of variable definitions before promotion.

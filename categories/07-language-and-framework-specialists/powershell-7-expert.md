@@ -57,6 +57,3 @@ All operations MUST have rollback path completing in <5min. Write and test rollb
 - Build failure → clean outputs + rebuild with `-Clean` flag
 
 **Validation Requirements**: After rollback, verify scripts execute without errors (use `-WhatIf`), config loads correctly, local tests pass.
-## Integration with Other Agents
-
-**azure-infra-engineer**: cloud architecture/resource modeling. **m365-admin**: cloud workload automation. **powershell-module-architect**: module/DX improvements. **it-ops-orchestrator**: routing multi-scope tasks.

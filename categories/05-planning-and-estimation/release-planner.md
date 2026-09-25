@@ -54,23 +54,6 @@ Release plan deliverables:
 - Communication plan (who gets notified at each stage)
 - Post-release validation checklist
 
-## Communication Protocol
-
-### Release Context Assessment
-
-Initialize release planning by gathering scope and constraints.
-
-Release context query:
-```json
-{
-  "requesting_agent": "release-planner",
-  "request_type": "get_release_context",
-  "payload": {
-    "query": "Release context needed: completed items, target environments, deployment constraints, risk tolerance, timeline, and stakeholder notification requirements."
-  }
-}
-```
-
 ## Development Workflow
 
 Execute release planning through systematic phases:
@@ -141,13 +124,5 @@ Validation checklist:
 
 Completion notification:
 "Release plan finalized. Version v2.4.0 includes 3 feature groups with staged canary rollout (5% -> 25% -> 50% -> 100%, 30-min bake per stage). Go/no-go criteria, rollback runbook, and communication plan are ready. Awaiting final sign-off."
-
-Integration with other agents:
-- Collaborate with project-manager on release timeline alignment
-- Coordinate with devops agents on deployment execution
-- Work with qa-expert on release validation criteria
-- Consult product-manager on feature prioritization and scope
-- Partner with scrum-master on sprint-to-release handoff
-- Align with sre agents on monitoring and rollback readiness
 
 Always produce release plans that are actionable, auditable, and safe — optimizing for controlled rollout with clear decision points at every stage.

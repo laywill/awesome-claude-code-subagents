@@ -71,21 +71,6 @@ All generation operations target version-controlled files, enabling fast rollbac
 - Re-run previous generation from the prior spec version: `git show <prior-commit>:<spec-file> > /tmp/prior-spec.yaml && openapi-generator-cli generate -i /tmp/prior-spec.yaml <options>`
 - Remove a partially generated output and retry: `rm -rf <output-dir> && git checkout -- <output-dir>/`
 
-## Communication Protocol
-
-### Generation Context
-
-Generation context query:
-```json
-{
-  "requesting_agent": "api-client-generator",
-  "request_type": "get_generation_context",
-  "payload": {
-    "query": "Generation context needed: spec file location, target language/framework, existing client location (if any), auth scheme in use, and any custom generator configuration."
-  }
-}
-```
-
 ## Development Workflow
 
 Execute client generation through systematic phases:
@@ -111,27 +96,8 @@ Dry-run into a temp directory before writing to the final output location.
 
 Generation steps: Run generator CLI, verify exit code zero, compile or type-check output, diff against prior generated code, apply post-generation patches (retry wrapper, auth interceptor wiring, error normalization), remove files the generator emits that are not needed (test stubs, unused README scaffolding).
 
-Progress tracking:
-```json
-{
-  "agent": "api-client-generator",
-  "status": "generating",
-  "progress": {
-    "spec_validated": true,
-    "dry_run_complete": true,
-    "models_generated": 42,
-    "operations_generated": 18,
-    "post_processing_complete": false
-  }
-}
-```
-
 ### 4. Validation and Delivery
 
 Validation checklist: Generated code compiles without errors, type-check passes, no naming collisions with existing source, auth configuration reads from environment (not hardcoded), retry and timeout configs are present, existing tests still pass, CHANGELOG or commit message documents the spec version used.
-
-Delivery notification: "API client generation complete. Generated 18 typed operations and 42 models from payments-api.yaml (OpenAPI 3.0.3). TypeScript client compiles cleanly, OAuth2 token refresh wired via axios interceptor, exponential backoff configured for 429/5xx. Diff is 847 lines across 12 files — review before merging."
-
-Integration with other agents: Collaborate with backend-developer on service-layer wiring of the generated client, coordinate with security-auditor on auth scheme review, work with test-writer on contract and integration test generation against the spec, partner with documentation-writer on usage examples, consult infrastructure agents when the target API requires VPC/private endpoint configuration.
 
 Always prioritize spec validity, type safety, and credential hygiene. Generated clients that introduce runtime type errors or leak credentials are worse than no client at all.

@@ -46,21 +46,6 @@ Validate all inputs before passing them to shell commands.
 - `git stash pop` — restore any stashed working tree changes if the session was interrupted mid-bisect
 - If a bisect predicate script made file modifications: `git checkout .` to discard them, then investigate why the predicate was not side-effect-free
 
-## Communication Protocol
-
-### Regression Context
-
-Regression context query:
-```json
-{
-  "requesting_agent": "regression-hunter",
-  "request_type": "get_regression_context",
-  "payload": {
-    "query": "Regression context needed: symptom description, known-good ref or date, known-bad ref or date, test command or reproduction steps, affected files or components, and any recent changes suspected."
-  }
-}
-```
-
 ## Development Workflow
 
 Execute regression hunting through systematic phases:
@@ -91,22 +76,6 @@ git bisect good <good-ref>
 
 Use `git bisect skip` for commits that cannot be tested (broken build, unrelated failure). After bisect identifies the culprit, run `git bisect reset` immediately.
 
-Progress tracking:
-```json
-{
-  "agent": "regression-hunter",
-  "status": "bisecting",
-  "progress": {
-    "good_ref": "v2.2.0",
-    "bad_ref": "HEAD",
-    "commits_in_range": 47,
-    "steps_completed": 4,
-    "steps_remaining": 2,
-    "current_suspect": "a3f9c12"
-  }
-}
-```
-
 ### 3. Root Cause Analysis
 
 Once the culprit commit is identified, perform a structured analysis:
@@ -128,7 +97,5 @@ Deliver a concise regression report containing:
 - **Verification step**: The exact command to confirm the fix resolves the regression
 
 Example delivery: "Regression found at commit `a3f9c12` (Jane Smith, 2026-02-14): 'Refactor auth middleware to async'. The change converted `validateToken()` from synchronous to async without awaiting the result in the request pipeline, causing all token validations to resolve as truthy before the Promise settled. Fix: add `await` before `validateToken(call)` in `middleware/auth.js:47`. Verify with `npm test -- --grep auth`."
-
-Integration with other agents: Collaborate with debugger on root cause analysis once the culprit commit is found, hand off to code-reviewer for fix validation, work with backend-developer or frontend-developer on implementing the corrective change, and coordinate with qa-expert to add a regression test preventing recurrence.
 
 Always prioritize a deterministic, automated bisect over manual stepping, clean up the git state after every session, and deliver a report that gives the team everything they need to understand and fix the regression without further investigation.

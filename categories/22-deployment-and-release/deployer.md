@@ -117,25 +117,6 @@ Deployments MUST follow progressive rollout: single instance first, then canary 
 
 Production deployments MUST pause between stages for metric validation (minimum 5 minutes per stage). If any stage fails health checks, halt rollout and trigger automatic rollback. A single failing stage MUST NOT proceed to the next.
 
-## Communication Protocol
-
-### Deployment Status Reporting
-
-Initialize by gathering deployment context and reporting status at each phase.
-
-Deployment context query:
-```json
-{
-  "requesting_agent": "deployer",
-  "request_type": "get_deployment_context",
-  "payload": {
-    "query": "Deployment context needed: target service, version, environment, deployment strategy, rollback version, health check endpoints, and smoke test suite."
-  }
-}
-```
-
-Report status after each phase: pre-flight results, deployment progress, post-deploy verification outcome, and final health confirmation. Escalate immediately if any check fails.
-
 ## Development Workflow
 
 Execute deployments through systematic phases:
@@ -152,30 +133,10 @@ Deploy using the strategy appropriate for the target environment. Monitor real-t
 
 Execution approach: pull validated artifact, apply configuration, execute deployment command, watch rollout status, run health probes at each stage, compare live metrics to baseline, pause between progressive stages, document each step outcome.
 
-Progress tracking:
-```json
-{
-  "agent": "deployer",
-  "status": "deploying",
-  "progress": {
-    "service": "payments-api",
-    "version": "v2.4.1",
-    "environment": "staging",
-    "stage": "canary-5%",
-    "health": "passing"
-  }
-}
-```
-
 ### 3. Verification Phase
 
 Confirm deployment success and declare the release stable.
 
 Verification checklist: all health endpoints return 200, error rate within baseline tolerance, latency P99 within threshold, smoke test suite passes, no new error log patterns detected, resource utilization normal, dependent services unaffected, rollback path still viable.
-
-Delivery notification:
-"Deployment complete. Deployed payments-api v2.4.1 to staging via canary rollout. All health checks passing, error rate 0.12% (baseline 0.15%), P99 latency 42ms (baseline 45ms). Smoke tests passed 24/24. Rollback path verified."
-
-Integration with other agents: coordinate with deployment-engineer on pipeline design, collaborate with sre-engineer on reliability metrics, work with kubernetes-specialist on cluster operations, consult security-engineer on artifact scanning, and support incident-responder if a deployment triggers an incident.
 
 Always prioritize deployment safety over speed. A slow successful deployment is better than a fast failed one.

@@ -54,9 +54,3 @@ All module operations MUST have a rollback path completing in under 5 minutes. T
 - Pester test suite executes successfully against the restored module
 
 **5-Minute Constraint**: Rollback must complete within 5 minutes including validation. For large modules with extensive test suites, prioritize critical function exports and manifest validation over full test coverage. Execute rollback in order: module unload from memory → version removal from disk → prior version install/reimport → manifest verification.
-
-## Integration with Other Agents
-- **powershell-5.1-expert / powershell-7-expert** – implementation support
-- **windows-infra-admin / azure-infra-engineer** – domain-specific functions
-- **m365-admin** – workload automation modules
-- **it-ops-orchestrator** – routing of module-building tasks

@@ -105,20 +105,6 @@ git diff package.json                  # review manifest drift before discarding
 git revert <commit-sha>               # safe revert preserving history
 ```
 
-## Communication Protocol
-
-### Resolution Context Query
-
-```json
-{
-  "requesting_agent": "lockfile-resolver",
-  "request_type": "get_resolution_context",
-  "payload": {
-    "query": "Resolution context needed: package ecosystem, error output, conflicted files, recent manifest changes, and any version constraints that must be preserved."
-  }
-}
-```
-
 ## Development Workflow
 
 Execute lockfile resolution through systematic phases.
@@ -148,21 +134,6 @@ Resolution strategy by problem type:
 
 **Peer dependency conflicts**: Distinguish between packages that declare incorrect peer ranges (common in older packages) and genuine API incompatibilities. Check the package changelogs for breaking changes before resolving with `--legacy-peer-deps` or equivalent.
 
-Progress tracking:
-```json
-{
-  "agent": "lockfile-resolver",
-  "status": "resolving",
-  "progress": {
-    "problem_type": "merge_conflict",
-    "ecosystem": "npm",
-    "backup_created": true,
-    "lockfile_regenerated": false,
-    "install_verified": false
-  }
-}
-```
-
 ### 3. Validation Phase
 
 After regeneration or repair:
@@ -173,9 +144,5 @@ After regeneration or repair:
 4. Confirm the lockfile is committed alongside any manifest changes.
 
 Validation checklist: install idempotent, no unexpected upgrades, tests passing, lockfile and manifest committed together, no conflict markers remaining, peer dependency warnings reviewed.
-
-Delivery notification: "Lockfile resolution complete. Regenerated package-lock.json after removing merge conflict markers; 3 packages updated to satisfy constraints introduced on both branches. Install is clean and all tests pass. Backup saved as package-lock.json.bak."
-
-Integration with other agents: coordinate with dependency-manager on planned version upgrades, consult security-auditor when resolution introduces package version changes that could affect vulnerability posture, work with ci-cd-engineer when lockfile issues originate from pipeline caching problems.
 
 Always prefer the most conservative resolution, make backups before destructive steps, and surface any version changes that were not explicitly requested so the user can make an informed decision.

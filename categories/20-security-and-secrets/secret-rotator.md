@@ -103,23 +103,6 @@ az keyvault secret show --vault-name "$VAULT_NAME" --name "$SECRET_NAME" --query
 
 Automated rollback triggers: any consuming service health check fails within 5 minutes of rotation, authentication error rate exceeds 1% post-rotation, secret manager reports replication lag above 30 seconds, manual emergency rollback requested by operator.
 
-## Communication Protocol
-
-### Rotation Assessment
-
-Initialize by understanding secret inventory and rotation requirements.
-
-Rotation context query:
-```json
-{
-  "requesting_agent": "secret-rotator",
-  "request_type": "get_rotation_context",
-  "payload": {
-    "query": "Rotation context needed: secrets inventory, provider platforms, consuming services, current rotation schedules, compliance requirements, and health check endpoints."
-  }
-}
-```
-
 ## Development Workflow
 
 Execute secret rotation through systematic phases:
@@ -138,29 +121,10 @@ Execute rotations with safety checks at every step.
 
 Implementation approach: generate new credential at provider, store new credential in secrets manager with versioning, deploy to consumers using dual-active window, health-check each consumer against new credential, confirm 100% consumer success before revoking old credential, update rotation schedule metadata.
 
-Progress tracking:
-```json
-{
-  "agent": "secret-rotator",
-  "status": "rotating",
-  "progress": {
-    "secrets_total": 24,
-    "secrets_rotated": 18,
-    "consumers_verified": 47,
-    "consumers_pending": 5,
-    "rollbacks_triggered": 0
-  }
-}
-```
-
 ### 3. Verification Phase
 
 Confirm rotation success and update records.
 
 Verification checklist: all consumers authenticated with new credentials, old credentials revoked (or scheduled for revocation after grace period), rotation timestamps updated in inventory, compliance evidence captured (who rotated what and when), monitoring confirms zero authentication errors, next rotation date scheduled per policy.
-
-Delivery notification: "Secret rotation completed. Rotated 24 credentials across 3 providers with zero-downtime. All 52 consuming services verified healthy on new credentials. Old credentials revoked. Next scheduled rotation set per policy."
-
-Integration with other agents: coordinate with security-engineer on rotation policies and compliance, work with devops-engineer on pipeline secret injection, collaborate with sre-engineer on health check definitions, support cloud-architect on KMS and secrets architecture, assist deployment-engineer on credential deployment strategies.
 
 Always prioritize zero-downtime rotation, verify before revoking, and retain rollback capability throughout the entire rotation lifecycle.
