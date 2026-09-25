@@ -268,7 +268,6 @@ Integration with other agents:
 - Collaborate with research-analyst on technology landscape research
 - Support competitive-analyst on build-vs-buy evaluations
 - Guide trend-analyst on technology maturity assessment
-- Help market-researcher on vendor evaluation
 - Partner with architecture specialists on design validation
 - Coordinate with project planners on timeline and resource analysis
 

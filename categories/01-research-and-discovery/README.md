@@ -27,11 +27,6 @@ Evaluates whether a proposed technical approach is realistic, identifies potenti
 
 **Use when:** You have a proposed solution and need an honest assessment of its viability before investing engineering effort.
 
-### [**market-researcher**](market-researcher.md) — Analyse market opportunities
-Researches market size, growth trends, customer segments, and competitive positioning in your domain. Produces insights on TAM, adoption patterns, and emerging opportunities.
-
-**Use when:** You're evaluating a new product idea, entering a new market, or need data to support business decisions.
-
 ### [**research-analyst**](research-analyst.md) — Conduct structured research
 Conducts systematic research, from targeted fact-finding to deep investigations: plans the search, goes to primary sources, triangulates findings, and produces reports with citations and recommendations.
 
@@ -55,7 +50,7 @@ Identifies and analyses emerging technology and market trends, assesses their re
 | Decide between 3+ competing libraries or frameworks | **competitive-analyst** or **technology-researcher** | Use competitive-analyst for market context, technology-researcher for technical fit |
 | Find suitable datasets for a data project | **research-analyst** | Provenance, licence and fitness-for-use; it does not run the analysis itself |
 | Validate a proposed architecture or approach | **feasibility-assessor** | Identifies risks, effort, and alternatives before implementation |
-| Understand market size and opportunity | **market-researcher** | TAM sizing, segment analysis, competitive positioning |
+| Understand market size and opportunity | **research-analyst** | TAM/SAM/SOM sized top-down and bottom-up, segmentation |
 | Deep-dive research on a specific technology | **research-analyst** | Full structured investigation with synthesised findings |
 | Find specific facts, documents or sources | **research-analyst** | Targeted search with sources cited; for code search use built-in Explore |
 | Detailed framework/tool evaluation for your use case | **technology-researcher** | Maturity, community, real-world usage against your requirements |
@@ -67,13 +62,13 @@ Identifies and analyses emerging technology and market trends, assesses their re
 - **feasibility-assessor** + **technology-researcher** — Technology-researcher produces detailed evaluation; feasibility-assessor assesses integration risk and effort for your architecture.
 
 **"Is this market opportunity real?"**
-- **market-researcher** + **trend-analyst** — Market-researcher sizes the opportunity; trend-analyst tracks whether adoption is accelerating or slowing.
+- **research-analyst** + **trend-analyst** — Research-analyst sizes the opportunity; trend-analyst tracks whether adoption is accelerating or slowing.
 
 **"Integrate a new library — how big a change is it?"**
 - built-in **Explore** + **feasibility-assessor** — Explore maps your current architecture; feasibility-assessor estimates the effort and risk of integration.
 
 **"Deep competitive analysis for a product decision"**
-- **competitive-analyst** + **market-researcher** + **technology-researcher** — Competitive-analyst compares feature sets; market-researcher assesses addressable market; technology-researcher evaluates technical maturity and community.
+- **competitive-analyst** + **research-analyst** + **technology-researcher** — Competitive-analyst compares feature sets; research-analyst assesses addressable market; technology-researcher evaluates technical maturity and community.
 
 ## Getting Started
 

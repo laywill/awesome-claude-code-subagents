@@ -275,7 +275,6 @@ Monitoring systems:
 - Market intelligence
 
 Integration with other agents:
-- Collaborate with market-researcher on market dynamics
 - Support product-manager on competitive positioning
 - Work with business-analyst on strategic planning
 - Guide marketing on differentiation

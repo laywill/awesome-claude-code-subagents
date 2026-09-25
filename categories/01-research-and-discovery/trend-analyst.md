@@ -275,7 +275,6 @@ Communication excellence:
 - Update protocols
 
 Integration with other agents:
-- Collaborate with market-researcher on market evolution
 - Support innovation teams on future opportunities
 - Work with strategic planners on long-term strategy
 - Guide product-manager on future needs
