@@ -88,7 +88,7 @@ Downloads agents directly from GitHub without cloning the repository. Requires `
 
 ## Uninstall
 
-Run the `/plugins` command to see which plugins you have installed, or the `/agents` command to see which agents Claude Code currently has access to.
+Run the `/plugins` command to see which plugins you have installed. Agents installed as files live in `~/.claude/agents/` and `.claude/agents/`.
 
 ### As Claude Code Plugin (Recommended)
 
@@ -498,19 +498,17 @@ You can configure each subagent with specific tool access rights, enabling fine-
 
 ### Getting Started with Subagents
 
-**1. Access the Subagent Manager**
+**1. Create the File**
 
-```bash
-/agents
-```
+A subagent is a markdown file with YAML frontmatter. Put it in `.claude/agents/` for one project or `~/.claude/agents/` for all of them, or ask Claude to write one for you. Since Claude Code v2.1.198 the `/agents` command no longer opens an interactive manager; it prints a reminder pointing at these locations.
 
-**2. Create Your Subagent**
+**2. Define Your Subagent**
 
 - Choose between project-specific or global subagents
 - Let Claude generate an initial version, then refine it to your needs
 - Provide detailed descriptions of the subagent's purpose and activation triggers
 - Configure tool access (leave empty to inherit all available tools)
-- Customize the system prompt using the built-in editor (press `e`)
+- Write the system prompt as the body of the file
 
 **3. Deploy and Utilize**
 Your subagent becomes immediately available. Claude Code will automatically engage it when suitable, or you can explicitly request its help:
