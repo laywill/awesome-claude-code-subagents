@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "description": "Curated collection of 203 specialized Claude Code subagents organized into 24 focused categories with risk-tiered structure",
+    "description": "Curated collection of 197 specialized Claude Code subagents organized into 24 focused categories with risk-tiered structure",
     "version": "2.2.1"
   },
   "name": "laywill-subagents",
@@ -14,7 +14,6 @@
       "description": "Research and discovery subagents explore new technologies, assess feasibility, analyze markets and trends, and conduct deep investigations. They help teams understand the landscape before committing to major decisions.",
       "keywords": [
         "analysis",
-        "codebase-exploration",
         "competitive-analysis",
         "data-research",
         "feasibility",

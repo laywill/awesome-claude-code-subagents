@@ -6,7 +6,7 @@
 
 <div align="center">
 
-![Subagent Count](https://img.shields.io/badge/subagents-203-blue?style=flat-square)
+![Subagent Count](https://img.shields.io/badge/subagents-197-blue?style=flat-square)
 [![Last Update](https://img.shields.io/github/last-commit/laywill/awesome-claude-code-subagents?label=Last%20update&style=flat-square)](https://github.com/laywill/awesome-claude-code-subagents)
 [![GitHub forks](https://img.shields.io/github/forks/laywill/awesome-claude-code-subagents?style=social)](https://github.com/laywill/awesome-claude-code-subagents/network/members)
 
@@ -88,7 +88,7 @@ Downloads agents directly from GitHub without cloning the repository. Requires `
 
 ## Uninstall
 
-Run the `/plugins` command to see which plugins you have installed, or the `/agents` command to see which agents Claude Code currently has access to.
+Run the `/plugins` command to see which plugins you have installed. Agents installed as files live in `~/.claude/agents/` and `.claude/agents/`.
 
 ### As Claude Code Plugin (Recommended)
 
@@ -139,15 +139,11 @@ This interactive script lets you browse categories, select agents, and uninstall
 
 Research and discovery subagents explore new technologies, assess feasibility, analyze markets and trends, and conduct deep investigations. They help teams understand the landscape before committing to major decisions.
 
-- [**codebase-explorer**](categories/01-research-and-discovery/codebase-explorer.md) - Codebase analysis and exploration
-- [**competitive-analyst**](categories/01-research-and-discovery/competitive-analyst.md) - Competitive intelligence specialist
-- [**data-researcher**](categories/01-research-and-discovery/data-researcher.md) - Data discovery and analysis expert
 - [**feasibility-assessor**](categories/01-research-and-discovery/feasibility-assessor.md) - Technical feasibility assessment
-- [**market-researcher**](categories/01-research-and-discovery/market-researcher.md) - Market analysis and consumer insights
 - [**research-analyst**](categories/01-research-and-discovery/research-analyst.md) - Comprehensive research specialist
-- [**search-specialist**](categories/01-research-and-discovery/search-specialist.md) - Advanced information retrieval expert
 - [**technology-researcher**](categories/01-research-and-discovery/technology-researcher.md) - Technology landscape explorer
-- [**trend-analyst**](categories/01-research-and-discovery/trend-analyst.md) - Emerging trends and forecasting expert
+
+Codebase search and plan-mode research are covered by Claude Code's built-in `Explore` and `Plan` agents, so this category does not duplicate them.
 
 ### 🟢 02. [Architecture and Design](categories/02-architecture-and-design/)
 
@@ -502,19 +498,17 @@ You can configure each subagent with specific tool access rights, enabling fine-
 
 ### Getting Started with Subagents
 
-**1. Access the Subagent Manager**
+**1. Create the File**
 
-```bash
-/agents
-```
+A subagent is a markdown file with YAML frontmatter. Put it in `.claude/agents/` for one project or `~/.claude/agents/` for all of them, or ask Claude to write one for you. Since Claude Code v2.1.198 the `/agents` command no longer opens an interactive manager; it prints a reminder pointing at these locations.
 
-**2. Create Your Subagent**
+**2. Define Your Subagent**
 
 - Choose between project-specific or global subagents
 - Let Claude generate an initial version, then refine it to your needs
 - Provide detailed descriptions of the subagent's purpose and activation triggers
 - Configure tool access (leave empty to inherit all available tools)
-- Customize the system prompt using the built-in editor (press `e`)
+- Write the system prompt as the body of the file
 
 **3. Deploy and Utilize**
 Your subagent becomes immediately available. Claude Code will automatically engage it when suitable, or you can explicitly request its help:

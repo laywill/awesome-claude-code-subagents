@@ -59,6 +59,14 @@ Other top-level pieces:
 - `AGENT_SECURITY_GUIDELINES.md` — authoritative rules for the Security Safeguards section (read before writing one)
 - `docs/planning/` — design notes and experiments, not shipped content
 
+## A New Agent Must Beat the Built-ins
+
+Claude Code ships its own subagents: `Explore` (read-only codebase search, skips CLAUDE.md and git status), `Plan` (read-only research in plan mode), `general-purpose` (every tool, full context) and `claude` (the catch-all). An agent that restates one of them is not free: its description sits in every session's context, and it is one more near-match for delegation to pick wrongly.
+
+- A new agent's PR states in a sentence or two what it does that `Explore` and plain Claude with the same tools do not: domain method, a checkable output, a tool restriction that matters. If that comes out empty, don't add the agent. #322 applied this test to category 01 and cut nine agents to three.
+- Apply the same test against the catalog. `validate-catalog.sh` catches two agents with the same name, not two agents with the same job under different names.
+- Don't reuse a built-in name (`Explore`, `Plan`, `general-purpose`, `claude`) unless the agent is deliberately replacing that built-in. A user or project agent with the same name overrides it, so say so in the PR when that is the intent.
+
 ## Every Agent Exists in Four Places
 
 Adding, renaming, moving, or deleting an agent means updating all four, or the plugin ships broken:
