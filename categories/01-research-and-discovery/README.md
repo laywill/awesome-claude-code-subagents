@@ -32,11 +32,6 @@ Researches technologies, frameworks, and tools in depth, evaluates them against 
 
 **Use when:** You're evaluating a new technology stack or need a detailed assessment of whether a tool fits your constraints.
 
-### [**trend-analyst**](trend-analyst.md) — Track emerging trends
-Identifies and analyses emerging technology and market trends, assesses their relevance to your domain, and forecasts potential impact. Tracks GitHub stars, adoption curves, and technical direction.
-
-**Use when:** You want to stay ahead of the curve and understand which emerging technologies or market shifts are worth monitoring.
-
 ## Quick Selection Guide
 
 | Task | Subagent | Notes |
@@ -50,7 +45,7 @@ Identifies and analyses emerging technology and market trends, assesses their re
 | Deep-dive research on a specific technology | **research-analyst** | Full structured investigation with synthesised findings |
 | Find specific facts, documents or sources | **research-analyst** | Targeted search with sources cited; for code search use built-in Explore |
 | Detailed framework/tool evaluation for your use case | **technology-researcher** | Maturity, community, real-world usage against your requirements |
-| Track emerging technologies or market shifts | **trend-analyst** | GitHub momentum, adoption curves, strategic relevance |
+| Track emerging technologies or market shifts | **research-analyst** | Separates signals from trends; scenarios with leading indicators |
 
 ## Common Combinations
 
@@ -58,7 +53,7 @@ Identifies and analyses emerging technology and market trends, assesses their re
 - **feasibility-assessor** + **technology-researcher** — Technology-researcher produces detailed evaluation; feasibility-assessor assesses integration risk and effort for your architecture.
 
 **"Is this market opportunity real?"**
-- **research-analyst** + **trend-analyst** — Research-analyst sizes the opportunity; trend-analyst tracks whether adoption is accelerating or slowing.
+- **research-analyst** + **feasibility-assessor** — Research-analyst sizes the opportunity and checks whether adoption is accelerating or slowing; feasibility-assessor tests whether you can deliver it.
 
 **"Integrate a new library — how big a change is it?"**
 - built-in **Explore** + **feasibility-assessor** — Explore maps your current architecture; feasibility-assessor estimates the effort and risk of integration.
