@@ -38,14 +38,9 @@ Researches market size, growth trends, customer segments, and competitive positi
 **Use when:** You're evaluating a new product idea, entering a new market, or need data to support business decisions.
 
 ### [**research-analyst**](research-analyst.md) — Conduct structured research
-Conducts systematic research on complex topics, synthesises findings from multiple sources, and produces comprehensive reports with citations and recommendations.
+Conducts systematic research, from targeted fact-finding to deep investigations: plans the search, goes to primary sources, triangulates findings, and produces reports with citations and recommendations.
 
 **Use when:** You need a deep investigation into a specific topic with well-organised findings and clear recommendations.
-
-### [**search-specialist**](search-specialist.md) — Find and synthesise information
-Performs targeted searches across public sources, synthesises information from multiple results, and identifies patterns and trends. Excellent for quick lookups and rapid research.
-
-**Use when:** You need to find specific information quickly or understand what's publicly available on a topic.
 
 ### [**technology-researcher**](technology-researcher.md) — Evaluate frameworks and tools
 Researches technologies, frameworks, and tools in depth, evaluates them against your specific requirements, and produces detailed assessments including maturity, community, and real-world usage.
@@ -67,7 +62,7 @@ Identifies and analyses emerging technology and market trends, assesses their re
 | Validate a proposed architecture or approach | **feasibility-assessor** | Identifies risks, effort, and alternatives before implementation |
 | Understand market size and opportunity | **market-researcher** | TAM sizing, segment analysis, competitive positioning |
 | Deep-dive research on a specific technology | **research-analyst** | Full structured investigation with synthesised findings |
-| Quick lookup of specific information | **search-specialist** | Fast research, pattern identification across sources |
+| Find specific facts, documents or sources | **research-analyst** | Targeted search with sources cited; for code search use built-in Explore |
 | Detailed framework/tool evaluation for your use case | **technology-researcher** | Maturity, community, real-world usage against your requirements |
 | Track emerging technologies or market shifts | **trend-analyst** | GitHub momentum, adoption curves, strategic relevance |
 
