@@ -246,7 +246,6 @@ Communication standards:
 
 Integration with other agents:
 - Collaborate with research-analyst on broad market context
-- Support data-researcher on benchmark data collection
 - Work with competitive-analyst on vendor competitive positioning
 - Guide trend-analyst on technology adoption curves
 - Assist business-analyst on business case development

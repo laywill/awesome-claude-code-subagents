@@ -6,7 +6,7 @@
 
 <div align="center">
 
-![Subagent Count](https://img.shields.io/badge/subagents-201-blue?style=flat-square)
+![Subagent Count](https://img.shields.io/badge/subagents-200-blue?style=flat-square)
 [![Last Update](https://img.shields.io/github/last-commit/laywill/awesome-claude-code-subagents?label=Last%20update&style=flat-square)](https://github.com/laywill/awesome-claude-code-subagents)
 [![GitHub forks](https://img.shields.io/github/forks/laywill/awesome-claude-code-subagents?style=social)](https://github.com/laywill/awesome-claude-code-subagents/network/members)
 
@@ -140,7 +140,6 @@ This interactive script lets you browse categories, select agents, and uninstall
 Research and discovery subagents explore new technologies, assess feasibility, analyze markets and trends, and conduct deep investigations. They help teams understand the landscape before committing to major decisions.
 
 - [**competitive-analyst**](categories/01-research-and-discovery/competitive-analyst.md) - Competitive intelligence specialist
-- [**data-researcher**](categories/01-research-and-discovery/data-researcher.md) - Data discovery and analysis expert
 - [**feasibility-assessor**](categories/01-research-and-discovery/feasibility-assessor.md) - Technical feasibility assessment
 - [**market-researcher**](categories/01-research-and-discovery/market-researcher.md) - Market analysis and consumer insights
 - [**research-analyst**](categories/01-research-and-discovery/research-analyst.md) - Comprehensive research specialist

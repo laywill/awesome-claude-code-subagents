@@ -267,7 +267,6 @@ Communication excellence:
 Integration with other agents:
 - Collaborate with research-analyst on technology landscape research
 - Support competitive-analyst on build-vs-buy evaluations
-- Work with data-researcher on performance benchmarking data
 - Guide trend-analyst on technology maturity assessment
 - Help market-researcher on vendor evaluation
 - Partner with architecture specialists on design validation

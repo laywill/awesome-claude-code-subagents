@@ -10,7 +10,6 @@
   "license": "MIT",
   "agents": [
     "./competitive-analyst.md",
-    "./data-researcher.md",
     "./feasibility-assessor.md",
     "./market-researcher.md",
     "./research-analyst.md",

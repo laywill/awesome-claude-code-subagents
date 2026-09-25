@@ -22,11 +22,6 @@ Researches competing products, libraries, and frameworks, evaluates their streng
 
 **Use when:** You're deciding between multiple tools or technologies and need a detailed, objective comparison of their capabilities and limitations.
 
-### [**data-researcher**](data-researcher.md) — Investigate data sources and quality
-Researches available datasets, evaluates data quality and completeness, identifies data sources relevant to your domain, and assesses fitness for use. Useful for data engineering, ML projects, and analytics initiatives.
-
-**Use when:** You need to find reliable datasets, validate data quality, or assess whether a data source meets your project requirements.
-
 ### [**feasibility-assessor**](feasibility-assessor.md) — Validate technical approach
 Evaluates whether a proposed technical approach is realistic, identifies potential blockers, estimates effort and complexity, and recommends alternatives if needed. Works across architecture, infrastructure, and implementation domains.
 
@@ -58,7 +53,7 @@ Identifies and analyses emerging technology and market trends, assesses their re
 |------|----------|-------|
 | Understand a new codebase before integrating or refactoring | built-in **Explore** | Ships with Claude Code; not part of this plugin |
 | Decide between 3+ competing libraries or frameworks | **competitive-analyst** or **technology-researcher** | Use competitive-analyst for market context, technology-researcher for technical fit |
-| Find suitable datasets for a data project | **data-researcher** | Includes data quality and fitness-for-use assessment |
+| Find suitable datasets for a data project | **research-analyst** | Provenance, licence and fitness-for-use; it does not run the analysis itself |
 | Validate a proposed architecture or approach | **feasibility-assessor** | Identifies risks, effort, and alternatives before implementation |
 | Understand market size and opportunity | **market-researcher** | TAM sizing, segment analysis, competitive positioning |
 | Deep-dive research on a specific technology | **research-analyst** | Full structured investigation with synthesised findings |
