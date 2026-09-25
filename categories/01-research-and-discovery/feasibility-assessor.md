@@ -266,7 +266,6 @@ Communication excellence:
 
 Integration with other agents:
 - Collaborate with research-analyst on technology landscape research
-- Guide trend-analyst on technology maturity assessment
 - Partner with architecture specialists on design validation
 - Coordinate with project planners on timeline and resource analysis
 

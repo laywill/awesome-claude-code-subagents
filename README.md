@@ -6,7 +6,7 @@
 
 <div align="center">
 
-![Subagent Count](https://img.shields.io/badge/subagents-198-blue?style=flat-square)
+![Subagent Count](https://img.shields.io/badge/subagents-197-blue?style=flat-square)
 [![Last Update](https://img.shields.io/github/last-commit/laywill/awesome-claude-code-subagents?label=Last%20update&style=flat-square)](https://github.com/laywill/awesome-claude-code-subagents)
 [![GitHub forks](https://img.shields.io/github/forks/laywill/awesome-claude-code-subagents?style=social)](https://github.com/laywill/awesome-claude-code-subagents/network/members)
 
@@ -142,7 +142,6 @@ Research and discovery subagents explore new technologies, assess feasibility, a
 - [**feasibility-assessor**](categories/01-research-and-discovery/feasibility-assessor.md) - Technical feasibility assessment
 - [**research-analyst**](categories/01-research-and-discovery/research-analyst.md) - Comprehensive research specialist
 - [**technology-researcher**](categories/01-research-and-discovery/technology-researcher.md) - Technology landscape explorer
-- [**trend-analyst**](categories/01-research-and-discovery/trend-analyst.md) - Emerging trends and forecasting expert
 
 Codebase search and plan-mode research are covered by Claude Code's built-in `Explore` and `Plan` agents, so this category does not duplicate them.
 
