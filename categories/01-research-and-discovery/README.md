@@ -42,7 +42,7 @@ Researches technologies, frameworks, and tools in depth, evaluates them against 
 | Find suitable datasets for a data project | **research-analyst** | Provenance, licence and fitness-for-use; it does not run the analysis itself |
 | Validate a proposed architecture or approach | **feasibility-assessor** | Identifies risks, effort, and alternatives before implementation |
 | Understand market size and opportunity | **research-analyst** | TAM/SAM/SOM sized top-down and bottom-up, segmentation |
-| Deep-dive research on a specific technology | **research-analyst** | Full structured investigation with synthesised findings |
+| Deep-dive research on a specific technology | **technology-researcher** | Maturity, ecosystem health and fit against your codebase |
 | Find specific facts, documents or sources | **research-analyst** | Targeted search with sources cited; for code search use built-in Explore |
 | Detailed framework/tool evaluation for your use case | **technology-researcher** | Maturity, community, real-world usage against your requirements |
 | Track emerging technologies or market shifts | **research-analyst** | Separates signals from trends; scenarios with leading indicators |
