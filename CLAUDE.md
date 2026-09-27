@@ -56,7 +56,7 @@ Other top-level pieces:
 - `.claude/agents/` — repo-maintenance agents used *on* this repo (description compression, security remediation, token optimization, gold-standard enhancement). Check these first before doing bulk edits by hand.
 - `install-agents.sh` — interactive installer; works from a clone (local mode) or standalone via the GitHub API (remote mode)
 - `tools/` — Claude Code skills that browse/fetch the catalog, installed to `~/.claude/commands/`
-- `AGENT_SECURITY_GUIDELINES.md` — authoritative rules for the Security Safeguards section (read before writing one)
+- `AGENT_SECURITY_GUIDELINES.md` — authoritative keep/delete policy for safety content in agent files (read before writing any)
 - `docs/planning/` — design notes and experiments, not shipped content
 
 ## Every Agent Exists in Four Places
@@ -114,7 +114,7 @@ A **read-only role** is one whose deliverable is findings returned to the conver
 
 ### Optional fields by tier
 
-Tier here is the category's tier from Repository Structure, not the capability-based safeguard level in Security Safeguards.
+Tier here is the category's tier from Repository Structure, the same tier Security Safeguards keys its content by.
 
 | Field | Tier 1 🟢 | Tier 2 🟡 | Tier 3 🟠 | Tier 4 🔴 | Tier 5 ⛔ |
 | --- | --- | --- | --- | --- | --- |
@@ -145,26 +145,27 @@ Claude Code recognises 18 fields and silently ignores unknown or misspelled ones
 
 ## Security Safeguards
 
-`AGENT_SECURITY_GUIDELINES.md` is the source of truth; the essentials:
+`AGENT_SECURITY_GUIDELINES.md` is the source of truth. It has a keep/delete test for any piece of safeguard content, with worked examples. The essentials:
 
-Classify by capability, not by category number — no Bash → LOW; Bash but development-scope → MEDIUM; production-adjacent (databases, deploys, cloud) → HIGH; direct production infrastructure → CRITICAL.
+What protects a user is the permission mode, not agent prose. In Manual mode the user approves each command. In auto mode, the built-in default on Pro, Max and Team, a classifier blocks force pushes, production deploys, `terraform destroy`, IAM grants, secret-manager writes and similar actions. Deny rules apply in every mode. So agent files carry what makes the agent competent, not warnings.
 
-| Section | LOW | MEDIUM | HIGH | CRITICAL |
-| --- | :-: | :-: | :-: | :-: |
-| Environment Note | — | ✓ | ✓ | ✓ |
-| Input Validation (prose only) | — | ✓ | ✓ | ✓ |
-| Approval Gates | — | — | ✓ | ✓ |
-| Rollback Procedures | — | ✓ | ✓ | ✓ |
-| Emergency Stop | — | — | — | ✓ |
-| Blast Radius Controls | — | — | — | ✓ |
-| Audit Logging | — | — | — | — |
+| Content | Tier 1 | Tier 2 | Tier 3 | Tier 4 | Tier 5 |
+| --- | :-: | :-: | :-: | :-: | :-: |
+| Operating notes (stamped from template, never hand-edited) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Expert practice (dry-run, plan before apply, backup, confirm target, pin versions) | if relevant | ✓ | ✓ | ✓ | ✓ |
+| Rollback (real CLI commands for the domain) | — | state outside git only | ✓ | ✓ | ✓ |
+| Domain approval gates (a real human process, e.g. DBA sign-off) | — | rarely | if real | if real | if real |
+
+A Tier 3–5 agent with none of `Bash`, `Write` or `Edit` takes the Tier 1 notes and has no Rollback section.
+
+**Delete on sight:** generic Emergency Stop (stop-file checks), generic Blast Radius Controls, generic Approval Gates (change ticket, on-call, `read -p CONFIRM`), Input Validation that amounts to "validate inputs", and invented thresholds ("rollback in < 5 min").
+
+**Enforce through frontmatter, not prose:** `tools`, `disallowedTools`, `isolation`, `maxTurns`. Plugin agents ignore `permissionMode`, `hooks`, `mcpServers` and `initialPrompt`, and `permissionMode` can't tighten a session that's already in auto, acceptEdits or bypass mode. Never use any of the four.
 
 Two rules that get violated repeatedly:
 
-- **Never add Audit Logging.** Claude Code Hooks handle it at the platform level. Code-level logging follows the user's requirements, not agent-file mandates.
-- **Never embed implementation code** for validation or logging (validator classes, logger setup). The agent is an expert in its domain and writes that at runtime; embedding it just bloats the definition. Rollback *CLI commands* are the exception — those are operational and belong in the file.
-
-`chaos-engineer` and `penetration-tester` are the reference examples for safeguard design: specific, measurable, minimally-tooled.
+- **Never add Audit Logging.** Audit trails belong to the platform and the user's own hooks. Code-level logging follows the user's requirements, not agent-file mandates.
+- **Never embed implementation code** for validation, logging, gates or stop checks. The agent writes that at runtime, and embedded code bloats the definition without enforcing anything. Rollback *CLI commands* are the exception: they are operational and belong in the file.
 
 ## Verification
 
