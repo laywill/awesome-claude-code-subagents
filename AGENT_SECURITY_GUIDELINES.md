@@ -107,6 +107,7 @@ This goes under **Expert practice** in the #327 template.
 - Prefer targeted commands (`git restore --source=<sha> -- <path>`) over blanket ones (`git checkout .`, `git reset --hard`), which the classifier blocks anyway.
 - No `-auto-approve`, `--force` or `--yes` in a rollback path that runs against shared infrastructure.
 - A rollback must not print a secret or write one to disk. Use the provider's version mechanism (`vault kv rollback -version=<n> <path>`, `aws secretsmanager update-secret-version-stage`), and verify by version ID, not by value.
+- A rollback must not print a secret or write one to disk. Use the provider's version mechanism (`vault kv rollback -version=<n> <path>`, `aws secretsmanager update-secret-version-stage`), and verify by version ID, not by value.
 
 **Domain approval gates.** A gate is kept only if it passes all three tests:
 
