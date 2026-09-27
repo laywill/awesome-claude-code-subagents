@@ -1,0 +1,61 @@
+---
+name: MegaLinter
+
+# Adapted from laywill/github-template (#360). Auto-fix commits are disabled
+# (APPLY_FIXES: none in .mega-linter.yml), so the template's fix-and-push
+# steps and the contents: write permission they needed are omitted.
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.ref }}-${{ github.workflow }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  megalinter:
+    name: MegaLinter
+    runs-on: ubuntu-latest
+
+    # Read the code; write only to post the MegaLinter summary comment on PRs.
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          # Full history so MegaLinter can diff a PR against main
+          fetch-depth: 0
+
+      - name: MegaLinter
+        # Flavors trade coverage for speed: https://megalinter.io/latest/flavors/
+        uses: oxsecurity/megalinter@9949bad031045f366be2467e00e8371a7328a2e2  # v10.1.0
+        id: ml
+        env:
+          # Lint the whole repository on pushes to main; lint only the files a
+          # PR changes otherwise.
+          VALIDATE_ALL_CODEBASE: >-
+            ${{
+              github.event_name == 'push' &&
+              github.ref == 'refs/heads/main'
+            }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Archive MegaLinter reports
+        if: success() || failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: MegaLinter reports
+          include-hidden-files: "true"
+          path: |
+            megalinter-reports
+            mega-linter.log

@@ -1,0 +1,82 @@
+---
+# Declarative label set, synced into the repo by
+# .github/workflows/labels.yml. "Use this template" only copies files, not
+# labels, so this is what makes labels actually show up in a derived repo.
+
+- name: bug
+  color: "d73a4a"
+  description: Something isn't working
+
+- name: enhancement
+  color: "a2eeef"
+  description: New feature or request
+
+- name: documentation
+  color: "0075ca"
+  description: Improvements or additions to documentation
+
+- name: breaking-change
+  color: "d93f0b"
+  description: Introduces a breaking change
+
+- name: dependencies
+  color: "0366d6"
+  description: Dependency version updates (e.g. from Dependabot)
+
+- name: github_actions
+  color: "000000"
+  description: GitHub Actions workflow/dependency updates
+
+- name: chore
+  color: "ededed"
+  description: Maintenance work that isn't a feature or bug fix
+
+- name: ignore-for-release
+  color: "e0e0e0"
+  description: Excluded from auto-generated release notes
+
+- name: duplicate
+  color: "cfd3d7"
+  description: This issue or pull request already exists
+
+- name: good first issue
+  color: "7057ff"
+  description: Good for newcomers
+
+- name: help wanted
+  color: "008672"
+  description: Extra attention is needed
+
+- name: invalid
+  color: "e4e669"
+  description: This doesn't seem right
+
+- name: question
+  color: "d876e3"
+  description: Further information is requested
+
+- name: wontfix
+  color: "ffffff"
+  description: This will not be worked on
+
+# Labels specific to this repository: the security remediation programme.
+
+- name: security
+  color: "ee0701"
+  description: Security-related issue
+
+- name: critical-risk
+  color: "b60205"
+  description: "Security: Critical risk agent"
+
+- name: high-risk
+  color: "d93f0b"
+  description: "Security: High risk agent"
+
+- name: medium-risk
+  color: "fbca04"
+  description: "Security: Medium risk agent"
+
+- name: remediation
+  color: "c5def5"
+  description: Security remediation required

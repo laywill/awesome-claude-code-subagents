@@ -1,0 +1,38 @@
+---
+name: Labels
+
+# Sync repository labels from .github/labels.yml. Needed because "Use this
+# template" only copies files, not labels - this is what actually creates
+# the labels the first time a repo is generated from this template.
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - .github/labels.yml
+  workflow_dispatch: {}
+
+concurrency:
+  group: ${{ github.ref }}-${{ github.workflow }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  labeler:
+    name: Sync labels
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Sync labels
+        uses: crazy-max/ghaction-github-labeler@548a7c3603594ec17c819e1239f281a3b801ab4d  # v6.0.0
+        with:
+          yaml-file: .github/labels.yml
+          skip-delete: true

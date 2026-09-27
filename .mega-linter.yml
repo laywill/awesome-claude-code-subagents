@@ -1,0 +1,64 @@
+---
+# MegaLinter Configuration
+# https://megalinter.io/
+#
+# Adapted from laywill/github-template (#360). Catalog consistency and the
+# banned-scaffolding checks live in scripts/validate-catalog.sh, which runs in
+# its own workflow; this file covers generic file hygiene.
+
+# Core Configuration
+# No auto-fix commits: a PR can touch every agent file at once, and a bot
+# rewriting 200 files nobody has reviewed defeats the review.
+APPLY_FIXES: none
+DISABLE_ERRORS: false
+SHOW_ELAPSED_TIME: true
+PARALLEL: true
+FILEIO_REPORTER: false
+
+DISABLE_LINTERS:
+  - JSON_PRETTIER  # Disable beautifying JSON with Prettier
+  - YAML_PRETTIER  # Disable beautifying YAML with Prettier
+
+# Report-only for now. The agent files predate any linting: on main,
+# markdownlint reports ~2,800 findings once line length is excluded, and
+# cspell reports ~1,400. #318's per-category ratchet makes these blocking
+# category by category as the v3 uplifts land. Everything not listed here
+# (editorconfig-checker, actionlint, shellcheck, yamllint, jsonlint, secret
+# scanners) blocks from day one.
+DISABLE_ERRORS_LINTERS:
+  - MARKDOWN_MARKDOWNLINT
+  - SPELL_CSPELL
+  - COPYPASTE_JSCPD  # 203 agent files share a template by design
+
+# Not worried if Lychee finds dead links
+SPELL_LYCHEE_DISABLE_ERRORS: true
+
+# Exclude GitHub-relative links that only resolve correctly when rendered on
+# GitHub, since Lychee checks them against the local filesystem instead.
+SPELL_LYCHEE_ARGUMENTS: "--exclude 'issues/new/choose'"
+
+# JSON Configuration
+# --bom               Ignore the leading UTF-8 byte-order mark
+# --comments          Allow comments in JSON files
+# --trailing-newline  Ensure a trailing newline at the end of JSON files
+# --trailing-commas   Allow trailing commas in JSON files
+JSON_JSONLINT_ARGUMENTS: "--comments --trailing-newline --trailing-commas"
+
+# CSpell Config
+SPELL_CSPELL_FILTER_REGEX_EXCLUDE: (\.cspell\.json|\.gitignore)
+
+# EditorConfig Checker Config
+# Exclude LICENSE: it is the canonical licence text and should not be
+# reformatted to satisfy indent-size rules.
+# categories/ is excluded only until #355 merges: 74 agent files on main end
+# in a lone CR or lack a final newline, and #355 normalises every one of them.
+# #355 removes the categories/ part of this pattern.
+EDITORCONFIG_EDITORCONFIG_CHECKER_FILTER_REGEX_EXCLUDE: (LICENSE|categories/)
+
+# Filter Configuration
+# .claude/ holds local worktrees and settings; it is gitignored, but exclude it
+# so a local MegaLinter run does not lint every worktree's copy of the catalog.
+FILTER_REGEX_EXCLUDE: (\.git/|\.claude/|\.venv|\.pytest_cache|\.vscode|__pycache__|megalinter-reports)
+
+# Checkov Configuration
+REPOSITORY_CHECKOV_ARGUMENTS: "--skip-check CKV2_GHA_1"
