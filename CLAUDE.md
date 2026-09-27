@@ -110,23 +110,22 @@ All four frontmatter keys are required on every agent file — `name`, `descript
 | Documentation | `Read, Write, Edit, Glob, Grep` |
 | Code writers / infrastructure | `Read, Write, Edit, Bash, Glob, Grep` |
 
-A **read-only role** is one whose deliverable is findings returned to the conversation, so its job is done with the file tree unchanged. `disallowedTools` is applied before `tools`, and it wins when a tool appears in both. That makes it a lock: it survives someone later adding `Write` to `tools`, and it gives the validator an explicit read-only marker. Listing a tool in both fields is an error. A specifier such as `Bash(git push *)` removes the whole tool, so don't use one.
+A **read-only role** is one whose deliverable is findings returned to the conversation, so its job is done with the file tree unchanged. Declare it with `disallowedTools: Write, Edit, NotebookEdit`: that is the explicit read-only marker the validator checks, since a role can't be inferred from a name. Listing a tool in both `tools` and `disallowedTools` is an error. A specifier such as `Bash(git push *)` removes the whole tool, so don't use one.
 
 ### Optional fields by tier
+
+Tier here is the category's tier from Repository Structure, not the capability-based safeguard level in Security Safeguards.
 
 | Field | Tier 1 🟢 | Tier 2 🟡 | Tier 3 🟠 | Tier 4 🔴 | Tier 5 ⛔ |
 | --- | --- | --- | --- | --- | --- |
 | `color` | `green` | `yellow` | `orange` | `red` | `purple` |
 | `disallowedTools` | `Bash`, unless the role must run commands to produce its findings (tests, profilers, `git log`); read-only roles add `Write, Edit, NotebookEdit` | read-only roles: `Write, Edit, NotebookEdit` | same | same | same |
-| `effort` | omit | omit | omit | `high` | `high` |
+| `effort` | omit | omit | omit | `high` on `sonnet` | `high` on `sonnet` |
 | `maxTurns` | omit | omit | omit | `40` | `25` |
-| `isolation` | omit | omit, unless it qualifies (below) | same | same | omit |
-| `model` | by the criteria above | same | same | same | same |
 
 - **`color`**: the tier, so it is visible while the agent runs. The eight valid values are `red`, `blue`, `green`, `yellow`, `purple`, `orange`, `pink`, `cyan`.
-- **`effort`**: omit it so the user's session level applies, with three exceptions. Tier 4–5 agents get `high`, except on `haiku`. Every `opus` agent gets `high`, which pins its behaviour; otherwise the default varies by version, `medium` on Opus 5.5 but `xhigh` on Opus 4.7. A `sonnet` agent that fails only the second `opus` criterion also gets `high`. Don't use `low` or `medium` (a task that cheap belongs on `haiku`), or `xhigh` or `max`.
+- **`effort`**: omit it so the user's session level applies, with two exceptions, each set to `high` and each on `sonnet` only: Tier 4–5 agents, and a `sonnet` agent that fails only the second `opus` criterion. On `sonnet`, `high` is already the model default, so its effect is to override a user who lowered session effort. Never set it on `opus`: the session default is effective, and `high` on Opus burns tokens that only a particularly hard task justifies, which is the caller's call. Never set it on `haiku`, and don't use `low`, `medium`, `xhigh` or `max`.
 - **`maxTurns`**: a hard stop. The output comes back marked partial and Claude can resume the agent, so treat the cap as a checkpoint where a human sees progress against external or production systems. The cap can fire between any two tool calls, so Tier 4–5 bodies must leave the target system consistent after each step and say what state it is in. A normal task fits well inside it; a retry or polling loop hits it. Override it per agent only with a reason.
-- **`isolation: worktree`**: not used. Subagent worktrees branch from the **default branch**, not the caller's `HEAD`, unless the user has set `worktree.baseRef: "head"`, so an agent pinned to it silently works on stale code whenever it's invoked on in-progress work. Whether a task is safe from a clean checkout depends on the invocation, so leave it to the caller, which can pass `isolation` per call.
 
 ### Frontmatter fields
 
@@ -135,7 +134,8 @@ Claude Code recognises 18 fields and silently ignores unknown or misspelled ones
 | Field | Values | Policy |
 | --- | --- | --- |
 | `name`, `description`, `tools`, `model` | see above | required |
-| `color`, `disallowedTools`, `effort`, `maxTurns`, `isolation` | `effort`: `low`, `medium`, `high`, `xhigh`, `max`; `maxTurns`: integer; `isolation`: `worktree` | per the tier table |
+| `color`, `disallowedTools`, `effort`, `maxTurns` | `effort`: `low`, `medium`, `high`, `xhigh`, `max`; `maxTurns`: integer | per the tier table |
+| `isolation` | `worktree` | not used. Subagent worktrees branch from the **default branch**, not the caller's `HEAD`, unless the user set `worktree.baseRef: "head"`, so a pinned agent silently works on stale code when invoked on in-progress work. Whether a clean checkout is safe depends on the invocation, so the caller passes `isolation` per call |
 | `memory` | `user`, `project`, `local` | not used. It writes into the user's home or repo, and it adds `Read, Write, Edit` automatically, which undermines a read-only role |
 | `skills` | skill names | not used. The catalog ships no skills, and preloading a user's skills by name isn't portable. Revisit in a spike |
 | `background` | `true` | not used. Foreground or background is the caller's choice |
