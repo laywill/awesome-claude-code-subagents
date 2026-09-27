@@ -103,12 +103,12 @@ All four frontmatter keys are required on every agent file — `name`, `descript
   - `sonnet`: the default. When a mistake would be costly but tools, tests or a plan output can check the result, use `sonnet` + `effort: high` rather than `opus`.
   - `opus`: only when both of these hold, stated in the PR. First, the output is a judgement that is costly to get wrong (architecture decisions, security or threat assessment, compliance or financial-risk findings). Second, a wrong answer would pass every check the agent or its caller can run (tests, linters, scanners, plan output), because the error is in the reasoning (a bad trade-off, a missed threat), not in anything a command reports.
 
-| Role type | `tools` | `disallowedTools` |
-| --- | --- | --- |
-| Read-only (reviewers, auditors) | `Read, Grep, Glob` | `Write, Edit, NotebookEdit`, plus `Bash` in Tier 1 |
-| Research (analysts) | `Read, Grep, Glob, WebFetch, WebSearch` | as read-only |
-| Documentation | `Read, Write, Edit, Glob, Grep` | `Bash` |
-| Code writers / infrastructure | `Read, Write, Edit, Bash, Glob, Grep` | — |
+| Role type | `tools` |
+| --- | --- |
+| Read-only (reviewers, auditors) | `Read, Grep, Glob` |
+| Research (analysts) | `Read, Grep, Glob, WebFetch, WebSearch` |
+| Documentation | `Read, Write, Edit, Glob, Grep` |
+| Code writers / infrastructure | `Read, Write, Edit, Bash, Glob, Grep` |
 
 A **read-only role** is one whose deliverable is findings returned to the conversation, so its job is done with the file tree unchanged. `disallowedTools` is applied before `tools`, and it wins when a tool appears in both. That makes it a lock: it survives someone later adding `Write` to `tools`, and it gives the validator an explicit read-only marker. Listing a tool in both fields is an error. A specifier such as `Bash(git push *)` removes the whole tool, so don't use one.
 
