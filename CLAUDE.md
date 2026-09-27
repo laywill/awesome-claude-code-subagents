@@ -149,6 +149,7 @@ It reports every failure it finds rather than stopping at the first, and exits n
 | Root README `categories/...` links resolve | a link to a moved or deleted file |
 | marketplace.json covers each category exactly once | a category that ships unreachable |
 | Badge and marketplace counts match the real file count | the advertised subagent total drifting from reality |
+| Agent files carry no banned scaffolding headings or phrases | `## Communication Protocol`, context-manager queries, progress JSON and delivery notifications creeping back in (removed in #315) |
 
 Adding an agent therefore means updating the count in the README badge and in `.claude-plugin/marketplace.json`, not just the four places.
 
@@ -171,6 +172,8 @@ This applies to every `uses:`, including first-party `actions/*` and reusable wo
 ## Line Endings and File Modes
 
 `.gitattributes` pins `*.md`, `*.json`, `*.sh` and `*.yml` to LF. Markdown and JSON are pinned because tooling parses them line by line — 38 agent files stored with CRLF once made every frontmatter value read back empty under mawk on Linux, while passing locally under Git Bash's gawk.
+
+`eol=lf` only converts CRLF pairs. A lone `\r` with no LF after it (how those 38 files actually ended) passes through untouched and makes git treat the file as binary. editorconfig-checker, which MegaLinter runs, checks the bytes rather than trusting the attribute.
 
 `* text=auto` alone does not prevent this. It leaves files that already have CRLF in the index untouched, so `git add --renormalize .` is a no-op against them until an explicit `eol` rule exists.
 
