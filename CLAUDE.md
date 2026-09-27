@@ -101,7 +101,7 @@ All four frontmatter keys are required on every agent file — `name`, `descript
 - **`model`**: an alias — `haiku`, `sonnet` or `opus`. No full model IDs (they go stale), no `fable` or `inherit`. Frontmatter outranks the user's `CLAUDE_CODE_SUBAGENT_MODEL`, so an `opus` pin overrides a user who set a cheaper model:
   - `haiku`: narrow, mechanical roles where the output follows from the input with little judgement (formatting, lookup, changelogs). Never set `effort` on it; Haiku doesn't support effort.
   - `sonnet`: the default. When a mistake would be costly but tools, tests or a plan output can check the result, use `sonnet` + `effort: high` rather than `opus`.
-  - `opus`: only when both of these hold, stated in the PR. First, the output is a judgement that is costly to get wrong (architecture decisions, security or threat assessment, compliance or financial-risk findings). Second, no tool run can check it: the value comes from reasoning, not from running commands and reading their output. 18 agents are pinned to `opus` today. Each per-category issue re-tests them against these criteria.
+  - `opus`: only when both of these hold, stated in the PR. First, the output is a judgement that is costly to get wrong (architecture decisions, security or threat assessment, compliance or financial-risk findings). Second, a wrong answer would pass every check the agent or its caller can run (tests, linters, scanners, plan output), because the error is in the reasoning (a bad trade-off, a missed threat), not in anything a command reports.
 
 | Role type | `tools` | `disallowedTools` |
 | --- | --- | --- |
