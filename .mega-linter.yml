@@ -60,5 +60,15 @@ EDITORCONFIG_EDITORCONFIG_CHECKER_FILTER_REGEX_EXCLUDE: (LICENSE|categories/)
 # so a local MegaLinter run does not lint every worktree's copy of the catalog.
 FILTER_REGEX_EXCLUDE: (\.git/|\.claude/|\.venv|\.pytest_cache|\.vscode|__pycache__|megalinter-reports)
 
+# zizmor's online audits (impostor-commit, known-vulnerable-actions) need a
+# token that can clone other repositories; the workflow GITHUB_TOKEN gets a
+# 401. Run offline: SHA pins are verified with gh api when written (CLAUDE.md)
+# and Dependabot keeps them current.
+ACTION_ZIZMOR_ARGUMENTS: "--offline"
+
+# tools/subagent-catalog/config.sh is sourced, not executed, so it has no
+# executable bit by design.
+BASH_EXEC_FILTER_REGEX_EXCLUDE: (tools/subagent-catalog/config\.sh)
+
 # Checkov Configuration
 REPOSITORY_CHECKOV_ARGUMENTS: "--skip-check CKV2_GHA_1"
