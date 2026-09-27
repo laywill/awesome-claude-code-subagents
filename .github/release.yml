@@ -1,0 +1,31 @@
+---
+changelog:
+  exclude:
+    labels:
+      - ignore-for-release
+    authors:
+      - dependabot
+      - megalinter-bot
+  categories:
+    - title: 💥 Breaking Changes
+      labels:
+        - breaking-change
+    - title: 🚀 Features
+      labels:
+        - enhancement
+    - title: 🐛 Bug Fixes
+      labels:
+        - bug
+    - title: 📦 Dependencies
+      labels:
+        - dependencies
+        - github_actions
+    - title: 📝 Documentation
+      labels:
+        - documentation
+    - title: 🧹 Chores
+      labels:
+        - chore
+    - title: Other Changes
+      labels:
+        - "*"

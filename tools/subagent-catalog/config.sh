@@ -25,9 +25,9 @@ subagent_catalog_log_error() { echo "ERROR: $1" >&2; }
 # format age in human-readable form
 subagent_catalog_format_age() {
   local seconds=$1
-  if [ $seconds -lt 60 ]; then
+  if [ "$seconds" -lt 60 ]; then
     echo "${seconds}s"
-  elif [ $seconds -lt 3600 ]; then
+  elif [ "$seconds" -lt 3600 ]; then
     echo "$(( seconds / 60 ))m"
   else
     echo "$(( seconds / 3600 ))h"

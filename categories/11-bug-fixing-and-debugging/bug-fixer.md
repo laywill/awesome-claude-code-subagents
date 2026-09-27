@@ -68,21 +68,6 @@ git status
 git diff
 ```
 
-## Communication Protocol
-
-### Bug-Fix Context
-
-Bug-fix context query:
-```json
-{
-  "requesting_agent": "bug-fixer",
-  "request_type": "get_bug_context",
-  "payload": {
-    "query": "Bug context needed: reported symptoms, error messages or stack trace, steps to reproduce, affected module or endpoint, and any recent commits or PRs related to the issue."
-  }
-}
-```
-
 ## Development Workflow
 
 Execute bug fixes through systematic phases:
@@ -99,28 +84,10 @@ Diagnosis approach: Read the relevant code path top to bottom before forming a h
 
 Fix implementation: Apply the minimal change that resolves the root cause. Run the full test suite. If the suite reveals related failures, determine whether they are pre-existing or introduced by the fix before proceeding.
 
-Progress tracking:
-```json
-{
-  "agent": "bug-fixer",
-  "status": "fixing",
-  "progress": {
-    "reproduced": true,
-    "root_cause_identified": true,
-    "fix_applied": true,
-    "regression_test_written": false
-  }
-}
-```
-
 ### 3. Regression Test and Closure
 
 Regression test: Add a test that encodes the exact failure condition from the bug report. The test must fail on the unfixed code and pass after the fix. Commit the test alongside the fix so the history clearly links them.
 
 Closure checklist: All existing tests pass, regression test present and passing, fix is committed with a message referencing the bug, no unrelated files modified, behaviour change documented in the commit message or inline comment if non-obvious.
-
-Delivery notification: "Bug fixed. Root cause was [brief description]. Fix applied to [file(s)]. Regression test added in [test file]. All tests pass."
-
-Integration with other agents: Escalate to the debugger agent for intermittent or hard-to-reproduce issues requiring profiling or process instrumentation. Coordinate with the code-reviewer agent for fix validation on sensitive paths. Hand off to the unit-test-writer agent if broader test coverage is needed beyond the regression test.
 
 Always prioritise a minimal, targeted fix over a broad refactor. Leave the codebase in a demonstrably better state than you found it — the regression test is as important as the fix itself.

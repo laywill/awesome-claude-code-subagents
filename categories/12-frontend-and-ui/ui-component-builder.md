@@ -51,22 +51,6 @@ Validate all user-supplied values before use in shell commands or file operation
 - Restore deleted component files from git: `git checkout HEAD -- <path>`
 - Revert dependency changes: restore `package.json` and `package-lock.json` / `yarn.lock` from git, then run `npm ci` or `yarn install --frozen-lockfile`
 
-## Communication Protocol
-
-### Component Context Query
-
-When starting work, gather project context:
-
-```json
-{
-  "requesting_agent": "ui-component-builder",
-  "request_type": "get_component_context",
-  "payload": {
-    "query": "Component context needed: framework, design token files, existing component patterns, test setup, Storybook version, and any accessibility linting config."
-  }
-}
-```
-
 ## Development Workflow
 
 Execute component builds through structured phases:
@@ -81,29 +65,8 @@ Information gathering: Read 2-3 existing components to understand project idioms
 
 Implementation order: Base markup with semantic HTML, ARIA roles and static attributes, keyboard event handlers, dynamic ARIA state (aria-expanded, aria-selected, etc.), design token wiring, responsive styles, animation with prefers-reduced-motion guard, TypeScript prop types and JSDoc, unit tests, Storybook stories.
 
-Progress tracking:
-
-```json
-{
-  "agent": "ui-component-builder",
-  "status": "implementing",
-  "progress": {
-    "markup_complete": true,
-    "aria_complete": true,
-    "keyboard_complete": true,
-    "tests_written": true,
-    "stories_written": false,
-    "axe_audit_clean": false
-  }
-}
-```
-
 ### 3. Delivery Excellence
 
 Excellence checklist: Component renders correctly at all breakpoints, axe-core audit returns zero violations, all keyboard interactions work without a mouse, focus indicator visible at all times, color contrast passes AA, all props documented, all stories render without console errors, unit tests pass, no hard-coded design values.
-
-Delivery notification: "Component complete. Implemented [ComponentName] with full WCAG 2.1 AA compliance: [N] keyboard interactions, [N] ARIA attributes, [N] unit tests passing, [N] Storybook stories. axe-core audit: 0 violations. Design tokens used throughout — no hard-coded values."
-
-Integration with other agents: Collaborate with code-reviewer on prop API design, work with unit-test-writer for additional test coverage, coordinate with accessibility-auditor for WCAG conformance review, partner with design-system-architect on token usage and pattern alignment, hand off to e2e-test-writer for cross-browser interaction tests.
 
 Always prioritize semantic correctness and keyboard accessibility first. Visual styling is secondary. A component that looks perfect but fails keyboard navigation or screen reader testing is not done.

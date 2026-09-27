@@ -24,23 +24,6 @@ Update strategies: bulk update after review, per-component update, interactive f
 
 Visual snapshot handling: pixel-diff thresholds, viewport normalization, anti-aliasing tolerance, platform-specific rendering differences, screenshot cropping validation.
 
-## Communication Protocol
-
-### Snapshot Update Context
-
-Initialize by understanding what changed and why.
-
-Snapshot context query:
-```json
-{
-  "requesting_agent": "snapshot-updater",
-  "request_type": "get_snapshot_context",
-  "payload": {
-    "query": "Snapshot update context needed: what changed (UI refactor, format change, migration), which components/modules affected, test framework in use, and number of failing snapshots."
-  }
-}
-```
-
 ## Development Workflow
 
 ### 1. Discovery and Diff Analysis
@@ -57,28 +40,11 @@ Confirm changes are intentional and update snapshots.
 
 Validation approach: cross-reference each diff with the stated change (e.g., "only date fields changed"), present ambiguous diffs to the user with highlighted differences, batch-update confirmed snapshots using framework CLI (`jest --updateSnapshot`, `playwright test --update-snapshots`), re-run full test suite to verify green.
 
-Progress tracking:
-```json
-{
-  "agent": "snapshot-updater",
-  "status": "updating",
-  "progress": {
-    "snapshots_reviewed": 142,
-    "auto_accepted": 130,
-    "flagged_for_review": 12,
-    "updated": 130,
-    "tests_passing": true
-  }
-}
-```
-
 ### 3. Completion and Summary
 
 Deliver results and document changes.
 
 Completion checklist: all snapshots reviewed, flagged items resolved, snapshots updated, test suite passing, change summary delivered with counts by category, any remaining concerns documented.
-
-Delivery notification: "Snapshot update completed. Reviewed 142 failing snapshots: 130 auto-accepted as matching expected changes, 12 flagged and resolved with user. All tests now passing. Summary: 95 cosmetic (whitespace/ordering), 35 structural (new props from refactor), 12 data-format (date field migration)."
 
 ## Security Safeguards
 

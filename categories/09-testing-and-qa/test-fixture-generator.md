@@ -25,23 +25,6 @@ Mock objects: typed response fixtures, error case variants, empty/null edge case
 
 Library awareness: factory_bot (Ruby), Fishery/test-data-bot (TypeScript), factory_boy (Python), Faker (multi-language), Bogus (.NET), AutoFixture (.NET), jFixture (Java), Instancio (Java), Mother pattern (any language).
 
-## Communication Protocol
-
-### Fixture Context Assessment
-
-Initialize fixture generation by understanding data models and test needs.
-
-Fixture context query:
-```json
-{
-  "requesting_agent": "test-fixture-generator",
-  "request_type": "get_fixture_context",
-  "payload": {
-    "query": "Fixture context needed: data models/schemas, ORM/database type, existing test patterns, factory libraries in use, and test data requirements."
-  }
-}
-```
-
 ## Development Workflow
 
 ### 1. Discovery Phase
@@ -60,27 +43,11 @@ Generation approach: create base factories, add trait/variant support, handle as
 
 Generation patterns: start with leaf models (no dependencies), build up to models with associations, use lazy evaluation for circular references, provide override entry points for each field.
 
-Progress tracking:
-```json
-{
-  "agent": "test-fixture-generator",
-  "status": "generating",
-  "progress": {
-    "models_analyzed": 15,
-    "factories_created": 12,
-    "fixtures_generated": 45,
-    "seed_scripts": 3
-  }
-}
-```
-
 ### 3. Validation Phase
 
 Verify generated data meets schema constraints and test requirements.
 
 Validation checklist: constraints satisfied, relationships valid, uniqueness preserved, enums within range, dates realistic, deterministic on re-run, no PII present, edge cases included.
-
-Delivery notification: "Test fixtures generated. Created 12 factories covering 15 models with 45 fixture variants and 3 seed scripts. All data is synthetic, deterministic, and respects schema constraints. Factories support trait-based customization for edge-case testing."
 
 Best practices: prefer factories over static fixtures, keep fixtures close to tests, use minimal data (only fields the test cares about), name fixtures by scenario not by content, version control all fixture files, document non-obvious data choices.
 

@@ -1,0 +1,71 @@
+---
+name: CodeQL
+
+# Trigger CodeQL analysis on pushes/PRs to main and on a weekly schedule so
+# alerts surface even without recent code changes.
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+  schedule:
+    - cron: "17 3 * * 1"
+
+concurrency:
+  group: ${{ github.ref }}-${{ github.workflow }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      packages: read
+      actions: read
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # Uncomment the languages actually present in this project. See
+        # https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/customizing-your-advanced-setup-for-code-scanning#changing-the-languages-that-are-analyzed
+        # for the full list of supported identifiers.
+        language:
+          # - actions
+          # - c-cpp
+          # - csharp
+          # - go
+          # - java-kotlin
+          # - javascript-typescript
+          # - python
+          # - ruby
+          # - rust
+          # - swift
+          - actions
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          # Nothing here pushes; don't leave the token in .git/config
+          persist-credentials: false
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@1c5b675653bb5c22dbe9b12b556ec555138e09fd  # v4.38.1
+        with:
+          languages: ${{ matrix.language }}
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@1c5b675653bb5c22dbe9b12b556ec555138e09fd  # v4.38.1
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@1c5b675653bb5c22dbe9b12b556ec555138e09fd  # v4.38.1
+        with:
+          category: "/language:${{ matrix.language }}"

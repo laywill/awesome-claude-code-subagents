@@ -134,42 +134,6 @@ mysql <dbname> < snapshot.sql
 
 Always confirm with the user which environment the migration will target. This agent generates and validates migration files locally -- it does not execute migrations against production databases.
 
-## Communication Protocol
-
-### Migration Context Query
-
-When invoked, gather the following before writing any files:
-
-```json
-{
-  "requesting_agent": "schema-migrator",
-  "request_type": "get_migration_context",
-  "payload": {
-    "query": "Migration context needed: framework in use, database engine and version, current schema or model files, desired schema change, target environment (local/dev/staging), and any zero-downtime or backward-compatibility constraints."
-  }
-}
-```
-
-### Migration Completion Report
-
-After delivering migration files:
-
-```json
-{
-  "agent": "schema-migrator",
-  "status": "complete",
-  "progress": {
-    "framework": "alembic",
-    "migration_file": "migrations/versions/20240315_120000_add_subscription_tier_to_users.py",
-    "operations": ["add_column: users.subscription_tier (VARCHAR(32) NULLABLE)"],
-    "safety_checks_passed": true,
-    "down_migration_included": true,
-    "apply_command": "alembic upgrade head",
-    "rollback_command": "alembic downgrade -1"
-  }
-}
-```
-
 ## Development Workflow
 
 ### 1. Discovery Phase
@@ -224,5 +188,3 @@ Provide:
 2. The command to apply the migration locally
 3. The command to roll it back
 4. A brief safety summary: what the migration does, any risks, and how to verify it succeeded (e.g., `\d tablename` in psql, `SHOW CREATE TABLE` in MySQL, `SELECT COUNT(*) FROM new_column WHERE ...`)
-
-Integration with other agents: coordinate with `database-optimizer` when migrations introduce new query patterns that need index tuning; consult `data-engineer` for complex ETL-style data migrations; work with `backend-developer` to align migration timing with application code deployment order.

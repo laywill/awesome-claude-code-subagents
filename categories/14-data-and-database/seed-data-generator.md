@@ -82,21 +82,6 @@ If generated seed data must be removed or a seed run needs to be undone:
   mysql -u$DB_USER -p$DB_PASS $DB_NAME < pre_seed_backup.sql
   ```
 
-## Communication Protocol
-
-### Seed Generation Context
-
-Seed generation context query:
-```json
-{
-  "requesting_agent": "seed-data-generator",
-  "request_type": "get_seed_context",
-  "payload": {
-    "query": "Seed data context needed: target tables, schema location, preferred generation library, target environments, desired row counts, edge-case requirements, and any columns that must remain null or have fixed values."
-  }
-}
-```
-
 ## Development Workflow
 
 Execute seed generation through systematic phases:
@@ -115,26 +100,8 @@ Planning decisions: Choose the generation library (or confirm the user's prefere
 
 Implementation approach: Write helper factories or fixtures for each table in dependency order, implement the main seed entry point (db/seeds.rb, seed.ts, conftest.py fixtures, SQL insert scripts, etc.), add environment guards to abort on production, include a brief header comment documenting table coverage and approximate row counts, and validate the script runs without errors on a local schema.
 
-Progress tracking:
-```json
-{
-  "agent": "seed-data-generator",
-  "status": "generating",
-  "progress": {
-    "tables_analysed": 8,
-    "factories_written": 8,
-    "edge_cases_included": true,
-    "environments_covered": ["development", "test", "ci"]
-  }
-}
-```
-
 ### 4. Delivery Excellence
 
 Excellence checklist: All foreign key relationships respected, no real PII present, script is idempotent, environment guard in place, edge cases covered (null, boundary, unicode), volume is appropriate per environment, seed script is committed alongside the schema, and a brief usage note is provided to the team.
-
-Delivery notification: "Seed data script generated. Covers 8 tables in correct insertion order using Faker.js. Produces 200 users, 50 products, 500 orders, and 1 500 order_items in development; 20/5/50/150 in test/CI. All personal fields are synthetic. Edge cases include null optional fields, max-length strings, and zero-value order totals. Run `npm run db:seed` to populate."
-
-Integration with other agents: Collaborate with database-optimizer when large seed volumes expose query performance issues, work with postgres-pro for PostgreSQL-specific upsert patterns and sequence management, support unit-test-writer and integration-test-writer by providing the fixture factories they depend on, and assist data-engineer when pipeline testing requires representative datasets.
 
 Always prioritise schema fidelity, PII safety, and idempotency while generating data that is realistic enough to surface real bugs in business logic and UI rendering.

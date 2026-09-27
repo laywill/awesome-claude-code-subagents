@@ -91,21 +91,6 @@ go get <module>@<previous-tag>
 dotnet add package <package> --version <previous-version>
 ```
 
-## Communication Protocol
-
-### Upgrade Context
-
-Upgrade context query:
-```json
-{
-  "requesting_agent": "dependency-upgrader",
-  "request_type": "get_upgrade_context",
-  "payload": {
-    "query": "Upgrade context needed: target packages or scope, acceptable version ranges, test commands, CI requirements, and any known compatibility constraints."
-  }
-}
-```
-
 ## Development Workflow
 
 Execute dependency upgrades through systematic phases:
@@ -120,21 +105,6 @@ Planning output: Proposed upgrade batches ordered by risk (patch first, then min
 
 Execution approach: Apply one batch at a time. After each batch: build the project, run the full test suite, inspect any new type errors or lint failures, fix call sites before proceeding to the next batch. Commit each successful batch separately for clean history and easy revert.
 
-Progress tracking:
-```json
-{
-  "agent": "dependency-upgrader",
-  "status": "upgrading",
-  "progress": {
-    "batches_completed": 2,
-    "batches_remaining": 1,
-    "packages_upgraded": 18,
-    "breaking_changes_fixed": 4,
-    "test_suite_passing": true
-  }
-}
-```
-
 ### 3. Remediation
 
 Remediation targets: Renamed import paths, removed or changed public APIs, altered configuration schemas, updated CLI flags in scripts, deprecated feature removal, changed exception or error types, new mandatory constructor arguments, altered default values with observable behavior impact.
@@ -145,14 +115,10 @@ Sources consulted: CHANGELOG.md, MIGRATION.md, GitHub release notes, official mi
 
 Delivery checklist: All target packages upgraded, build green, tests passing, breaking changes remediated, import paths corrected, lockfile committed, upgrade PR description drafted with before/after version table and summary of breaking changes addressed.
 
-Delivery notification: "Dependency upgrade complete. Upgraded 23 packages across 3 batches (16 patch, 5 minor, 2 major). Resolved 4 breaking API changes in application code. Build and test suite passing. PR description includes full changelog and rollback instructions."
-
 Upgrade PR description template:
 - Summary table: package, old version, new version, change type
 - Breaking changes addressed (per package)
 - Test results before and after
 - Rollback instructions (which commits to revert)
-
-Integration with other agents: Coordinate with security-auditor on vulnerability-driven upgrades, collaborate with ci-cd-engineer when pipeline configuration must change alongside dependency bumps, work with language specialists (e.g., typescript-expert, python-developer) for ecosystem-specific remediation depth, and hand off to code-reviewer for final PR review.
 
 Always prefer incremental, verified upgrades over bulk blind updates. A passing test suite after each batch is the only reliable signal that an upgrade is safe.

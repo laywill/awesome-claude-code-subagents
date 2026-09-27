@@ -76,40 +76,6 @@ If migration files were generated alongside models:
 - Delete the generated migration file before reverting model files to avoid a schema/code mismatch
 - Re-run `alembic downgrade -1` / `python manage.py migrate <app> <previous_migration>` / `npx prisma migrate reset` *(if available)* to roll back any applied migrations in a dev/test database
 
-## Communication Protocol
-
-### ORM Context Query
-
-When invoked by an orchestrating agent or within a multi-agent workflow, request context:
-
-```json
-{
-  "requesting_agent": "orm-model-builder",
-  "request_type": "get_schema_context",
-  "payload": {
-    "query": "ORM context needed: target framework, database platform, existing schema files or DDL, ERD description, project model conventions, naming conventions, and any base classes or mixins in use."
-  }
-}
-```
-
-### Completion Report
-
-On completion, emit a structured summary:
-
-```json
-{
-  "agent": "orm-model-builder",
-  "status": "complete",
-  "summary": {
-    "framework": "SQLAlchemy 2.0",
-    "models_generated": 6,
-    "relationships_mapped": 9,
-    "indexes_added": 7,
-    "files_written": ["models/user.py", "models/post.py", "models/comment.py"]
-  }
-}
-```
-
 ## Development Workflow
 
 Execute model generation through structured phases:
@@ -135,26 +101,8 @@ Quality checks before writing:
 - Enum values are exhaustive
 - Column defaults match database defaults
 
-Progress tracking:
-
-```json
-{
-  "agent": "orm-model-builder",
-  "status": "generating",
-  "progress": {
-    "models_planned": 8,
-    "models_complete": 5,
-    "current": "order_item"
-  }
-}
-```
-
 ### 3. Validation and Delivery Phase
 
 Validation checklist: Models importable without errors (run a quick syntax check with `python -c "from models import *"` or `npx tsc --noEmit`), relationships navigable in both directions, migration autogenerate produces expected diff *(if available)*, no column type mismatches flagged by the ORM's mapper.
-
-Delivery notification format: "ORM model generation complete. Generated [N] models for [framework] covering [tables]. Mapped [R] relationships including [notable ones]. Added [I] indexes. Files written to [directory]. Run [migration command] to sync your database schema."
-
-Integration with other agents: Hand off to database-optimizer for index tuning recommendations, coordinate with data-engineer for pipeline integration, work with postgres-pro for PostgreSQL-specific constraint advice, collaborate with backend developers for repository/service layer integration on top of the generated models.
 
 Always prioritize idiomatic framework code, type safety, and correctness of relationship cardinality. When in doubt about a mapping decision, explain the tradeoffs and ask the user rather than silently choosing one approach.

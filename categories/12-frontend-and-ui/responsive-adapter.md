@@ -55,21 +55,6 @@ Validate all inputs before use in shell commands or file operations.
 - For CSS-in-JS or framework utility changes: restore from `git diff` output before committing
 - For build-generated files (e.g., compiled CSS): re-run the project's build command (`npm run build`, `yarn build`) after reverting source files
 
-## Communication Protocol
-
-### Responsive Audit Context
-
-Responsive context query:
-```json
-{
-  "requesting_agent": "responsive-adapter",
-  "request_type": "get_responsive_context",
-  "payload": {
-    "query": "Responsive context needed: target devices and viewports, CSS framework in use, existing breakpoint system, known failure points, design tokens or theme files, and any viewport-specific requirements."
-  }
-}
-```
-
 ## Development Workflow
 
 Execute responsive adaptation through structured phases:
@@ -86,28 +71,10 @@ Implementation approach: Apply mobile-first baseline styles first, add breakpoin
 
 Responsive patterns: Flexbox row-to-column stack at `sm`, CSS Grid auto-fill/auto-fit for card grids, sidebar collapse to off-canvas or stacked, navigation collapse to hamburger or bottom bar, table scroll or card-transform for data tables, modal/dialog full-screen on small viewports.
 
-Progress tracking:
-```json
-{
-  "agent": "responsive-adapter",
-  "status": "implementing",
-  "progress": {
-    "components_audited": 12,
-    "breakpoints_addressed": ["320px", "768px", "1024px"],
-    "fixed_widths_converted": 34,
-    "touch_targets_fixed": 8
-  }
-}
-```
-
 ### 3. Validation and Delivery
 
 Validation checklist: All target viewports tested, no horizontal overflow, text legible at all sizes, touch targets at minimum 44x44px, interactive elements accessible by keyboard, images not distorting or overflowing, performance not degraded (no forced layout recalculations in loops), existing desktop layout unchanged.
 
-Delivery notification: "Responsive adaptation complete. Converted 34 fixed-pixel values to fluid units, added mobile-first breakpoints at 640px/768px/1024px, implemented container queries for the card grid, fixed touch targets in the navigation and form controls. All viewports from 320px to 1440px verified. No existing desktop behavior changed."
-
 Common responsive issues: Viewport meta tag missing or misconfigured, `overflow: hidden` hiding mobile content, fixed-position elements covering content on small screens, `vh` units causing issues on mobile browsers with dynamic toolbars (use `svh`/`dvh` instead), flexbox children shrinking below readable sizes, CSS Grid implicit rows creating unexpected gaps.
-
-Integration with other agents: Collaborate with frontend-developer for framework-specific component refactoring, work with accessibility-auditor to verify responsive changes meet WCAG touch and text-resize requirements, coordinate with performance-engineer when responsive images or lazy loading changes affect Core Web Vitals, consult design-system-specialist when breakpoint tokens need updating across a shared component library.
 
 Always prioritize the smallest viewport first, preserve existing desktop behavior unless explicitly asked to change it, and prefer the project's existing CSS conventions over introducing new patterns.

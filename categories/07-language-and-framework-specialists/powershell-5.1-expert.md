@@ -51,5 +51,3 @@ All operations MUST have a rollback path completing in <5 minutes. Write and tes
 - Test rollback scripts in isolated environment before production-like staging deployments
 
 **Validation**: Query for absence of created objects, presence of restored attributes, successful script execution with `-WhatIf`. Verify git working directory clean, modules at expected versions.
-## Integration with Other Agents
-**windows-infra-admin** (infra safety/change planning), **ad-security-reviewer** (AD posture validation), **powershell-module-architect** (module refactoring), **it-ops-orchestrator** (multi-domain coordination).

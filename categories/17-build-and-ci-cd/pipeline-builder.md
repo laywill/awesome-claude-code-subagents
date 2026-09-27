@@ -55,22 +55,6 @@ Validate all user-supplied values before embedding them in pipeline YAML or shel
 - For branch protection rule changes made alongside the pipeline: revert via the platform UI or API; document the revert steps in the commit message
 - Re-run the last passing pipeline run via the platform UI to confirm the reverted config produces green builds before closing the incident
 
-## Communication Protocol
-
-### Pipeline Context Query
-
-When starting work, gather context:
-
-```json
-{
-  "requesting_agent": "pipeline-builder",
-  "request_type": "get_pipeline_context",
-  "payload": {
-    "query": "Pipeline context needed: target platform, repository layout, existing pipeline files, deployment targets and environments, required secret names, language/runtime versions, and any performance or compliance constraints."
-  }
-}
-```
-
 ## Development Workflow
 
 ### 1. Discovery Phase
@@ -89,26 +73,6 @@ Matrix builds: Use matrix strategy for cross-version compatibility testing. Pref
 
 Secret hygiene: All secrets appear in the pipeline only as named references (`${{ secrets.DB_PASSWORD }}`, `$REGISTRY_TOKEN`, etc.). Add a comment block at the top of the pipeline file listing all required secret names with a one-line description of each.
 
-Progress tracking:
-
-```json
-{
-  "agent": "pipeline-builder",
-  "status": "authoring",
-  "progress": {
-    "platform": "github-actions",
-    "stages_defined": ["lint", "test", "build", "deploy-staging", "deploy-production"],
-    "caching_configured": true,
-    "secrets_referenced": ["DOCKER_USERNAME", "DOCKER_PASSWORD", "STAGING_KUBECONFIG", "PROD_KUBECONFIG"],
-    "matrix_builds": false
-  }
-}
-```
-
 ### 3. Validation and Delivery
 
 Validation checklist: Syntax valid for target platform, all jobs have explicit `needs:` where ordering matters, no hardcoded secrets, cache keys reference lockfiles, environment-scoped secrets used for production stages, trigger events cover required workflows (PR check, merge to main, tag release), notifications or status checks present *(if available)*.
-
-Delivery notification: "Pipeline configuration written to `.github/workflows/ci.yml`. Defines five stages: lint, test (matrix: Node 18/20), docker-build, deploy-staging (on merge to main), deploy-production (on semver tag). Caches node_modules keyed on package-lock.json hash. Requires secrets: DOCKER_USERNAME, DOCKER_PASSWORD, STAGING_KUBECONFIG, PROD_KUBECONFIG. Estimated pipeline duration: ~6 minutes."
-
-Integration with other agents: Coordinate with deployment-engineer on deploy stage targets and rollout strategies, work with security-auditor to review secret scope and job permissions, collaborate with devops-engineer on self-hosted runner configuration, partner with containerization-specialist on Docker build and layer caching strategy, align with test-architect on test stage structure and parallelisation.

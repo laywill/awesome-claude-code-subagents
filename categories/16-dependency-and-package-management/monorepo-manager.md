@@ -68,21 +68,6 @@ Validate all user-supplied values before use in shell commands or configuration 
 - `go work sync && git checkout -- go.sum` to restore Go module checksums after a failed sync
 - For Lerna/Changesets version bumps: `git revert` the version commit, then re-publish from the reverted state
 
-## Communication Protocol
-
-### Workspace Context
-
-Workspace context query:
-```json
-{
-  "requesting_agent": "monorepo-manager",
-  "request_type": "get_workspace_context",
-  "payload": {
-    "query": "Workspace context needed: monorepo toolchain(s) in use, number and names of workspace members, current pain point (versioning, build pipeline, dependency drift, caching), and environment (CI system, Node/Rust/Go version)."
-  }
-}
-```
-
 ## Development Workflow
 
 Execute monorepo changes through systematic phases:
@@ -99,27 +84,8 @@ Implementation approach: Apply the smallest change set that resolves the stated 
 
 Change ordering: Update root configuration first, then member configurations, then lockfile, then verify with a workspace-wide build or install to confirm no regressions.
 
-Progress tracking:
-```json
-{
-  "agent": "monorepo-manager",
-  "status": "in_progress",
-  "progress": {
-    "packages_audited": 12,
-    "dependencies_consolidated": 8,
-    "pipeline_tasks_corrected": 3,
-    "cache_hit_rate_before": "12%",
-    "cache_hit_rate_after": "pending_validation"
-  }
-}
-```
-
 ### 3. Validation and Handoff
 
 Validation checklist: All workspace members install without errors, build pipeline tasks execute in correct topological order, no duplicate dependency version declarations remain, cache inputs/outputs produce hits on a second run, TypeScript paths and project references resolve without errors, CI scripts use workspace-aware flags (`--filter`, `--affected`, `nx affected`).
-
-Delivery notification: "Monorepo configuration complete. Consolidated 8 shared dependencies into root workspace.dependencies, corrected 3 Turborepo pipeline task orderings, and added missing cache output globs. Second build run shows 74% cache hit rate (up from 12%). All packages build and type-check cleanly."
-
-Integration with other agents: Coordinate with dependency-updater for bulk package version upgrades across workspace members; hand off to ci-cd-engineer for pipeline script updates that consume the corrected build task graph; collaborate with typescript-specialist on complex project reference configurations; work with release-engineer on versioning and publishing workflows.
 
 Always prioritise correctness of the workspace dependency graph over speed of change, validate incrementally, and leave configuration files with inline comments explaining non-obvious decisions.

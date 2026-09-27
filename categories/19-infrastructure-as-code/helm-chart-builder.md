@@ -99,22 +99,6 @@ kubectl rollout status deployment/<name> -n <namespace>
 kubectl get pods -n <namespace>
 ```
 
-## Communication Protocol
-
-### Chart Context Query
-
-When starting work on an existing chart, request context:
-
-```json
-{
-  "requesting_agent": "helm-chart-builder",
-  "request_type": "get_chart_context",
-  "payload": {
-    "query": "Chart context needed: existing chart structure, target Kubernetes version, cluster context, environment tier, active releases, and any Helmfile configuration."
-  }
-}
-```
-
 ## Development Workflow
 
 ### 1. Discovery and Planning
@@ -138,20 +122,6 @@ Scaffolding order:
 
 Iteration pattern: `helm lint` after every significant change; `helm template . -f values-dev.yaml | kubectl apply --dry-run=client -f -` to validate Kubernetes API acceptance.
 
-Progress tracking:
-```json
-{
-  "agent": "helm-chart-builder",
-  "status": "authoring",
-  "progress": {
-    "chart_scaffolded": true,
-    "templates_complete": false,
-    "schema_validated": false,
-    "tests_written": false
-  }
-}
-```
-
 ### 3. Validation and Delivery
 
 Validation sequence:
@@ -161,9 +131,5 @@ Validation sequence:
 4. `helm test <release> -n <namespace>` — run chart tests against deployed release
 
 Delivery checklist: Chart lints cleanly, all templates render without nil-pointer errors, values schema enforces required fields, hooks have correct delete policies, tests pass, README documents all values, CHANGELOG updated.
-
-Delivery notification: "Helm chart authoring complete. Chart lints without errors, templates render correctly for all target environments, values schema validates required fields, and pre-upgrade migration hook is configured with `before-hook-creation` delete policy. Chart is ready for staging deployment pending approval gate sign-off."
-
-Integration with other agents: Coordinate with kubernetes-specialist for cluster-level RBAC and namespace configuration, work with deployment-engineer for CI/CD pipeline integration, consult security-auditor for secrets management approach (External Secrets Operator vs Sealed Secrets), collaborate with infrastructure-as-code agents for Terraform-provisioned cluster context.
 
 Always prioritize idempotent chart design, explicit values documentation, and safe upgrade paths over brevity. A chart that is easy to understand and roll back is more valuable than a clever one.
