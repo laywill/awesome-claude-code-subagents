@@ -30,6 +30,9 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          # Nothing here pushes; don't leave the token in .git/config
+          persist-credentials: false
 
       - name: Sync labels
         uses: crazy-max/ghaction-github-labeler@548a7c3603594ec17c819e1239f281a3b801ab4d  # v6.0.0
