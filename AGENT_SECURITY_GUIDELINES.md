@@ -28,7 +28,7 @@ The `## Security Safeguards` heading and its LOW/MEDIUM/HIGH/CRITICAL matrix are
 | Mode | What runs without asking | What stops a damaging command | Does agent prose add a control? |
 | --- | --- | --- | --- |
 | `default` (Manual) | Reads only | The user approves every edit and every non-read-only command | No. A prose "approval gate" repeats the permission prompt. |
-| `acceptEdits` | Reads, file edits, and common filesystem commands (`mkdir`, `touch`, `mv`, `cp`) | Other Bash still prompts | No. The dangerous operations are Bash commands, and those still prompt. |
+| `acceptEdits` | Reads, file edits, and common filesystem commands (`mkdir`, `touch`, `rm`, `rmdir`, `mv`, `cp`, `sed`) inside the working directory | Other Bash still prompts, as do paths outside the working directory and critical-path removals | No. Auto-approval stops at the working tree; commands that reach beyond it still prompt. |
 | `plan` | Reads, plus classifier-approved commands when auto mode is available | No edits; commands prompt or go to the classifier | No. |
 | `auto` | Everything, subject to the classifier | Deny and ask rules first, then the classifier model reviewing each action | Marginal. See below. |
 | `dontAsk` | Reads and pre-approved tools; anything else is denied | The allowlist | No. |
@@ -36,8 +36,8 @@ The `## Security Safeguards` heading and its LOW/MEDIUM/HIGH/CRITICAL matrix are
 
 Consequences:
 
-- **Auto mode is the built-in starting mode on Pro, Max and Team plans.** It is the mode most of our users are in, so the classifier is the control most of them actually have.
-- Subagents inherit the session's mode. Under auto mode, the classifier evaluates the subagent's tool calls against the main conversation's block and allow rules.
+- **Auto mode is the built-in starting mode on Pro, Max and Team plans** (given a supported model, unless an admin disables it), so for many users the classifier is the control they actually have.
+- Plugin subagents always run in the session's mode. Under auto mode, the classifier checks the delegated task at spawn, each of the subagent's tool calls against the main conversation's block and allow rules, and its final report before the parent reads it.
 - **Prose is the last line of defence only in bypass mode run outside a container**, which is an unsupported setup, and a paragraph asking the model to be careful is a weak control there. The honest response is to state the supported setups in the README (#323), not to spread warnings across 149 files.
 - **Deny rules apply in every mode**, including `bypassPermissions`. A user who needs a hard guarantee writes a `permissions.deny` rule. An agent file cannot supply one.
 - The docs say the classifier reads the user's messages, the commands Claude runs, and the CLAUDE.md files Claude loads. They don't say it reads subagent definitions. Don't write agent prose on the assumption that it steers the classifier.
@@ -59,7 +59,7 @@ Run `claude auto-mode defaults` for the current full list. Several rules are ver
 
 ### What the classifier correctly allows, and why expert practice still matters
 
-By default the classifier allows local file operations, installing dependencies declared in manifests, read-only HTTP, pushes to any branch of the working repo (including the default branch), and anything inside the trust boundary. A migration against a dev database, a lockfile regeneration, or a `kubectl apply` against a cluster the classifier doesn't recognise as production are not blocked. Some of those are still mistakes. A competent engineer dry-runs the migration, diffs the manifest, and checks `kubectl config current-context` first. That competence is what agent files are for.
+By default the classifier allows local file operations, installing dependencies declared in manifests, read-only HTTP, pushes to any branch of the working repo (including the default branch, but not branches named as deploy targets such as `production` or `gh-pages`), and anything inside the trust boundary. A migration against a dev database, a lockfile regeneration, or a `kubectl apply` against a cluster the classifier doesn't recognise as production are not blocked. Some of those are still mistakes. A competent engineer dry-runs the migration, diffs the manifest, and checks `kubectl config current-context` first. That competence is what agent files are for.
 
 ---
 
@@ -68,8 +68,8 @@ By default the classifier allows local file operations, installing dependencies 
 | Field | Effect | Status for this catalog |
 | --- | --- | --- |
 | `tools` | Allowlist of tools the agent can call | **Primary lever.** Minimum for the role. |
-| `disallowedTools` | Removes tools, including `mcp__*` patterns; applied to inherited or listed tools | Use on read-only roles so they don't inherit MCP write tools. |
-| `isolation: worktree` | Runs the agent in a temporary git worktree | For agents that build, migrate or refactor locally. |
+| `disallowedTools` | Removes tools from the inherited or listed pool; applied before `tools`, and wins when a tool is in both | Read-only roles list `Write, Edit, NotebookEdit` (plus `Bash` in Tier 1) as a lock that survives later edits to `tools`. Not `mcp__*`: an explicit `tools` list already excludes MCP tools. Details in CLAUDE.md (#319). |
+| `isolation: worktree` | Runs the agent in a temporary git worktree branched from the default branch, not the caller's `HEAD` | **Not set in agent files** (#319). The caller passes it per invocation when a clean checkout is safe. |
 | `maxTurns` | Hard stop; output is returned marked partial | For Tier 4 and 5. |
 | `permissionMode` | **Ignored in plugin agents.** Elsewhere it is ignored whenever the parent session is in `auto`, `acceptEdits` or `bypassPermissions`, and a subagent that declares `bypassPermissions` keeps the parent's mode. | **Never use.** |
 | `hooks` | **Ignored in plugin agents** | **Never use.** Hooks are a separate question (#325). |
@@ -106,6 +106,7 @@ This goes under **Expert practice** in the #327 template.
 - The commands must undo *this agent's* changes. `git revert <sha>` alone is not domain rollback. Every agent can do that, so it fails the swap test (§4).
 - Prefer targeted commands (`git restore --source=<sha> -- <path>`) over blanket ones (`git checkout .`, `git reset --hard`), which the classifier blocks anyway.
 - No `-auto-approve`, `--force` or `--yes` in a rollback path that runs against shared infrastructure.
+- A rollback must not print a secret or write one to disk. Use the provider's version mechanism (`vault kv rollback -version=<n> <path>`, `aws secretsmanager update-secret-version-stage`), and verify by version ID, not by value.
 
 **Domain approval gates.** A gate is kept only if it passes all three tests:
 
@@ -150,18 +151,18 @@ Tier is the category's tier (CLAUDE.md, Repository Structure). This replaces the
 
 ## 4. Classifying safeguard content
 
-Take each paragraph, bullet or checklist item on its own and apply these tests in order. The first test that matches decides.
+Take every piece of safety content, wherever it sits in the file (the old `## Security Safeguards` section, a workflow step such as "get explicit confirmation if any step is destructive", a checklist). Split any item that mixes generic and domain clauses and classify each clause on its own. Apply these tests in order; the first test that matches decides.
 
 | # | Test | Verdict |
 | --- | --- | --- |
 | 1 | Is it Audit Logging, or code that implements validation, logging, a gate or a stop check? | **Delete.** |
 | 2 | Is it a stop-file or kill-switch-file check? | **Delete.** Keep a domain halt *command*, such as `kubectl argo rollouts abort`, under Rollback. |
-| 3 | Does it restate a permission prompt or a classifier rule? ("confirm before destructive actions", "never force push", "type CONFIRM for production", "don't `--all` in production") | **Delete.** |
+| 3 | Does it restate a permission prompt, a classifier rule or the stamped operating notes *without naming a domain role, process or command*? ("confirm before destructive actions", "never force push", "type CONFIRM for production", "don't `--all` in production", "confirm which environment", "never default to production") | **Delete.** If it names a domain role or process, go to test 6. If it names the domain's own target-check command (`kubectl config current-context`, `SELECT current_database()`), go to test 8. |
 | 4 | **Swap test:** would the sentence be equally true pasted into an unrelated agent, such as `content-marketer`, `python-pro` or `kubernetes-specialist`? (metacharacter lists, `../` traversal, "change ticket linked", "peer review completed", "rollback tested") | **Delete.** |
-| 5 | Is it a number the agent can't measure, or one with no source? ("rollback < 5 min", "max 3 namespaces", "retention 30 days") | **Delete**, or rewrite it as a checkable practice. A domain default that is presented as a default for the user to tune, such as a canary step schedule or analysis thresholds, is not caught here; it goes to test 8. |
+| 5 | Is it a number the agent can't measure, or one with no source? ("rollback < 5 min", "max 3 namespaces", "retention 30 days", "error rate > 1% triggers rollback") | **Delete**, or rewrite it as a checkable practice. Exception: a parameter the agent itself writes into a config or command (a canary step schedule, a Flagger `stepWeight` or analysis `threshold`) and presents to the user as a default to tune goes to test 8. A number that describes an outcome, or a trigger that nothing the agent writes enforces, stays here. |
 | 6 | Does it name a real human role or process in this domain, triggered by a specific operation, that the agent can't satisfy alone? | **Keep → Approval gates**, as one line: *trigger → who confirms*. |
 | 7 | Is it a command that undoes this agent's changes? | **Keep → Rollback.** Make it targeted, with no auto-approve flags. |
-| 8 | Is it a domain technique: plan, diff, dry-run, backup, target check, version pin, one unit at a time, domain supply-chain check? | **Keep → Expert practice**, written as how the agent works, without MUST and without warnings. |
+| 8 | Is it a domain technique: plan, diff, dry-run, backup, target check with the domain's own command, version pin, one unit at a time, a domain supply-chain check, or a domain rule for the code, config or artifacts the agent produces (quote generated SQL identifiers, `subprocess` list arguments, map a secret's consumers and health checks before rotating it)? | **Keep → Expert practice**, written as how the agent works, without MUST and without warnings. |
 | 9 | None of the above | **Delete.** If it seems valuable, it is probably domain knowledge; move it to the body and tell the reviewer. |
 
 Rewrite tone as you move content. "All inputs MUST be validated before use in any kubectl operation" becomes "Check `kubectl config current-context` before the first change." Short, specific, and in the domain's own commands.
@@ -192,13 +193,13 @@ Enforcement: (bash script with `read CONFIRM`)
 | production | Max 5 dashboards | Max 30 panels | Max 5 new alerts |
 ```
 
-**Verdicts:** change ticket and peer review → test 4, delete. The 30s query limit → test 5, delete. Enforcement script → test 1, delete. Emergency Stop → test 2, delete. Per-environment caps → test 5, delete. "Environment confirmed" and "back up before overwrite" → test 8, keep. The Grafana and Datadog restore commands → test 7, keep. `terraform apply -auto-approve` in the rollback path → rewrite without the flag.
+**Verdicts:** change ticket and peer review → test 4, delete. The 30s query limit → test 5, delete. Enforcement script → test 1, delete. Emergency Stop → test 2, delete. Per-environment caps → test 5, delete. "Environment confirmed" names the Grafana org or Datadog account, so it goes to test 8 with "back up before overwrite"; keep both. The Grafana and Datadog restore commands → test 7, keep. `terraform apply -auto-approve` in the rollback path → rewrite without the flag.
 
 **After:**
 
 ```markdown
 ## Expert practice
-- Confirm the target Grafana org or Datadog account before writing; never default to production.
+- Confirm the target Grafana org (`GET /api/org`) or Datadog account before writing.
 - Export the current dashboard JSON (or note its version number) before overwriting it.
 - Run each panel query over the dashboard's default time range before saving it.
 
@@ -341,7 +342,7 @@ Validate all user inputs, external data, API requests before processing.
 `chaos-engineer` and `penetration-tester` were the "gold standard" for safeguard design. Neither has a `## Security Safeguards` section; their safety content is in the body.
 
 - **`penetration-tester`**: its design survives, and it remains the reference for *tool minimisation*: `Read, Grep, Glob, Bash`, with no `Write` or `Edit`, in a high-risk domain. Its authorisation-first stance is the model of a **domain approval gate**: rules of engagement are a real, specific, external process that the agent cannot satisfy alone, and the classifier can't know which hosts are in scope. In v3, promote the keyword bullets ("Legal authorization", "Verify authorization") to one explicit gate: *any active test against a host → the user confirms written authorisation and that the host is on the in-scope list; stop at the scope boundary.* Delete the "Ethical considerations" keyword list, which the gate covers.
-- **`chaos-engineer`**: this is the reference for **blast radius as domain method**. In chaos engineering, limiting the blast radius is the craft itself, not a generic control, so its "Blast radius control" content (traffic percentage, user segmentation, feature flags, kill switches) is expert practice. But its checklist fails test 5: "Rollback automated < 30s" and "No customer impact" are claims the agent can't verify. In v3: *define the abort condition and the halt command before injecting; start in non-production or at the smallest traffic share; stop when the abort condition fires.* Keep a game-day sign-off with service owners as a gate. It holds `Write`/`Edit`/`Bash`, which suits Tier 2, and its category's `isolation` rule comes from #319.
+- **`chaos-engineer`**: this is the reference for **blast radius as domain method**. In chaos engineering, limiting the blast radius is the craft itself, not a generic control, so its "Blast radius control" content (traffic percentage, user segmentation, feature flags, kill switches) is expert practice. But its checklist fails test 5: "Rollback automated < 30s" and "No customer impact" are claims the agent can't verify. In v3: *define the abort condition and the halt command before injecting; start in non-production or at the smallest traffic share; stop when the abort condition fires.* Keep a game-day sign-off with service owners as a gate. It sits in Tier 2 (09-testing-and-qa), but its job is injecting faults into running systems, which the Tier 2 notes put out of scope. It needs the per-file stamp override in §7 (or a move under #337), not a hand-written exception.
 
 Neither agent is a template to copy. The principle they illustrate survives: **specific to the domain, checkable, minimally tooled.**
 
@@ -353,13 +354,15 @@ Drafted here for #318, which owns `templates/operating-notes-tier{1..5}.md` and 
 
 **Keyed by tier, not by capability class.** Tier comes from the category directory, so the stamper and the validator can choose the block without judgment. Capability (Bash or not) is enforced separately through `tools` and the #319 lint, and the one case where it must override the tier is handled mechanically by the read-only override in §3. Keying by capability class would mean re-classifying 203 files by hand, and a file would change class whenever its `tools` changed.
 
+**Per-file override.** A few agents sit in a category whose tier doesn't describe what they touch: `chaos-engineer` (Tier 2) injects faults into running systems. #318 keeps a reviewed allowlist that maps such a file to a different stamp with a one-line reason, for example `chaos-engineer: tier=5 # targets running systems`. The validator accepts the listed tier for that file and no other. Where the category is simply wrong, move the agent (#337) instead; use the override only where the category is right and the stamp isn't.
+
 ### Tier 1 🟢 (and any read-only agent)
 
 ```markdown
 <!-- BEGIN GENERATED: operating-notes tier=1 -->
 ## Operating notes
 
-You are advisory. Read, analyse and recommend; don't edit files or run commands that change state. Hand proposed changes back to the main conversation.
+You are advisory: read, analyse and recommend. Don't run commands that change state. Write only the documents you were asked for, such as docs, ADRs or plans; hand proposed code or config changes back to the main conversation.
 <!-- END GENERATED -->
 ```
 
@@ -389,7 +392,7 @@ Your work can change dependencies, builds or data. Before the first command that
 <!-- BEGIN GENERATED: operating-notes tier=4 -->
 ## Operating notes
 
-You change external systems: cloud accounts, clusters, networks, identity and third-party services. Before the first change, establish the exact target (account or subscription, project, cluster context, region) and whether it is production; if you can't tell, ask. Show the plan, diff or dry-run before you apply. Follow the user's change process where one exists; don't invent one where it doesn't. Undo steps are under Rollback.
+Your work can reach external systems: cloud accounts, clusters, networks, identity and third-party services. Before the first command that touches one, establish the exact target (account or subscription, project, cluster context, region) and whether it is production; if you can't tell, ask. Show the plan, diff or dry-run before any change you apply. Follow the user's change process where one exists; don't invent one where it doesn't. Undo steps are under Rollback.
 <!-- END GENERATED -->
 ```
 
@@ -415,7 +418,7 @@ The Tier 3–5 notes refer to a Rollback section, so #318 should require one whe
 - Write practice as how the agent works: "Diff before applying", not "MUST validate before any operation".
 - Keep gates to one line each: *trigger → who confirms*.
 - Keep rollback commands targeted and free of auto-approve flags.
-- Put numbers in only when the user supplies them or the domain defines them (a canary schedule the user can adjust, a `revisionHistoryLimit`).
+- Put numbers in only when the user supplies them or the agent writes them into a config or command as a default to tune (a canary step schedule, a `revisionHistoryLimit`).
 
 **Don't:**
 
@@ -433,7 +436,7 @@ The Tier 3–5 notes refer to a Rollback section, so #318 should require one whe
 
 Checked 2026-09-25:
 
-- [Subagents](https://code.claude.com/docs/en/sub-agents): frontmatter fields; plugin subagents ignore `hooks`, `mcpServers` and `permissionMode`; parent `auto`/`acceptEdits`/`bypassPermissions` overrides a subagent's `permissionMode`; the classifier evaluates subagent calls with the main conversation's rules.
+- [Subagents](https://code.claude.com/docs/en/sub-agents): frontmatter fields; plugin subagents ignore `hooks`, `mcpServers` and `permissionMode`; parent `auto`/`acceptEdits`/`bypassPermissions` overrides a subagent's `permissionMode`; the classifier checks a subagent's task at spawn, each of its tool calls against the main conversation's rules, and its final report; subagent worktrees branch from the default branch.
 - [Plugin components](https://code.claude.com/docs/en/plugins/components): plugin agents ignore `permissionMode`, `hooks`, `mcpServers` and `initialPrompt`.
 - [Permission modes](https://code.claude.com/docs/en/permission-modes): the mode table, the classifier's default block and allow lists, auto mode as the starting mode on Pro/Max/Team, and `bypassPermissions` restricted to isolated containers and VMs.
 - [Configure permissions](https://code.claude.com/docs/en/permissions): deny rules apply in every mode.

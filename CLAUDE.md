@@ -56,7 +56,7 @@ Other top-level pieces:
 - `.claude/agents/` — repo-maintenance agents used *on* this repo (description compression, security remediation, token optimization, gold-standard enhancement). Check these first before doing bulk edits by hand.
 - `install-agents.sh` — interactive installer; works from a clone (local mode) or standalone via the GitHub API (remote mode)
 - `tools/` — Claude Code skills that browse/fetch the catalog, installed to `~/.claude/commands/`
-- `AGENT_SECURITY_GUIDELINES.md` — authoritative rules for the Security Safeguards section (read before writing one)
+- `AGENT_SECURITY_GUIDELINES.md` — authoritative keep/delete policy for safety content in agent files (read before writing any)
 - `docs/planning/` — design notes and experiments, not shipped content
 
 ## Every Agent Exists in Four Places
@@ -114,7 +114,7 @@ A **read-only role** is one whose deliverable is findings returned to the conver
 
 ### Optional fields by tier
 
-Tier here is the category's tier from Repository Structure, not the capability-based safeguard level in Security Safeguards.
+Tier here is the category's tier from Repository Structure, the same tier Security Safeguards keys its content by.
 
 | Field | Tier 1 🟢 | Tier 2 🟡 | Tier 3 🟠 | Tier 4 🔴 | Tier 5 ⛔ |
 | --- | --- | --- | --- | --- | --- |
@@ -160,7 +160,7 @@ A Tier 3–5 agent with none of `Bash`, `Write` or `Edit` takes the Tier 1 notes
 
 **Delete on sight:** generic Emergency Stop (stop-file checks), generic Blast Radius Controls, generic Approval Gates (change ticket, on-call, `read -p CONFIRM`), Input Validation that amounts to "validate inputs", and invented thresholds ("rollback in < 5 min").
 
-**Enforce through frontmatter, not prose:** `tools`, `disallowedTools`, `isolation`, `maxTurns`. Plugin agents ignore `permissionMode`, `hooks` and `mcpServers`, and `permissionMode` can't tighten a session that's already in auto, acceptEdits or bypass mode. Never use any of the three.
+**Enforce through frontmatter, not prose:** `tools`, `disallowedTools`, `isolation`, `maxTurns`. Plugin agents ignore `permissionMode`, `hooks`, `mcpServers` and `initialPrompt`, and `permissionMode` can't tighten a session that's already in auto, acceptEdits or bypass mode. Never use any of the four.
 
 Two rules that get violated repeatedly:
 
