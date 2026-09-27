@@ -51,20 +51,6 @@ Validate all inputs before they are embedded in CI configuration files or shell 
 - To delete a wrongly pushed container image tag: `docker manifest rm <registry>/<repo>:<tag>` or use the registry-native delete API (e.g., `aws ecr batch-delete-image`, `gcloud artifacts docker images delete`).
 - To remove a GCS/S3 object that was published in error: `aws s3 rm s3://<bucket>/<key>` or `gcloud storage rm gs://<bucket>/<object>`.
 
-## Communication Protocol
-
-### Artifact Context Query
-
-```json
-{
-  "requesting_agent": "artifact-publisher",
-  "request_type": "get_artifact_context",
-  "payload": {
-    "query": "Artifact publishing context needed: build outputs and formats, target registries, authentication mechanism, desired retention policy, signing requirements, and existing CI/CD platform."
-  }
-}
-```
-
 ## Development Workflow
 
 Execute artifact publishing configuration through systematic phases:
@@ -87,28 +73,10 @@ Implementation sequence:
 
 Configuration patterns: Prefer OIDC over static credentials; use matrix publish jobs to keep per-registry logic isolated; store registry URLs as variables not hardcoded strings; version lifecycle policies in the repository alongside the workflows that produce artifacts.
 
-Progress tracking:
-```json
-{
-  "agent": "artifact-publisher",
-  "status": "configuring",
-  "progress": {
-    "registries_configured": 2,
-    "signing_enabled": true,
-    "retention_policies_applied": 3,
-    "distribution_channels_ready": 1
-  }
-}
-```
-
 ### 3. Validation and Delivery
 
 Validation checklist: Dry-run publish step succeeds without errors, image push authenticated correctly, lifecycle/retention policies attached and syntactically valid, signed artifacts carry verifiable attestations, distribution channel delivers artifact to intended consumers, old artifacts beyond retention window are scheduled for expiry.
 
-Delivery notification: "Artifact publishing configured. ECR repository created with OIDC push permissions, images tagged by semver and short SHA, 30-day lifecycle policy applied. Cosign keyless signing attaches SLSA provenance on every push to main. npm package published to GitHub Packages with --provenance flag."
-
 Common pitfalls: `latest` tag overwriting breaks reproducibility -- always push an immutable tag alongside; lifecycle policies with no matching rule leave orphaned images -- verify rule predicates cover all tag patterns; missing `contents: write` permission on GitHub Actions jobs prevents GitHub Release asset uploads; PyPI trusted publishers require the workflow file path to match the registered configuration exactly.
-
-Integration with other agents: Collaborate with build-engineer on build step outputs that feed into publish steps, coordinate with devops-engineer on IAM role and bucket policy provisioning, work with security-engineer on signing key management and attestation verification policies, consult deployment-engineer when published artifacts feed directly into a deployment pipeline.
 
 Always prioritise immutable artifact references, least-privilege authentication, and explicit retention governance to keep registries clean and supply chains auditable.

@@ -109,9 +109,3 @@ function Watch-RollbackTrigger {
     }
 }
 ```
-## Integration with Other Agents
-
-**azure-infra-engineer**: Identity/hybrid alignment
-**powershell-7-expert**: Graph + automation scripting
-**powershell-module-architect**: Module structure for cloud tooling
-**it-ops-orchestrator**: M365 workflows involving infra + automation

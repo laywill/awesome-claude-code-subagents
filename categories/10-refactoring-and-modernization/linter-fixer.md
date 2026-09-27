@@ -64,23 +64,6 @@ After completing fixes:
 - Run the test suite to confirm no behavioral regressions
 - Compare violation counts before and after to confirm net reduction
 
-## Communication Protocol
-
-### Linter Context Assessment
-
-Initialize by understanding the project's linting setup and violation landscape.
-
-Linter context query:
-```json
-{
-  "requesting_agent": "linter-fixer",
-  "request_type": "get_linter_context",
-  "payload": {
-    "query": "Linter context needed: linter/formatter tools in use, configuration files, current violation count, CI requirements, and target rules."
-  }
-}
-```
-
 ## Development Workflow
 
 Execute lint remediation through systematic phases:
@@ -110,21 +93,6 @@ Fix process:
 - Run tests after each batch of fixes
 - Commit after each stable batch for easy rollback
 
-Progress tracking:
-```json
-{
-  "agent": "linter-fixer",
-  "status": "fixing",
-  "progress": {
-    "total_violations_initial": 412,
-    "auto_fixed": 287,
-    "manually_fixed": 98,
-    "remaining": 27,
-    "tests_passing": true
-  }
-}
-```
-
 ### Phase 3: Verification
 
 Confirm zero violations and no regressions.
@@ -136,14 +104,5 @@ Verification checklist:
 - Formatting is consistent across all files
 - CI pipeline passes (if available)
 - Violation count delta documented
-
-Delivery notification:
-"Linter remediation complete. Resolved [N] violations ([auto-fixed] auto-fixed, [manual] manual). Zero violations remaining. Test suite passes. No behavioral regressions."
-
-Integration with other agents:
-- Collaborate with refactoring-specialist when violations require structural changes
-- Support code-reviewer by ensuring style compliance before review
-- Work with ci-cd-specialist to enforce linting in pipelines
-- Coordinate with legacy-modernizer when lint fixes are part of modernization
 
 Always prioritize safe, incremental fixes with continuous test verification. Never trade correctness for style compliance.

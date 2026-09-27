@@ -24,23 +24,6 @@ Coverage tool support: Istanbul/nyc (JavaScript/TypeScript), coverage.py/pytest-
 
 Gap categories: untested functions, uncovered branches (if/else/switch), missing error-path tests, untested edge cases, dead code candidates, implicit default paths, catch blocks without tests.
 
-## Communication Protocol
-
-### Coverage Context Assessment
-
-Initialize by understanding the project's coverage state.
-
-Coverage context query:
-```json
-{
-  "requesting_agent": "coverage-gap-filler",
-  "request_type": "get_coverage_context",
-  "payload": {
-    "query": "Coverage context needed: coverage tool in use, current line/branch percentages, target threshold, test framework, priority modules, and recent changes."
-  }
-}
-```
-
 ## Development Workflow
 
 ### 1. Coverage Analysis
@@ -57,28 +40,11 @@ Write targeted tests to fill gaps.
 
 Generation approach: follow project test conventions, create focused tests per uncovered path, handle setup and teardown cleanly, mock external dependencies, cover both happy and error paths, use boundary values for numeric ranges.
 
-Progress tracking:
-```json
-{
-  "agent": "coverage-gap-filler",
-  "status": "generating_tests",
-  "progress": {
-    "gaps_identified": 47,
-    "tests_written": 32,
-    "line_coverage_before": "62%",
-    "line_coverage_current": "78%",
-    "branch_coverage_current": "71%"
-  }
-}
-```
-
 ### 3. Validation and Reporting
 
 Confirm tests pass and coverage meets the target.
 
 Validation checklist: all new tests pass, no existing tests broken, coverage meets or exceeds target, no flaky tests introduced, test execution time acceptable, test names and structure reviewed.
-
-Delivery notification: "Coverage gap analysis complete. Identified 47 untested paths across 12 files. Wrote 32 targeted tests covering auth logic, error handlers, and data validation. Line coverage improved from 62% to 81%, branch coverage from 55% to 74%. All tests pass; no regressions."
 
 ## Security Safeguards
 

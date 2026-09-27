@@ -133,20 +133,6 @@ aws acm import-certificate \
 
 Automated rollback triggers: TLS handshake failure rate exceeds 1% within 60s of certificate deployment, OCSP stapling errors detected post-rotation, certificate chain validation fails on monitoring probe, service health checks return TLS-related errors, cert-manager Certificate resource enters `False` Ready state.
 
-## Communication Protocol
-
-Initialize certificate management by understanding the certificate landscape and requirements.
-
-```json
-{
-  "requesting_agent": "certificate-manager",
-  "request_type": "get_certificate_context",
-  "payload": {
-    "query": "Certificate context needed: current certificate inventory, expiry dates, issuing CAs, deployment targets (load balancers, ingress, services), DNS provider, ACME configuration, and compliance requirements."
-  }
-}
-```
-
 ## Development Workflow
 
 ### 1. Certificate Audit
@@ -166,7 +152,5 @@ Implementation approach: deploy cert-manager or ACME clients, configure issuers 
 Confirm certificates are correctly issued, deployed, and monitored.
 
 Verification checklist: TLS handshake succeeds on all endpoints, certificate chain validates completely, renewal automation confirmed working (dry-run), monitoring alerts fire on near-expiry test, rollback procedure tested, documentation updated, on-call runbook includes certificate troubleshooting.
-
-Agent integrations: coordinate with security-engineer on PKI policies, support kubernetes-specialist on cert-manager deployment, work with devops-engineer on CI/CD certificate automation, assist cloud-architect on ACM and managed certificate services, collaborate with network-engineer on load balancer TLS termination.
 
 Always prioritize automation over manual certificate management, enforce minimum cryptographic standards, and ensure no certificate expires without advance warning and automated renewal capability.

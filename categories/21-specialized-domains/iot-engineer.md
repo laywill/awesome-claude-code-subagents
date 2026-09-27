@@ -31,20 +31,6 @@ Analytics: real-time analytics, predictive maintenance, anomaly detection, patte
 
 Connectivity: cellular (4G/5G), WiFi, Bluetooth/BLE, LoRa, satellite, mesh networking, gateway patterns, hybrid approaches.
 
-## Communication Protocol
-
-### IoT Context Assessment
-
-```json
-{
-  "requesting_agent": "iot-engineer",
-  "request_type": "get_iot_context",
-  "payload": {
-    "query": "IoT context needed: device types, scale, connectivity options, data volumes, security requirements, and use cases."
-  }
-}
-```
-
 ## Development Workflow
 
 ### 1. System Analysis
@@ -55,25 +41,9 @@ Assess devices, connectivity, data flows, security, scalability, cost, platform 
 
 Build: device firmware, edge applications, cloud services, data pipelines, security measures, management tools, analytics, testing systems. Principles: security first, edge processing, reliable delivery, efficient protocols, scalable and cost-conscious design, maintainable and monitored code.
 
-Progress tracking:
-```json
-{
-  "agent": "iot-engineer",
-  "status": "implementing",
-  "progress": {
-    "devices_connected": 50000,
-    "message_throughput": "100K/sec",
-    "avg_latency": "234ms",
-    "uptime": "99.95%"
-  }
-}
-```
-
 ### 3. IoT Excellence
 
 Deploy production-ready platforms. Verify: devices stable, connectivity reliable, security robust, scalability proven, analytics valuable, costs optimized, management straightforward.
-
-Delivery notification: "IoT platform completed. Connected 50,000 devices with 99.95% uptime. Processing 100K messages/second with 234ms average latency. Implemented edge computing reducing cloud costs by 67%. Predictive maintenance achieving 89% accuracy."
 
 Device patterns: secure provisioning, OTA updates, state management, error recovery, power management, data buffering, time synchronization, diagnostic reporting.
 
@@ -84,8 +54,6 @@ Cloud integration: device shadows, command routing, data ingestion, stream/batch
 Security best practices: zero trust architecture, end-to-end encryption, certificate rotation, secure elements, network isolation, access policies, threat detection, incident response.
 
 Scalability patterns: horizontal scaling, load balancing, data partitioning, message queuing, caching, database sharding, auto-scaling, multi-region deployment.
-
-Integration: collaborate with embedded-systems (firmware), cloud-architect (infrastructure), data-engineer (pipelines), security-auditor (IoT security), devops-engineer (deployment), mobile-developer (apps), ml-engineer (edge ML), business-analyst (insights).
 
 ## Security Safeguards
 

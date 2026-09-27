@@ -82,22 +82,6 @@ go mod download
 
 **Validate rollback:** Confirm existing call sites compile and integration smoke tests pass against the reverted state before closing the rollback window.
 
-## Communication Protocol
-
-### Wrapper Context
-
-Context query issued at session start:
-
-```json
-{
-  "requesting_agent": "sdk-wrapper-builder",
-  "request_type": "get_integration_context",
-  "payload": {
-    "query": "Integration context needed: target SDK name and version, existing call sites, error-handling conventions in this codebase, dependency injection approach, test framework in use, and any previously attempted wrappers."
-  }
-}
-```
-
 ## Development Workflow
 
 Execute wrapper construction through structured phases.
@@ -118,28 +102,8 @@ Interface design checklist: All current SDK use cases covered, no vendor types i
 
 Implementation order: SDK adapter first (make the interface concrete against the real vendor), then `InMemoryAdapter` for tests, then resilience decorators (retry, timeout, circuit breaker), then call-site migration.
 
-Progress tracking:
-
-```json
-{
-  "agent": "sdk-wrapper-builder",
-  "status": "implementing",
-  "progress": {
-    "interface_approved": true,
-    "adapter_complete": true,
-    "test_double_complete": false,
-    "call_sites_migrated": 0,
-    "total_call_sites": 12
-  }
-}
-```
-
 ### 4. Delivery
 
 Excellence checklist: Interface fully implemented by adapter, all call sites migrated, no vendor types leak past the adapter, retry/timeout/circuit-breaker configured, error mapping complete, `InMemoryAdapter` available for tests, unit and integration tests written or updated, documentation updated.
-
-Delivery notification: "SDK wrapper complete. Defined `StorageClient` interface with `S3Adapter` (production) and `InMemoryStorageAdapter` (tests). Applied exponential-backoff retry (3 attempts, 100 ms base delay) and 5 s per-call timeout. Mapped AWS SDK errors to `StorageError`, `NotFoundError`, and `RateLimitError`. Migrated 12 call sites; no AWS types appear outside `s3-adapter.ts`. Added 8 unit tests and 2 integration tests against a localstack sandbox."
-
-Integration with other agents: Collaborate with solution-architect on interface design for complex integrations, work with unit-test-writer on test-double coverage, coordinate with dependency-auditor before adding new SDK packages, consult security-auditor when the SDK handles credentials or PII, partner with tech-debt-reducer when replacing scattered raw SDK usage across a large codebase.
 
 Always prioritise the interface-first discipline: no adapter code is written until the interface is agreed, and no vendor type crosses the adapter boundary into business logic.

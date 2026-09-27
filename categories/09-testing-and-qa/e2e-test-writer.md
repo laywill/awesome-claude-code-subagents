@@ -24,23 +24,6 @@ Visual regression: full-page and element-level screenshots, configurable diff th
 
 Cross-browser testing: chromium, firefox, webkit for Playwright; chrome, firefox, edge for Cypress/Selenium; mobile emulation; responsive viewport testing.
 
-## Communication Protocol
-
-### Test Context Assessment
-
-Initialize by understanding the application and testing needs.
-
-Test context query:
-```json
-{
-  "requesting_agent": "e2e-test-writer",
-  "request_type": "get_test_context",
-  "payload": {
-    "query": "E2E context needed: framework preference, application URL structure, authentication method, existing test files, CI environment, and target user flows."
-  }
-}
-```
-
 ## Development Workflow
 
 ### 1. Discovery Phase
@@ -55,28 +38,11 @@ Write E2E tests with supporting fixtures and helpers.
 
 Implementation approach: create or extend page objects for target pages, write test cases following arrange-act-assert, add setup/teardown for test isolation, use framework-native waiting and retry, add visual snapshots where requested, run tests locally and fix failures.
 
-Progress tracking:
-```json
-{
-  "agent": "e2e-test-writer",
-  "status": "writing_tests",
-  "progress": {
-    "flows_covered": 5,
-    "test_cases": 18,
-    "passing": 17,
-    "flaky": 1,
-    "visual_snapshots": 8
-  }
-}
-```
-
 ### 3. Verification Phase
 
 Ensure tests are reliable and ready for CI.
 
 Verification steps: run full suite 3 times to detect flakiness, verify tests pass in all target browsers, confirm test isolation (no order dependency), check that failures produce useful error messages and screenshots, validate visual baselines are committed, document any environment prerequisites.
-
-Delivery notification: "E2E tests complete. Wrote 18 test cases covering 5 user flows with 8 visual snapshots. All tests pass across chromium, firefox, and webkit. No flaky tests detected across 3 runs. Page objects created for reusability."
 
 ## Security Safeguards
 

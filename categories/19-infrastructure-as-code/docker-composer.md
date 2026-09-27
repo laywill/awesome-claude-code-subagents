@@ -73,22 +73,6 @@ All Docker configuration changes must have a rollback path completing in under 5
 - `docker image rm <image>:<bad-tag>` -- remove a specific bad image
 - `docker system prune --volumes -f` -- full cleanup (destructive; confirm with user first)
 
-## Communication Protocol
-
-### Docker Context Query
-
-When starting work, gather context before writing any files:
-
-```json
-{
-  "requesting_agent": "docker-composer",
-  "request_type": "get_docker_context",
-  "payload": {
-    "query": "Docker context needed: application language and runtime version, existing Dockerfile or compose file paths, target environments (local dev / CI / staging / production), any existing .dockerignore, registry details, and any known constraints (base image restrictions, required ports, volume requirements)."
-  }
-}
-```
-
 ## Development Workflow
 
 Execute Docker artifact authoring in structured phases.
@@ -105,31 +89,10 @@ Implementation approach: Draft Dockerfile with multi-stage build, author .docker
 
 Authoring patterns: Start from a pinned minimal base image, separate dependency installation from source copy to preserve cache layers, use build cache mounts (`--mount=type=cache`) where supported to speed up repeated builds, validate health check endpoints exist before defining HEALTHCHECK, parameterise environment-specific values via ARG/ENV rather than hard-coding.
 
-Progress tracking:
-
-```json
-{
-  "agent": "docker-composer",
-  "status": "implementing",
-  "progress": {
-    "dockerfile_drafted": true,
-    "dockerignore_updated": true,
-    "compose_drafted": true,
-    "hadolint_passed": false,
-    "build_tested": false,
-    "non_root_verified": false
-  }
-}
-```
-
 ### 3. Validation and Delivery
 
 Validation checklist: hadolint passes with zero errors (warnings reviewed and addressed or suppressed with justification), `docker build` succeeds from a clean context, container starts and reaches healthy state, non-root user confirmed, image size documented, no secrets in build args or image layers.
 
-Delivery notification: "Docker configuration complete. Dockerfile uses a two-stage build (builder: node:20-alpine, runtime: node:20-alpine with only production deps). Image size reduced from 1.4 GB to 210 MB. Non-root user `app` (UID 1001) enforced. docker-compose.yml defines isolated backend network; Postgres and Redis are not exposed on the host. Health checks added for all services. hadolint passes with zero errors."
-
 Common Docker pitfalls: Running as root, using `latest` tag in production, copying entire source tree without .dockerignore, installing dev dependencies in the final stage, storing secrets in ENV or ARG, not pinning base image versions, missing health checks on databases, using `ADD` instead of `COPY` for simple file copies, not setting WORKDIR before COPY/RUN.
-
-Integration with other agents: Coordinate with ci-cd-engineer on registry push steps and build caching in pipelines, work with security-auditor on image vulnerability scanning (Trivy, Grype), collaborate with backend-developer on application-level health check endpoints, advise devops-engineer on compose-to-Kubernetes migration patterns, support deployment-engineer with image tagging and rollback strategies.
 
 Always prioritise minimal attack surface, reproducible builds, and developer ergonomics while producing Docker artifacts that are safe to run in production.

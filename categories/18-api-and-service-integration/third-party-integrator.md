@@ -95,21 +95,6 @@ stripe webhook_endpoints delete we_xxxxx
 # Then remove the route from the application and redeploy
 ```
 
-## Communication Protocol
-
-### Integration Context
-
-Integration context query:
-```json
-{
-  "requesting_agent": "third-party-integrator",
-  "request_type": "get_integration_context",
-  "payload": {
-    "query": "Integration context needed: target service name, environment (sandbox/production), existing HTTP client or SDK conventions, credential storage mechanism, error handling patterns, and any prior integration attempts."
-  }
-}
-```
-
 ## Development Workflow
 
 Execute integrations through structured phases:
@@ -126,29 +111,10 @@ Implementation approach: Install and pin the SDK version, create a typed service
 
 Integration patterns: Thin wrapper over the vendor SDK, application-level error types mapped from vendor errors, idempotency keys on mutating operations, structured logging of request/response metadata (never secrets or PII), feature flag to enable or disable the integration without a redeploy.
 
-Progress tracking:
-```json
-{
-  "agent": "third-party-integrator",
-  "status": "implementing",
-  "progress": {
-    "service": "Stripe",
-    "sandbox_verified": true,
-    "sdk_wrapper_complete": true,
-    "webhook_handler_complete": false,
-    "tests_passing": false
-  }
-}
-```
-
 ### 3. Validation and Handoff
 
 Excellence checklist: Sandbox tested end-to-end, all credentials in environment variables, API version pinned and documented, webhook signature validation in place, circuit breaker or fallback implemented, no secrets in logs or source, unit and integration tests written, `.env.example` updated, rollback path documented.
 
-Delivery notification: "Integration complete. Stripe checkout and webhook handler implemented behind `FEATURE_STRIPE_ENABLED` flag, tested against sandbox with all happy-path and error scenarios passing. API version pinned to `2024-06-20`. Rollback: set `FEATURE_STRIPE_ENABLED=false` and redeploy. Required environment variables documented in `.env.example`."
-
 Common integration pitfalls: hardcoded credentials committed to source control, missing webhook signature validation, no retry logic for transient vendor errors, tight coupling to vendor SDK types throughout the codebase, using `latest` API version instead of pinning, forgetting to update `.env.example` when adding new required variables, tests that call live endpoints in CI.
-
-Integration with other agents: Collaborate with security-auditor to verify credential handling and secret scanning, work with backend-developer on service architecture and error propagation, coordinate with devops-engineer on secrets management and deployment environment variables, partner with qa-expert on sandbox test strategy, consult with database-administrator if integration data must be persisted.
 
 Always prioritize sandbox-first development, least-privilege credential scoping, and resilient fallback behavior so a third-party outage never becomes an application-wide incident.

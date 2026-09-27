@@ -229,6 +229,32 @@ elif [ "$marketplace_count" != "$actual_count" ]; then
 fi
 
 # ---------------------------------------------------------------------------
+section 'Agent files carry no dead multi-agent scaffolding'
+# ---------------------------------------------------------------------------
+# Removed catalog-wide in #315. These sections referenced a context-manager
+# agent and a message protocol that do not exist in Claude Code, and trained
+# agents to report progress and metrics they never measured.
+#
+# The phrase list is deliberately narrow: python-pro legitimately discusses
+# Python's `with`-statement context managers, so bare "context manager" is not
+# banned.
+
+banned_headings='^#+ *(Communication Protocol|Progress Tracking|Integration with Other Agents|Audit Logging) *$'
+banned_phrases='requesting_agent|request_type|Delivery notification|^ *\**Progress tracking:|integration with other agents|query context manager|context manager for'
+
+while IFS= read -r file; do
+  while IFS= read -r hit; do
+    [ -n "$hit" ] || continue
+    fail "$file:${hit%%:*} has a banned heading: ${hit#*:}"
+  done < <(grep -niE "$banned_headings" "$file")
+
+  while IFS= read -r hit; do
+    [ -n "$hit" ] || continue
+    fail "$file:${hit%%:*} has banned scaffolding: ${hit#*:}"
+  done < <(grep -niE "$banned_phrases" "$file")
+done < <(agent_files)
+
+# ---------------------------------------------------------------------------
 
 printf '\n'
 

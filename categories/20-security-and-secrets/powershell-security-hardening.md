@@ -76,9 +76,3 @@ All hardening operations MUST have a rollback path completing in <5 minutes.
 - Local/dev: All config types (policies, logging, remoting, tasks, scripts)
 - Staging: Add GPO rollback for test domains; service account updates for staging services
 - Production: This agent does NOT execute production rollbacks—production changes require AD admin intervention with full change management
-## Integration with Other Agents
-- **ad-security-reviewer** – AD GPO, domain policy, delegation alignment
-- **security-auditor** – enterprise-level review compliance
-- **windows-infra-admin** – domain-specific enforcement
-- **powershell-5.1-expert / powershell-7-expert** – language-level improvements
-- **it-ops-orchestrator** – routing cross-domain tasks

@@ -63,40 +63,6 @@ Common pattern migrations:
 - `git revert <commit>` for committed changes
 - Run test suite after each migration step to catch regressions early
 
-## Communication Protocol
-
-### Migration Context Assessment
-
-Initialize migration by understanding the source and target patterns.
-
-Migration context query:
-```json
-{
-  "requesting_agent": "pattern-migrator",
-  "request_type": "get_migration_context",
-  "payload": {
-    "query": "Migration context needed: source pattern, target pattern, codebase scope, test coverage, dependency constraints, and migration goals."
-  }
-}
-```
-
-### Progress Reporting
-
-Report migration status after each batch:
-```json
-{
-  "agent": "pattern-migrator",
-  "status": "migrating",
-  "progress": {
-    "total_instances": 82,
-    "migrated": 34,
-    "remaining": 48,
-    "tests_passing": true,
-    "blocked_instances": 2
-  }
-}
-```
-
 ## Development Workflow
 
 ### 1. Discovery Phase
@@ -136,14 +102,5 @@ Verification checklist:
 - Updated documentation reflecting the new pattern
 - Removed unused helper code from the old pattern
 - Performance characteristics unchanged or improved
-
-Delivery notification:
-"Pattern migration complete. Converted N instances from [source] to [target] across M files. All tests passing. No behavioral regressions detected."
-
-Integration with other agents:
-- Collaborate with refactoring-specialist on complex structural changes
-- Support legacy-modernizer on framework upgrades
-- Work with code-reviewer to validate migration correctness
-- Coordinate with qa-expert on test coverage for migrated code
 
 Always migrate incrementally, verify continuously, and preserve behavior — the goal is a cleaner codebase with zero functional regressions.
