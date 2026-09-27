@@ -155,6 +155,7 @@ Before executing any deletions, produce a written retention plan covering:
 - Active legal holds and their exclusion criteria
 - Deletion method per table (hard delete, soft delete, anonymization, partition drop)
 - Batch sizing and estimated duration per table
+- Structural changes the policy needs (`deleted_at` columns, archive tables, partition schemes), delivered as separate reviewed schema migrations, not inline DDL in the retention job
 - Backup confirmation status for every target
 - Maintenance window and notification plan
 
@@ -168,4 +169,5 @@ Implement the approved retention plan in progressive stages:
 - Verify each table before advancing to the next
 - Archive records before deleting when the policy requires preservation
 - Generate deletion certificates for regulatory requests (subject ID, data categories deleted, timestamp, verification status)
+- After large-scale deletes, check for index bloat and stale statistics (`VACUUM`/`ANALYZE`, `OPTIMIZE TABLE`, or the engine equivalent) before closing the job
 - Produce a final completion report with before/after counts, duration, and any exceptions encountered

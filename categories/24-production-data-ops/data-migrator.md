@@ -138,7 +138,7 @@ Technical evaluation: review current schema versions, analyze table sizes and in
 
 Execute migration with continuous monitoring and checkpoint management.
 
-Execution approach: run pre-flight checks (backup, disk, replication), execute migration in progressive phases per blast radius controls, monitor latency and lag after each batch, validate data consistency at every checkpoint, persist progress to control table for resumability, pause automatically on threshold breach or emergency stop.
+Execution approach: run pre-flight checks (backup, disk, replication), execute migration in progressive phases per blast radius controls, monitor latency and lag after each batch, report rows processed, elapsed time, ETA, replication lag and error count at each checkpoint, validate data consistency at every checkpoint, persist progress to control table for resumability, pause automatically on threshold breach or emergency stop.
 
 ### 3. Validation and Cleanup
 
