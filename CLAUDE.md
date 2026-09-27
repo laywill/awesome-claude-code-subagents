@@ -117,7 +117,7 @@ A **read-only role** is one whose deliverable is findings returned to the conver
 | Field | Tier 1 🟢 | Tier 2 🟡 | Tier 3 🟠 | Tier 4 🔴 | Tier 5 ⛔ |
 | --- | --- | --- | --- | --- | --- |
 | `color` | `green` | `yellow` | `orange` | `red` | `purple` |
-| `disallowedTools` | `Bash` always; read-only roles add `Write, Edit, NotebookEdit` | read-only roles: `Write, Edit, NotebookEdit` | same | same | same |
+| `disallowedTools` | `Bash`, unless the role must run commands to produce its findings (tests, profilers, `git log`); read-only roles add `Write, Edit, NotebookEdit` | read-only roles: `Write, Edit, NotebookEdit` | same | same | same |
 | `effort` | omit | omit | omit | `high` | `high` |
 | `maxTurns` | omit | omit | omit | `40` | `25` |
 | `isolation` | omit | omit, unless it qualifies (below) | same | same | omit |
