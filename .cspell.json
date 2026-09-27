@@ -1,0 +1,33 @@
+{
+  "version": "0.2",
+  "language": "en-GB,en-US",
+  "dictionaries": [
+    "en-GB",
+    "softwareTerms",
+    "typescript",
+    "node",
+    "html",
+    "css",
+    "bash",
+    "python",
+    "yaml",
+    "json",
+    "markdown",
+    "git",
+    "npm",
+    "docker",
+    "filetypes",
+    "fonts",
+    "misc",
+    "companies"
+  ],
+  // Agent files mix British and American spelling (upstream is American), so
+  // accept both. Add project-specific terms here as they come up.
+  "words": ["laywill", "Linters", "LINTERS", "JSONLINT", "subagent", "subagents", "homelab", "homelabs"],
+  "ignorePaths": [
+    ".git",
+    ".github",
+    "node_modules",
+    "megalinter-reports"
+  ]
+}

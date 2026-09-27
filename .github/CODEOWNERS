@@ -1,0 +1,8 @@
+# CODEOWNERS file
+# These owners will be automatically requested for review when someone opens a PR
+
+# Default owner for everything in the repo
+* @laywill
+
+# GitHub Actions workflows
+.github/workflows/* @laywill

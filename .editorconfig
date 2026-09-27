@@ -1,0 +1,29 @@
+root = true
+
+[*]
+indent_style = space
+indent_size = 2
+end_of_line = lf
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+[*.md]
+trim_trailing_whitespace = false
+# Ordered-list continuations indent by 3 spaces, which is not a multiple of 2.
+indent_size = unset
+
+[*.rst]
+trim_trailing_whitespace = false
+
+[*.tex]
+trim_trailing_whitespace = false
+
+[*.py]
+indent_size = 4
+
+[Makefile]
+indent_style = tab
+
+[*.{bat,cmd}]
+end_of_line = crlf

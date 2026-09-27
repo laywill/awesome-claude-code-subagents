@@ -80,6 +80,8 @@ name: agent-name
 description: "When this agent should be invoked — one sentence, under ~50 tokens"
 tools: Read, Grep, Glob
 model: sonnet
+color: green                                # optional fields per the tier table below
+disallowedTools: Write, Edit, NotebookEdit, Bash
 ---
 
 You are a [senior role] with expertise in [domain]...
@@ -92,18 +94,54 @@ When invoked:
 ## Security Safeguards   # only if the agent's risk level requires it
 ```
 
-All four frontmatter keys are required on every agent file — `name`, `description`, `tools`, `model`. `name` must match the filename.
+All four frontmatter keys are required on every agent file — `name`, `description`, `tools`, `model` — although Claude Code itself requires only the first two. `name` must match the filename.
 
-- **`model`**: `haiku` for narrow/mechanical roles, `sonnet` for the default case, `opus` for high-stakes reasoning (architecture, production ops, security).
 - **`description`**: a single sentence Claude Code uses for auto-selection. Keep it under 50 tokens — the `description-compressor` agent in `.claude/agents/` does this.
-- **`tools`**: assign the minimum for the role. If an agent doesn't need Bash, don't give it Bash — this is the single biggest risk reducer.
+- **`tools`**: assign the minimum for the role. If an agent doesn't need Bash, don't give it Bash — this is the single biggest risk reducer. Always set it: an explicit list already excludes every MCP tool, so `mcp__*` in `disallowedTools` is redundant here. Omitting `tools` inherits everything, MCP included.
+- **`model`**: an alias — `haiku`, `sonnet` or `opus`. No full model IDs (they go stale), no `fable` or `inherit`. Frontmatter outranks the user's `CLAUDE_CODE_SUBAGENT_MODEL`, so an `opus` pin overrides a user who set a cheaper model:
+  - `haiku`: narrow, mechanical roles where the output follows from the input with little judgement (formatting, lookup, changelogs). Never set `effort` on it; Haiku doesn't support effort.
+  - `sonnet`: the default. When a mistake would be costly but tools, tests or a plan output can check the result, use `sonnet` + `effort: high` rather than `opus`.
+  - `opus`: only when both of these hold, stated in the PR. First, the output is a judgement that is costly to get wrong (architecture decisions, security or threat assessment, compliance or financial-risk findings). Second, a wrong answer would pass every check the agent or its caller can run (tests, linters, scanners, plan output), because the error is in the reasoning (a bad trade-off, a missed threat), not in anything a command reports.
 
-| Role type | Tools |
+| Role type | `tools` |
 | --- | --- |
 | Read-only (reviewers, auditors) | `Read, Grep, Glob` |
 | Research (analysts) | `Read, Grep, Glob, WebFetch, WebSearch` |
 | Documentation | `Read, Write, Edit, Glob, Grep` |
 | Code writers / infrastructure | `Read, Write, Edit, Bash, Glob, Grep` |
+
+A **read-only role** is one whose deliverable is findings returned to the conversation, so its job is done with the file tree unchanged. Declare it with `disallowedTools: Write, Edit, NotebookEdit`: that is the explicit read-only marker the validator checks, since a role can't be inferred from a name. Listing a tool in both `tools` and `disallowedTools` is an error. A specifier such as `Bash(git push *)` removes the whole tool, so don't use one.
+
+### Optional fields by tier
+
+Tier here is the category's tier from Repository Structure, not the capability-based safeguard level in Security Safeguards.
+
+| Field | Tier 1 🟢 | Tier 2 🟡 | Tier 3 🟠 | Tier 4 🔴 | Tier 5 ⛔ |
+| --- | --- | --- | --- | --- | --- |
+| `color` | `green` | `yellow` | `orange` | `red` | `purple` |
+| `disallowedTools` | `Bash`, unless the role must run commands to produce its findings (tests, profilers, `git log`); read-only roles add `Write, Edit, NotebookEdit` | read-only roles: `Write, Edit, NotebookEdit` | same | same | same |
+| `effort` | omit | omit | omit | `high` on `sonnet` | `high` on `sonnet` |
+| `maxTurns` | omit | omit | omit | `40` | `25` |
+
+- **`color`**: the tier, so it is visible while the agent runs. The eight valid values are `red`, `blue`, `green`, `yellow`, `purple`, `orange`, `pink`, `cyan`.
+- **`effort`**: omit it so the user's session level applies, with two exceptions, each set to `high` and each on `sonnet` only: Tier 4–5 agents, and a `sonnet` agent that fails only the second `opus` criterion. On `sonnet`, `high` is already the model default, so its effect is to override a user who lowered session effort. Never set it on `opus`: the session default is effective, and `high` on Opus burns tokens that only a particularly hard task justifies, which is the caller's call. Never set it on `haiku`, and don't use `low`, `medium`, `xhigh` or `max`.
+- **`maxTurns`**: a hard stop. The output comes back marked partial and Claude can resume the agent, so treat the cap as a checkpoint where a human sees progress against external or production systems. The cap can fire between any two tool calls, so Tier 4–5 bodies must leave the target system consistent after each step and say what state it is in. A normal task fits well inside it; a retry or polling loop hits it. Override it per agent only with a reason.
+
+### Frontmatter fields
+
+Claude Code recognises 18 fields and silently ignores unknown or misspelled ones.
+
+| Field | Values | Policy |
+| --- | --- | --- |
+| `name`, `description`, `tools`, `model` | see above | required |
+| `color`, `disallowedTools`, `effort`, `maxTurns` | `effort`: `low`, `medium`, `high`, `xhigh`, `max`; `maxTurns`: integer | per the tier table |
+| `isolation` | `worktree` | not used. Subagent worktrees branch from the **default branch**, not the caller's `HEAD`, unless the user set `worktree.baseRef: "head"`, so a pinned agent silently works on stale code when invoked on in-progress work. Whether a clean checkout is safe depends on the invocation, so the caller passes `isolation` per call |
+| `memory` | `user`, `project`, `local` | not used. It writes into the user's home or repo, and it adds `Read, Write, Edit` automatically, which undermines a read-only role |
+| `skills` | skill names | not used. The catalog ships no skills, and preloading a user's skills by name isn't portable. Revisit in a spike |
+| `background` | `true` | not used. Foreground or background is the caller's choice |
+| `omitClaudeMd` | `true` | not used. The project's conventions matter to almost every agent here |
+| `experimental` | `cacheTtl: 5m \| 1h` | not used. The cache TTL is a billing choice for the user |
+| `permissionMode`, `hooks`, `mcpServers`, `initialPrompt` | — | **forbidden**. Ignored in plugin agents, so they would ship as dead config |
 
 ## Security Safeguards
 
@@ -153,9 +191,19 @@ It reports every failure it finds rather than stopping at the first, and exits n
 
 Adding an agent therefore means updating the count in the README badge and in `.claude-plugin/marketplace.json`, not just the four places.
 
+### Linting
+
+MegaLinter (`.mega-linter.yml`, `.github/workflows/mega-linter.yml`) covers generic file hygiene; `validate-catalog.sh` covers what is specific to this catalog. Don't duplicate a check across the two.
+
+- **Blocking:** editorconfig-checker (LF endings, exactly one final newline, per `.editorconfig`), actionlint, shellcheck, yamllint, jsonlint and the secret scanners.
+- **Report-only:** markdownlint (`.markdownlint.json`), cspell (`.cspell.json`, en-GB and en-US) and jscpd. The agent files predate linting, and #318's per-category ratchet makes these blocking as each category is uplifted.
+- **No auto-fix commits** (`APPLY_FIXES: none`). Fix locally and commit.
+
+PRs lint only the files they change; pushes to `main` lint everything. For fast local feedback, `pre-commit install` runs the hooks in `.pre-commit-config.yaml`, and `pre-commit install --hook-type pre-push` adds `validate-catalog.sh` before each push.
+
 ## GitHub Actions
 
-`.github/workflows/validate.yml` is currently the only workflow. It and any that get added must pin every action to a full 40-character commit SHA, with a trailing comment naming the semantic version that SHA corresponds to:
+Workflows: `validate.yml` (catalog consistency), `mega-linter.yml` (linting), `codeql.yml` (workflow security analysis) and `labels.yml` (syncs `.github/labels.yml` into the repo's labels; it never deletes a label). Dependabot (`.github/dependabot.yml`) raises weekly grouped bumps for them. Every workflow, existing or new, must pin every action to a full 40-character commit SHA, with a trailing comment naming the semantic version that SHA corresponds to:
 
 ```yaml
 steps:
