@@ -136,7 +136,7 @@ Claude Code recognises 18 fields and silently ignores unknown or misspelled ones
 | --- | --- | --- |
 | `name`, `description`, `tools`, `model` | see above | required |
 | `color`, `disallowedTools`, `effort`, `maxTurns`, `isolation` | `effort`: `low`, `medium`, `high`, `xhigh`, `max`; `maxTurns`: integer; `isolation`: `worktree` | per the tier table |
-| `memory` | `user`, `project`, `local` | not used. It writes into the user's home or repo, and it enables `Read, Write, Edit` automatically, which breaks a read-only role's tool restriction |
+| `memory` | `user`, `project`, `local` | not used. It writes into the user's home or repo, and it adds `Read, Write, Edit` automatically, which undermines a read-only role |
 | `skills` | skill names | not used. The catalog ships no skills, and preloading a user's skills by name isn't portable. Revisit in a spike |
 | `background` | `true` | not used. Foreground or background is the caller's choice |
 | `omitClaudeMd` | `true` | not used. The project's conventions matter to almost every agent here |
