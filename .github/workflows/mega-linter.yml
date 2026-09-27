@@ -45,7 +45,11 @@ jobs:
         env:
           # Lint the whole repository on pushes to main; lint only the files a
           # PR changes otherwise.
-          VALIDATE_ALL_CODEBASE: true  # TEMP: preview main's full-repo run; reverted before merge
+          VALIDATE_ALL_CODEBASE: >-
+            ${{
+              github.event_name == 'push' &&
+              github.ref == 'refs/heads/main'
+            }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Archive MegaLinter reports
