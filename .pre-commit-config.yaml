@@ -1,0 +1,26 @@
+---
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c  # v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: mixed-line-ending
+
+  # Catalog consistency and banned-scaffolding checks. Runs on push rather than
+  # on every commit because it walks all 203 agent files.
+  # Enable with: pre-commit install --hook-type pre-push
+  - repo: local
+    hooks:
+      - id: validate-catalog
+        name: validate catalog
+        entry: ./scripts/validate-catalog.sh
+        language: script
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]

@@ -137,7 +137,7 @@ select_source_mode() {
     echo -e "  ${YELLOW}q)${NC} Quit"
     echo ""
 
-    read -p "Enter your choice: " choice
+    read -r -p "Enter your choice: " choice
 
     case "$choice" in
         1)
@@ -179,7 +179,7 @@ select_install_mode() {
     echo -e "  ${YELLOW}q)${NC} Quit"
     echo ""
 
-    read -p "Enter your choice: " choice
+    read -r -p "Enter your choice: " choice
 
     case "$choice" in
         1)
@@ -248,7 +248,8 @@ get_category_name() {
 # Function to check if an agent is installed
 is_agent_installed() {
     local agent_file="$1"
-    local agent_name=$(basename "$agent_file")
+    local agent_name
+    agent_name=$(basename "$agent_file")
     [[ -f "$CLAUDE_AGENTS_DIR/$agent_name" ]]
 }
 
@@ -271,14 +272,15 @@ select_category() {
         echo -e "${CYAN}Fetching categories from GitHub...${NC}\n"
         if ! fetch_categories_remote; then
             echo -e "${RED}Failed to fetch categories. Press Enter to retry.${NC}"
-            read
+            read -r
             select_category
             return
         fi
 
         for dirname in "${REMOTE_CATEGORIES[@]}"; do
             categories+=("$dirname")
-            local display_name=$(get_category_name "$dirname")
+            local display_name
+            display_name=$(get_category_name "$dirname")
             echo -e "  ${YELLOW}$i)${NC} $display_name"
             ((i++))
         done
@@ -286,12 +288,15 @@ select_category() {
         # Local mode: read from filesystem
         for dir in "$CATEGORIES_DIR"/*/; do
             if [[ -d "$dir" && $(basename "$dir") != "." ]]; then
-                local dirname=$(basename "$dir")
+                local dirname
+                dirname=$(basename "$dir")
                 # Skip if it's not a category directory (doesn't start with number)
                 if [[ "$dirname" =~ ^[0-9]+ ]]; then
                     categories+=("$dirname")
-                    local display_name=$(get_category_name "$dirname")
-                    local agent_count=$(ls "$dir"/*.md 2>/dev/null | grep -v README.md | wc -l | tr -d ' ')
+                    local display_name
+                    display_name=$(get_category_name "$dirname")
+                    local agent_count
+                    agent_count=$(find "$dir" -maxdepth 1 -name '*.md' ! -name README.md | wc -l | tr -d ' ')
                     echo -e "  ${YELLOW}$i)${NC} $display_name ${CYAN}($agent_count agents)${NC}"
                     ((i++))
                 fi
@@ -303,7 +308,7 @@ select_category() {
     echo -e "  ${YELLOW}q)${NC} Quit"
     echo ""
 
-    read -p "Enter your choice: " choice
+    read -r -p "Enter your choice: " choice
 
     if [[ "$choice" == "q" || "$choice" == "Q" ]]; then
         echo -e "\n${GREEN}Goodbye!${NC}"
@@ -323,7 +328,8 @@ select_category() {
 # Function to display agent selection menu with multi-select
 select_agents() {
     local category="$1"
-    local category_name=$(get_category_name "$category")
+    local category_name
+    category_name=$(get_category_name "$category")
 
     # Build list of agents (excluding README.md)
     local agents=()
@@ -337,7 +343,7 @@ select_agents() {
 
         if ! fetch_agents_remote "$category"; then
             echo -e "${RED}Failed to fetch agents. Press Enter to go back.${NC}"
-            read
+            read -r
             return 1
         fi
 
@@ -354,7 +360,8 @@ select_agents() {
         # Local mode: read from filesystem
         local category_path="$CATEGORIES_DIR/$category"
         for agent_file in "$category_path"/*.md; do
-            local basename=$(basename "$agent_file")
+            local basename
+            basename=$(basename "$agent_file")
             if [[ "$basename" != "README.md" ]]; then
                 agents+=("$basename")
                 if [[ -f "$CLAUDE_AGENTS_DIR/$basename" ]]; then
@@ -365,9 +372,6 @@ select_agents() {
             fi
         done
     fi
-
-    # Store original states to calculate changes
-    local original_states=("${agent_states[@]}")
 
     while true; do
         show_header
@@ -405,7 +409,7 @@ select_agents() {
         echo -e "  ${YELLOW}q)${NC} Quit"
         echo ""
 
-        read -p "Enter your choice: " choice
+        read -r -p "Enter your choice: " choice
 
         case "$choice" in
             [0-9]*)
@@ -413,20 +417,20 @@ select_agents() {
                     # Toggle selection
                     local idx=$((choice-1))
                     if [[ ${agent_states[$idx]} -eq 1 ]]; then
-                        agent_states[$idx]=0
+                        agent_states[idx]=0
                     else
-                        agent_states[$idx]=1
+                        agent_states[idx]=1
                     fi
                 fi
                 ;;
             a|A)
                 for i in "${!agent_states[@]}"; do
-                    agent_states[$i]=1
+                    agent_states[i]=1
                 done
                 ;;
             n|N)
                 for i in "${!agent_states[@]}"; do
-                    agent_states[$i]=0
+                    agent_states[i]=0
                 done
                 ;;
             c|C)
@@ -493,7 +497,7 @@ confirm_and_apply() {
     if [[ $install_count -eq 0 && $uninstall_count -eq 0 ]]; then
         echo -e "${YELLOW}No changes to apply.${NC}"
         echo ""
-        read -p "Press Enter to continue..."
+        read -r -p "Press Enter to continue..."
         return
     fi
 
@@ -520,7 +524,7 @@ confirm_and_apply() {
     echo -e "${BOLD}Summary:${NC} ${GREEN}$install_count to install${NC}, ${RED}$uninstall_count to uninstall${NC}"
     echo ""
 
-    read -p "Apply these changes? (y/N): " confirm
+    read -r -p "Apply these changes? (y/N): " confirm
 
     if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
         echo ""
@@ -564,7 +568,7 @@ confirm_and_apply() {
     fi
 
     echo ""
-    read -p "Press Enter to continue..."
+    read -r -p "Press Enter to continue..."
 }
 
 # Main loop

@@ -190,9 +190,19 @@ It reports every failure it finds rather than stopping at the first, and exits n
 
 Adding an agent therefore means updating the count in the README badge and in `.claude-plugin/marketplace.json`, not just the four places.
 
+### Linting
+
+MegaLinter (`.mega-linter.yml`, `.github/workflows/mega-linter.yml`) covers generic file hygiene; `validate-catalog.sh` covers what is specific to this catalog. Don't duplicate a check across the two.
+
+- **Blocking:** editorconfig-checker (LF endings, exactly one final newline, per `.editorconfig`), actionlint, shellcheck, yamllint, jsonlint and the secret scanners.
+- **Report-only:** markdownlint (`.markdownlint.json`), cspell (`.cspell.json`, en-GB and en-US) and jscpd. The agent files predate linting, and #318's per-category ratchet makes these blocking as each category is uplifted.
+- **No auto-fix commits** (`APPLY_FIXES: none`). Fix locally and commit.
+
+PRs lint only the files they change; pushes to `main` lint everything. For fast local feedback, `pre-commit install` runs the hooks in `.pre-commit-config.yaml`, and `pre-commit install --hook-type pre-push` adds `validate-catalog.sh` before each push.
+
 ## GitHub Actions
 
-`.github/workflows/validate.yml` is currently the only workflow. It and any that get added must pin every action to a full 40-character commit SHA, with a trailing comment naming the semantic version that SHA corresponds to:
+Workflows: `validate.yml` (catalog consistency), `mega-linter.yml` (linting), `codeql.yml` (workflow security analysis) and `labels.yml` (syncs `.github/labels.yml` into the repo's labels; it never deletes a label). Dependabot (`.github/dependabot.yml`) raises weekly grouped bumps for them. Every workflow, existing or new, must pin every action to a full 40-character commit SHA, with a trailing comment naming the semantic version that SHA corresponds to:
 
 ```yaml
 steps:
