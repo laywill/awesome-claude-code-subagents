@@ -14,6 +14,12 @@
 # Requires Node/npx, and network access on first run to fetch
 # markdownlint-cli2 and cspell, pinned below so a release cannot change what
 # blocks; bump deliberately.
+#
+# No `set -e`: both linters run even when the first fails, and the exit status
+# combines them. Every command that can fail is checked explicitly. That
+# includes the ratchet file's existence: grep runs inside a process
+# substitution, where neither -e nor pipefail would see it fail, and a missing
+# file would otherwise read as an empty list and pass.
 
 set -uo pipefail
 
@@ -21,7 +27,12 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 
 ENFORCED_FILE="scripts/lint-enforced-categories.txt"
 
-mapfile -t categories < <(grep -vE '^[[:space:]]*(#|$)' "$ENFORCED_FILE" 2>/dev/null)
+if [ ! -f "$ENFORCED_FILE" ]; then
+  printf 'lint-enforced-markdown: %s does not exist\n' "$ENFORCED_FILE" >&2
+  exit 1
+fi
+
+mapfile -t categories < <(grep -vE '^[[:space:]]*(#|$)' "$ENFORCED_FILE")
 
 # Strip a lone CRLF remnant and blanks left by the mapfile/grep above.
 clean_categories=()
