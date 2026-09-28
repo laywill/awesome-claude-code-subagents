@@ -43,23 +43,38 @@ check 'pylint (design and bugs)' pylint --score=n "${paths[@]}"
 check 'mypy --strict (types)' mypy "${paths[@]}"
 check 'bandit (security)' bandit --quiet -c pyproject.toml -r "${paths[@]}"
 
-# Radon, through xenon's thresholds: no function or method worse than
-# cyclomatic complexity B (10), no module averaging worse than B, and the
-# code base averaging A (5).
-check 'radon cyclomatic complexity (xenon)' \
-  xenon --max-absolute B --max-modules B --max-average A "${paths[@]}"
+# Radon lists what it finds at or below a rank and exits 0 either way, so a
+# gate fails on any output. $1 = check name, $2 = what the output lists,
+# the rest = the radon command.
+radon_gate() {
+  local name=$1 what=$2 out
+  shift 2
+  printf '\n== %s\n' "$name"
+  if ! out=$("$python" -m radon "$@" "${paths[@]}"); then
+    failed+=("$name")
+  elif [ -n "$out" ]; then
+    printf '%s:\n%s\n' "$what" "$out"
+    failed+=("$name")
+  else
+    printf 'ok\n'
+  fi
+}
 
-# Radon's maintainability index: every module rated A. radon mi -n B lists
-# the modules rated B or worse and exits 0 either way, so any output fails.
-printf '\n== radon maintainability index\n'
-if ! mi=$("$python" -m radon mi -n B "${paths[@]}"); then
-  failed+=('radon maintainability index')
-elif [ -n "$mi" ]; then
-  printf 'Modules below maintainability rank A:\n%s\n' "$mi"
-  failed+=('radon maintainability index')
-else
-  printf 'ok\n'
-fi
+# No function, method or class worse than cyclomatic complexity B (10).
+# That caps every module's average at B too.
+radon_gate 'radon cyclomatic complexity' 'Blocks worse than rank B' cc -s -n C
+
+# Every module's maintainability index rated A.
+radon_gate 'radon maintainability index' 'Modules below rank A' mi -s -n B
+
+# The code base averaging cyclomatic complexity A (5 or less).
+printf '\n== radon average complexity\n'
+average=$("$python" -m radon cc --total-average "${paths[@]}" | tail -n 1)
+printf '%s\n' "$average"
+case "$average" in
+  'Average complexity: A '*) ;;
+  *) failed+=('radon average complexity') ;;
+esac
 
 printf '\n'
 if [ "${#failed[@]}" -ne 0 ]; then

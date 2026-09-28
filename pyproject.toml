@@ -4,8 +4,8 @@
 #
 # scripts/lint-python.sh runs every Python check with this config, in CI and
 # locally; requirements-dev.txt pins the tools. flake8 alone can't read this
-# file, so its settings are in .flake8. Complexity thresholds (radon, via
-# xenon) are in the script, which states them.
+# file, so its settings are in .flake8. The radon thresholds are in the
+# script, which states them.
 #
 #     python3 -m pip install -r requirements-dev.txt
 #     ./scripts/lint-python.sh
