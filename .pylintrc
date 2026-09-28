@@ -1,0 +1,9 @@
+[BASIC]
+# scripts/ uses hyphenated filenames throughout (validate-catalog.sh,
+# install-agents.sh, ...); allow the same for Python module names.
+module-rgx=[a-z_][a-z0-9_-]*$
+
+[DESIGN]
+# ParsedAgent groups one agent file's frontmatter; 8 fields is cohesive
+# state, not a design smell.
+max-attributes=10

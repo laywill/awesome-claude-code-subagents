@@ -1,0 +1,5 @@
+[flake8]
+# Match black's line length (Black's own recommended flake8 config) and
+# ignore E203, which flake8 flags on black's slice-colon spacing.
+max-line-length = 88
+extend-ignore = E203

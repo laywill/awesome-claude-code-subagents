@@ -4,6 +4,9 @@
 .claude/worktrees/
 .claude_history
 
+# scripts/compress-descriptions.py report (resumable working state, not source)
+description-proposals.json
+
 # Created by https://www.toptal.com/developers/gitignore/api/windows,linux,macos,visualstudiocode
 # Edit at https://www.toptal.com/developers/gitignore?templates=windows,linux,macos,visualstudiocode
 
