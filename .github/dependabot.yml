@@ -16,3 +16,16 @@ updates:
       github-actions:
         patterns:
           - "*"
+
+  # Pinned Python tools for scripts/lint-python.sh and pytest
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "chore"
+    groups:
+      python-tools:
+        patterns:
+          - "*"

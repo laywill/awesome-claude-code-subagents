@@ -14,7 +14,7 @@ You are a senior software engineer collaborating with a peer. Prioritize thoroug
 
 This is a curated collection of Claude Code subagent definitions — specialized AI assistants for specific development tasks. Subagents are markdown files with YAML frontmatter that Claude Code loads as agents.
 
-There is no build system or test suite. The "source" is markdown; correctness means the manifests, READMEs, and agent files stay in sync, which `scripts/validate-catalog.sh` checks and CI enforces (see Verification below).
+There is no build system. The "source" is markdown; correctness means the manifests, READMEs, and agent files stay in sync, which `scripts/validate-catalog.sh` checks and CI enforces (see Verification below). The Python under `scripts/` that does the checking has its own tests and lint (see Linting).
 
 ## Repository Structure
 
@@ -172,16 +172,16 @@ Two tiers apply to every agent file, and they drive different things:
 - **Category tier** comes from the category directory (Repository Structure) and nothing else. It drives the **frontmatter**: `color`, `effort`, `maxTurns`, and the Tier 1 `Bash` rule in `disallowedTools`. No override changes it.
 - **Stamp tier** is the `N` in the stamped block. It drives the **body**: which operating notes are stamped, and whether Expert practice, Rollback and Approval gates are required, optional or absent. It equals the category tier except for two overrides:
   - **Read-only override:** a Tier 2–5 agent whose `tools` hold none of `Bash`, `Write`, `Edit` or `NotebookEdit` takes `tier=1`, and has no Rollback. The test is on `tools` alone. The `disallowedTools` read-only marker plays no part in choosing the stamp, so `penetration-tester` (`Read, Grep, Glob, Bash`) keeps its category's stamp.
-  - **Per-file override:** where the category is right but the stamp isn't, the reviewed override allowlist from #318 maps the file to another stamp tier with a one-line reason, e.g. `chaos-engineer: tier=5 # targets running systems`. Until #318's allowlist exists, an uplift PR that needs an override says so in its description, and #318 seeds the allowlist from those PRs.
+  - **Per-file override:** where the category is right but the stamp isn't, an entry in `scripts/lint-allowlist.txt` maps the file to another stamp tier with a one-line reason, e.g. `chaos-engineer: tier=5 # injects faults into running systems, not local code`. The uplift PR that needs an override adds the entry.
 
 ### Body skeleton
 
-Everything after the frontmatter follows this skeleton. #318 lints it, so the rules are exact:
+Everything after the frontmatter follows this skeleton. `scripts/validate-catalog.sh` lints it, so the rules are exact:
 
 | # | Heading, exact and case-sensitive | Status | Content |
 | --- | --- | --- | --- |
 | 0 | none: the opening paragraph | required | `You are a <role> who <scope>` |
-| 1 | `## Scope` | required | what the agent does, and what it hands back to the main conversation instead |
+| 1 | `## Scope` | required | what the agent does, and what it hands back to its caller instead |
 | 2 | `## How you work` | required | a numbered list and nothing else (below) |
 | 3 | any other H2 | optional, zero or more | domain depth: the agent's method, knowledge and checkable criteria |
 | 4 | `## Expert practice` | required; optional where the stamp is `tier=1` | what a senior practitioner does that a generalist forgets, in the domain's own commands |
@@ -190,7 +190,7 @@ Everything after the frontmatter follows this skeleton. #318 lints it, so the ru
 | 7 | `## Rollback` | required where the stamp is `tier=3`, `4` or `5`; optional at `tier=2`; absent at `tier=1` | real CLI commands that undo this agent's changes |
 | 8 | `## Approval gates` | optional; absent at `tier=1` | one line per real domain process: *trigger → who confirms* |
 
-Lint rules (#318). Every rule applies outside fenced code blocks only:
+Lint rules. Every rule applies outside fenced code blocks only:
 
 - **Fences:** a fence opens on a line whose first non-space characters are three or more backticks or three or more tildes, at any indent, so fences inside list items count. It closes on a line holding only the same character, repeated at least as many times as the opener. Four-backtick fences occur, so track the character and the length.
 - **Opening paragraph (row 0):** the first non-blank line after the closing `---` of the frontmatter matches `^You are an?[ ]`. It starts the only paragraph before `## Scope`; nothing else precedes `## Scope`, not even an H3. The wording after "You are a" ("who …") is checked in review.
@@ -217,7 +217,7 @@ Review rules, not linted:
 
 ### Markup
 
-Linted (#318):
+Linted:
 
 - The heading rules above: ATX only, H2 and H3 only, no setext.
 - No line that is only bold text: `**Label**` or `**Label**:` alone on a line (markdownlint MD036). Use an H3.
@@ -242,17 +242,17 @@ Review only:
   ```
 
 - The `END` marker names its block, so that other stamp kinds can coexist later without ambiguity.
-- The wording is `AGENT_SECURITY_GUIDELINES.md` §7, stamped from `templates/operating-notes-tierN.md` by `scripts/stamp-sections.sh` (#318). It is never hand-edited, and the validator fails on drift. Until #318 lands, copy the §7 block verbatim.
+- The wording is `AGENT_SECURITY_GUIDELINES.md` §7, stamped from `templates/operating-notes-tierN.md` by `python3 scripts/stamp_sections.py <file...>`. It is never hand-edited, and the validator fails on drift, and on a template that no longer matches §7.
 - `N` is the stamp tier (see Category tier and stamp tier, above).
 - The block **replaces** hand-written `Environment Note`, `Environment adaptability` and `Environment adaptability & scope` preambles. Delete them; don't keep them alongside.
 
 ### Banned content
 
-`scripts/validate-catalog.sh` is the enforcing copy; the rest is added by #318 or caught in review.
+`scripts/validate-catalog.sh` is the enforcing copy of everything here except the Review line.
 
-- **Enforced today:** the headings `Communication Protocol`, `Progress Tracking`, `Integration with Other Agents` and `Audit Logging`, at any level; the phrases `requesting_agent`, `request_type`, `Delivery notification`, `Progress tracking:`, `integration with other agents`, `query context manager` and `context manager for`.
-- **Retired by #354, to be linted by #318:** the `Security Safeguards` heading and its LOW/MEDIUM/HIGH/CRITICAL subsections; `Emergency Stop` and `EMERGENCY_STOP` stop-file checks; `Blast Radius Controls`; generic `Approval Gates` (change ticket, on-call, peer review, `read -p` prompts); `Input Validation` that amounts to "validate inputs"; `-auto-approve` in a rollback path; hand-written environment preambles (above).
-- **Structural, #318:** the heading `## Development Workflow`; `When invoked:` and `On invocation:`; any breach of the Body skeleton lint rules; leftover `TEMPLATE:` guidance; and descriptions over 250 characters or holding `<example>` blocks.
+- **Enforced in every category:** the headings `Communication Protocol`, `Progress Tracking`, `Integration with Other Agents` and `Audit Logging`, at any level; the phrases `requesting_agent`, `request_type`, `Delivery notification`, `Progress tracking:`, `integration with other agents`, `query context manager` and `context manager for`.
+- **Retired by #354, linted through the ratchet:** the `Security Safeguards` heading and its subsections (`Input Validation`, `Rollback Procedures`, `Approval Gates`, `Emergency Stop`, `Blast Radius Controls`); `EMERGENCY_STOP` stop-file checks; the generic gate phrases `Change ticket` and `read -p`; `-auto-approve` in a rollback section; hand-written `Environment Note` and `Environment adaptability` preambles (above). Generic on-call or peer-review gates are caught in review.
+- **Structural, linted through the ratchet:** the heading `## Development Workflow`; `When invoked:` and `On invocation:`; any breach of the Body skeleton lint rules; leftover `TEMPLATE:` guidance; and descriptions over 250 characters or holding `<example>` blocks.
 - **Review:** invented metrics (counts, percentages, scores, durations or thresholds the agent can't measure or that have no source, such as "coverage > 80% confirmed"), embedded validation or logging code, and inter-agent coordination prose.
 
 ## Security Safeguards
@@ -287,7 +287,7 @@ Two rules that get violated repeatedly:
 
 One script, checked in, run by both humans and CI — `.github/workflows/validate.yml` invokes it on every pull request and on pushes to `main`. Keep the checks in the script; do not re-inline them here, or the documented copy becomes the stale one.
 
-It reports every failure it finds rather than stopping at the first, and exits non-zero if any fired. What it enforces:
+It reports every failure it finds rather than stopping at the first, and exits non-zero if any fired. What it enforces everywhere, regardless of category:
 
 | Check | Catches |
 | --- | --- |
@@ -301,22 +301,51 @@ It reports every failure it finds rather than stopping at the first, and exits n
 | marketplace.json covers each category exactly once | a category that ships unreachable |
 | Badge and marketplace counts match the real file count | the advertised subagent total drifting from reality |
 | Agent files carry no banned scaffolding headings or phrases | `## Communication Protocol`, context-manager queries, progress JSON and delivery notifications creeping back in (removed in #315) |
+| `templates/operating-notes-tierN.md` match `AGENT_SECURITY_GUIDELINES.md` §7 | the stamped wording drifting from the policy it comes from |
+| A stamped operating-notes block, where one exists, matches its template | a hand-edited block, a wrong `tier=N`, or a missing or repeated marker |
+| `scripts/lint-enforced-categories.txt` and `scripts/lint-allowlist.txt` are well-formed | a misspelt category that silently enforces nothing; an allowlist entry with no reason, an unknown rule, or an agent that no longer exists |
 
 Adding an agent therefore means updating the count in the README badge and in `.claude-plugin/marketplace.json`, not just the four places.
 
+### Content lint and the per-category ratchet
+
+The rules marked as linted under Agent File Format (frontmatter keys, values and tier rules; Body skeleton; Markup; Operating notes; the Retired and Structural lines of Banned content) are checked by `scripts/agent_lint.py`, one file at a time. It parses each file once into `scripts/lint_model.py`'s immutable model, then runs the rules in `scripts/lint_frontmatter.py`, `scripts/lint_body.py` and `scripts/lint_content.py`, which are functions over that model and never re-parse text. `scripts/catalog_lint.py` runs it over the catalog and applies the ratchet, and `validate-catalog.sh` runs that. The stamper reads files through the same model, so the two can't disagree about a heading, a fence or a stamp marker. Most agent files predate v3, so these findings are ratcheted:
+
+- **`scripts/lint-enforced-categories.txt`** lists category directories. In a listed category every content finding fails the build; elsewhere it is a warning. Each category's v3 uplift adds its category as its last step; #328 requires all 24 and removes the ratchet.
+- Two exceptions to the ratchet: a stamped block that exists but has drifted or is malformed always fails, and the invented-metric heuristic (`metric-invented`) only ever warns.
+- Warnings print as counts by rule and by category. `./scripts/validate-catalog.sh --verbose` lists every one; `./scripts/validate-catalog.sh 03-analysis-and-review` lists that category's. Arguments change what is printed, never what fails.
+- **`scripts/lint-allowlist.txt`** holds the reviewed per-file exceptions, one per line as `<agent-name>: <rule> # <reason>`: `tier=N` (stamp override), `tier1-bash`, and `sonnet-instead-of-opus`. The reason is mandatory.
+- **`python3 scripts/stamp_sections.py <file...>`** writes or refreshes a file's stamped block, choosing the stamp tier as the validator does. It needs explicit paths, and a second run changes nothing.
+- **`scripts/lint-enforced-markdown.sh`** runs markdownlint and cspell, blocking, over the listed categories only.
+- **Cutover (#328):** once all 24 categories are listed, delete the ratchet file, `scripts/lint-enforced-markdown.sh` and the `enforced-markdown` job in `validate.yml`; make content findings fail everywhere; and remove `MARKDOWN_MARKDOWNLINT` and `SPELL_CSPELL` from `DISABLE_ERRORS_LINTERS` in `.mega-linter.yml`, so MegaLinter blocks on them directly.
+
+The Python scripts use the standard library only. `tests/` covers them with pytest (`python3 -m pytest`, configured in `pyproject.toml`), and CI runs the tests in `validate.yml` before the catalog check. Change a lint rule by changing its test first. Tests that need a real local Ollama server (`compress-descriptions.py`'s contract with its API) are marked `ollama` and deselected by default; run `python3 -m pytest -m ollama` after changing how the script talks to Ollama.
+
 ### Linting
 
-MegaLinter (`.mega-linter.yml`, `.github/workflows/mega-linter.yml`) covers generic file hygiene; `validate-catalog.sh` covers what is specific to this catalog. Don't duplicate a check across the two.
+MegaLinter (`.mega-linter.yml`, `.github/workflows/mega-linter.yml`) covers generic file hygiene; `validate-catalog.sh` covers what is specific to this catalog; `scripts/lint-python.sh` covers Python. Don't duplicate a check across them.
+
+**Python** is not linted by MegaLinter (`DISABLE: PYTHON`). `scripts/lint-python.sh` runs ruff, black, isort, flake8, pylint, `mypy --strict`, bandit and radon over all of `scripts/` and `tests/`, from the `python-lint` job in `validate.yml`, on every run. Tool versions are pinned in `requirements-dev.txt` (Dependabot bumps them); config is in `pyproject.toml`, except flake8's in `.flake8`. All of it blocks, including radon: no function worse than cyclomatic complexity B (10), and every module maintainability A. Before pushing Python:
+
+```bash
+python3 -m pip install -r requirements-dev.txt
+./scripts/lint-python.sh && python3 -m pytest
+```
+
+When the radon gate fails, fix the design rather than splitting a function to hide a branch count: rules stay functions over `lint_model.py`'s parsed types, with policy in tables. Don't add `# noqa` or `# pylint: disable` without a comment saying why.
 
 - **Blocking:** editorconfig-checker (LF endings, exactly one final newline, per `.editorconfig`), actionlint, shellcheck, yamllint, jsonlint and the secret scanners.
-- **Report-only:** markdownlint (`.markdownlint.json`), cspell (`.cspell.json`, en-GB and en-US) and jscpd. The agent files predate linting, and #318's per-category ratchet makes these blocking as each category is uplifted.
+- **Report-only, catalog-wide, promoted to blocking per category by the ratchet:** markdownlint (`.markdownlint.json`), cspell (`.cspell.json`, en-GB and en-US) — see `scripts/lint-enforced-markdown.sh`, above.
+- **Report-only, not ratcheted:** jscpd.
 - **No auto-fix commits** (`APPLY_FIXES: none`). Fix locally and commit.
 
-PRs lint only the files they change; pushes to `main` lint everything. For fast local feedback, `pre-commit install` runs the hooks in `.pre-commit-config.yaml`, and `pre-commit install --hook-type pre-push` adds `validate-catalog.sh` before each push.
+PRs lint only the files they change; pushes to `main` lint everything. For fast local feedback, `pre-commit install` runs the hooks in `.pre-commit-config.yaml`, including `lint-python.sh` when a `.py` file changes, and `pre-commit install --hook-type pre-push` adds pytest and `validate-catalog.sh` before each push.
+
+`.github/workflows/validate.yml` also runs `claude plugin validate . --strict`, the Claude Code CLI's own check of the marketplace and plugin manifests. It needs no credentials. It does not read agent frontmatter, which is `validate-catalog.sh`'s job.
 
 ## GitHub Actions
 
-Workflows: `validate.yml` (catalog consistency), `mega-linter.yml` (linting), `codeql.yml` (workflow security analysis) and `labels.yml` (syncs `.github/labels.yml` into the repo's labels; it never deletes a label). Dependabot (`.github/dependabot.yml`) raises weekly grouped bumps for them. Every workflow, existing or new, must pin every action to a full 40-character commit SHA, with a trailing comment naming the semantic version that SHA corresponds to:
+Workflows: `validate.yml` (catalog consistency, Python tests and Python lint), `mega-linter.yml` (linting), `codeql.yml` (workflow security analysis) and `labels.yml` (syncs `.github/labels.yml` into the repo's labels; it never deletes a label). Dependabot (`.github/dependabot.yml`) raises weekly grouped bumps for their actions and for `requirements-dev.txt`. Every workflow, existing or new, must pin every action to a full 40-character commit SHA, with a trailing comment naming the semantic version that SHA corresponds to:
 
 ```yaml
 steps:

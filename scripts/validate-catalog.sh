@@ -18,6 +18,16 @@ set -uo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 
+# Usage: ./scripts/validate-catalog.sh [--verbose] [category-dir ...]
+#
+# The arguments go to scripts/catalog_lint.py, which runs the content checks
+# (issue #318) last. They warn outside the categories listed in
+# scripts/lint-enforced-categories.txt, and the pre-v3 catalog raises
+# thousands of warnings. By default they print as counts by rule and by
+# category. --verbose prints every warning; naming category directories
+# (e.g. 03-analysis-and-review) prints every warning for those. Arguments
+# change only what is printed, never what fails.
+
 failures=0
 
 fail() {
@@ -255,11 +265,29 @@ while IFS= read -r file; do
 done < <(agent_files)
 
 # ---------------------------------------------------------------------------
+# Content lint (#318)
+# ---------------------------------------------------------------------------
+# The ratchet and allowlist files, the operating-notes templates against
+# AGENT_SECURITY_GUIDELINES.md §7, and each agent file's frontmatter, body
+# skeleton, markup, stamp and banned content. scripts/catalog_lint.py prints its
+# own sections, FAIL lines and warning counts, and exits non-zero if any of its
+# checks failed. It needs only the standard library; tests/ covers it.
+
+content_failed=0
+if python=$(command -v python3 || command -v python); then
+  "$python" scripts/catalog_lint.py "$@" || content_failed=1
+else
+  fail 'Python 3 is required for the content checks (scripts/catalog_lint.py)'
+fi
+
+# ---------------------------------------------------------------------------
 
 printf '\n'
 
 if [ "$failures" -ne 0 ]; then
   printf '%s check(s) failed.\n' "$failures" >&2
+fi
+if [ "$failures" -ne 0 ] || [ "$content_failed" -ne 0 ]; then
   exit 1
 fi
 

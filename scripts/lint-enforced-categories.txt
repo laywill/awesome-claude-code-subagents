@@ -1,0 +1,15 @@
+# The per-category ratchet for the content lint (issue #318).
+#
+# One category directory name per line, exactly as under categories/, e.g.
+# 03-analysis-and-review. In a listed category every content finding from
+# scripts/validate-catalog.sh fails the build, and scripts/lint-enforced-
+# markdown.sh makes markdownlint and cspell blocking for its files. Unlisted
+# categories get the same findings as warnings.
+#
+# A category's v3 uplift PR adds it here as its last step, once it passes.
+#
+# The release (#328) requires all 24 and then removes the ratchet: it deletes
+# this file, scripts/lint-enforced-markdown.sh and the enforced-markdown job in
+# .github/workflows/validate.yml, makes every content finding fail, and takes
+# MARKDOWN_MARKDOWNLINT and SPELL_CSPELL out of DISABLE_ERRORS_LINTERS in
+# .mega-linter.yml so MegaLinter blocks on them directly.

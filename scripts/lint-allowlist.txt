@@ -1,0 +1,24 @@
+# Reviewed per-file exceptions to the content lint (issue #318), read through
+# scripts/agent_file.py by scripts/agent_lint.py and scripts/stamp_sections.py,
+# and checked by scripts/catalog_lint.py.
+#
+# One entry per line, reason mandatory:
+#
+#   <agent-name>: <rule> # <reason>
+#
+# <agent-name> is the frontmatter name (the filename stem). <rule> is one of:
+#
+#   tier=N                  stamp override: stamp the operating notes for tier
+#                           N (1-5) instead of the computed stamp tier. For a
+#                           file whose category is right but whose stamp isn't
+#                           (CLAUDE.md, "Category tier and stamp tier"). If
+#                           the category is wrong, move the agent instead.
+#                           Frontmatter still follows the category tier.
+#   tier1-bash              a Tier 1 agent that must run commands to produce
+#                           its findings (tests, profilers, git log) keeps Bash.
+#   sonnet-instead-of-opus  a Tier 1-3 sonnet agent sets effort: high because
+#                           it fails only the second opus criterion.
+#
+# Entries are added by the per-category uplift PRs that need them.
+
+chaos-engineer: tier=5 # injects faults into running systems, not local code

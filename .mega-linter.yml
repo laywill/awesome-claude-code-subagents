@@ -19,12 +19,24 @@ DISABLE_LINTERS:
   - JSON_PRETTIER  # Disable beautifying JSON with Prettier
   - YAML_PRETTIER  # Disable beautifying YAML with Prettier
 
+# Python is linted by scripts/lint-python.sh, from the python-lint job in
+# .github/workflows/validate.yml: every file on every run, with the tool
+# versions in requirements-dev.txt and the config in pyproject.toml. Running
+# MegaLinter's copies too would check the same code twice with different
+# versions and default configs.
+DISABLE:
+  - PYTHON
+
 # Report-only for now. The agent files predate any linting: on main,
 # markdownlint reports ~2,800 findings once line length is excluded, and
-# cspell reports ~1,400. #318's per-category ratchet makes these blocking
-# category by category as the v3 uplifts land. Everything not listed here
+# cspell reports ~1,400. DISABLE_ERRORS_LINTERS applies to a linter as a
+# whole, so scripts/lint-enforced-markdown.sh runs both again, blocking, over
+# the categories in scripts/lint-enforced-categories.txt (#318), from
+# .github/workflows/validate.yml. Everything not listed here
 # (editorconfig-checker, actionlint, shellcheck, yamllint, jsonlint, secret
-# scanners) blocks from day one.
+# scanners) blocks from day one. Once every category is listed, the release
+# (#328) removes MARKDOWN_MARKDOWNLINT and SPELL_CSPELL from this list and
+# deletes scripts/lint-enforced-markdown.sh.
 DISABLE_ERRORS_LINTERS:
   - MARKDOWN_MARKDOWNLINT
   - SPELL_CSPELL
