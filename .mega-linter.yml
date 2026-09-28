@@ -26,7 +26,9 @@ DISABLE_LINTERS:
 # the categories in scripts/lint-enforced-categories.txt (#318), from
 # .github/workflows/validate.yml. Everything not listed here
 # (editorconfig-checker, actionlint, shellcheck, yamllint, jsonlint, secret
-# scanners) blocks from day one.
+# scanners) blocks from day one. Once every category is listed, the release
+# (#328) removes MARKDOWN_MARKDOWNLINT and SPELL_CSPELL from this list and
+# deletes scripts/lint-enforced-markdown.sh.
 DISABLE_ERRORS_LINTERS:
   - MARKDOWN_MARKDOWNLINT
   - SPELL_CSPELL

@@ -317,6 +317,7 @@ The rules marked as linted under Agent File Format (frontmatter keys, values and
 - **`scripts/lint-allowlist.txt`** holds the reviewed per-file exceptions, one per line as `<agent-name>: <rule> # <reason>`: `tier=N` (stamp override), `tier1-bash`, and `sonnet-instead-of-opus`. The reason is mandatory.
 - **`python3 scripts/stamp_sections.py <file...>`** writes or refreshes a file's stamped block, choosing the stamp tier as the validator does. It needs explicit paths, and a second run changes nothing.
 - **`scripts/lint-enforced-markdown.sh`** runs markdownlint and cspell, blocking, over the listed categories only.
+- **Cutover (#328):** once all 24 categories are listed, delete the ratchet file, `scripts/lint-enforced-markdown.sh` and the `enforced-markdown` job in `validate.yml`; make content findings fail everywhere; and remove `MARKDOWN_MARKDOWNLINT` and `SPELL_CSPELL` from `DISABLE_ERRORS_LINTERS` in `.mega-linter.yml`, so MegaLinter blocks on them directly.
 
 The Python scripts use the standard library only. `tests/` covers them with pytest (`python3 -m pytest`, configured in `pyproject.toml`), and CI runs the tests in `validate.yml`. Change a lint rule by changing its test first.
 

@@ -7,4 +7,9 @@
 # categories get the same findings as warnings.
 #
 # A category's v3 uplift PR adds it here as its last step, once it passes.
-# The release (#328) requires all 24 and then removes the ratchet.
+#
+# The release (#328) requires all 24 and then removes the ratchet: it deletes
+# this file, scripts/lint-enforced-markdown.sh and the enforced-markdown job in
+# .github/workflows/validate.yml, makes every content finding fail, and takes
+# MARKDOWN_MARKDOWNLINT and SPELL_CSPELL out of DISABLE_ERRORS_LINTERS in
+# .mega-linter.yml so MegaLinter blocks on them directly.
