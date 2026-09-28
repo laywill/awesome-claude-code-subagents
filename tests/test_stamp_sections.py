@@ -2,9 +2,7 @@
 
 # Test names say what each test checks, and `== []` shows the unexpected
 # findings in pytest's failure diff where `not ...` would not.
-# pytest isn't installed where MegaLinter runs pylint; the pytest job fails
-# on an import that is really missing.
-# pylint: disable=import-error,missing-function-docstring
+# pylint: disable=missing-function-docstring
 # pylint: disable=use-implicit-booleaness-not-comparison
 
 from __future__ import annotations

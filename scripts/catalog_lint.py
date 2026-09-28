@@ -46,6 +46,7 @@ from agent_file import (
     split_lines,
 )
 from agent_lint import Finding, lint_file
+from lint_model import Severity
 
 ENFORCED_FILE = "scripts/lint-enforced-categories.txt"
 GUIDELINES_FILE = "AGENT_SECURITY_GUIDELINES.md"
@@ -157,7 +158,9 @@ def ratchet(
     failures, warnings = [], []
     for f in findings:
         category = f.path.removeprefix("categories/").split("/", 1)[0]
-        if f.cls == "F" or (f.cls == "C" and category in enforced):
+        if f.severity is Severity.FAIL or (
+            f.severity is Severity.RATCHETED and category in enforced
+        ):
             failures.append(f)
         else:
             warnings.append(f)

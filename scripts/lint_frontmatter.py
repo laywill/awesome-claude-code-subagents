@@ -9,7 +9,10 @@ from __future__ import annotations
 
 import re
 
-from agent_file import Allowlist, Emit, Frontmatter
+from agent_file import Allowlist, Frontmatter
+from lint_model import Emit, Severity
+
+C = Severity.RATCHETED
 
 ALLOWED_KEYS = {
     "name",
@@ -61,10 +64,10 @@ def check_frontmatter(fm: Frontmatter, tier: int, allow: Allowlist, emit: Emit) 
     check_keys(fm, emit)
     name, model = fm.get("name"), fm.get("model")
     if not NAME_RE.fullmatch(name):
-        emit("C", "name-format", f"name '{name}' is not kebab-case")
+        emit(C, "name-format", f"name '{name}' is not kebab-case")
     check_description(fm, emit)
     if model not in MODELS:
-        emit("C", "model-value", f"model '{model}' is not haiku, sonnet or opus")
+        emit(C, "model-value", f"model '{model}' is not haiku, sonnet or opus")
 
     tools = fm.tool_set("tools")
     disallowed = fm.tool_set("disallowedTools")
@@ -73,7 +76,7 @@ def check_frontmatter(fm: Frontmatter, tier: int, allow: Allowlist, emit: Emit) 
     color = fm.get("color")
     if color != TIER_COLOR[tier]:
         emit(
-            "C",
+            C,
             "color-tier",
             f"color is '{color or '<absent>'}', tier {tier} requires "
             f"'{TIER_COLOR[tier]}'",
@@ -99,7 +102,7 @@ def check_keys(fm: Frontmatter, emit: Emit) -> None:
                 f"'{key}' is not a recognised key "
                 "(Claude Code silently ignores misspellings)"
             )
-        emit("C", "frontmatter-key", msg)
+        emit(C, "frontmatter-key", msg)
 
 
 def check_description(fm: Frontmatter, emit: Emit) -> None:
@@ -107,17 +110,17 @@ def check_description(fm: Frontmatter, emit: Emit) -> None:
     desc = fm.get("description")
     if len(desc) > 250:
         emit(
-            "C",
+            C,
             "description-length",
             f"description is {len(desc)} characters, over the 250 limit",
         )
     if "<example" in desc:
-        emit("C", "description-format", "description holds an <example> block")
+        emit(C, "description-format", "description holds an <example> block")
     # A block scalar (| or >) reads back as its indicator; an escaped \n is a
     # second line in disguise.
     block_scalar = re.fullmatch(r"[|>][-+]?", desc)
     if fm.description_multiline or block_scalar or "\\n" in desc:
-        emit("C", "description-format", "description spans more than one line")
+        emit(C, "description-format", "description spans more than one line")
 
 
 def check_tools(tools: list[str], disallowed: list[str], emit: Emit) -> None:
@@ -126,16 +129,16 @@ def check_tools(tools: list[str], disallowed: list[str], emit: Emit) -> None:
     check_tool_names("disallowedTools", disallowed, emit)
     for tool in disallowed:
         if tool in tools:
-            emit("C", "tools-overlap", f"'{tool}' is in both tools and disallowedTools")
+            emit(C, "tools-overlap", f"'{tool}' is in both tools and disallowedTools")
 
 
 def check_tool_names(key: str, tools: list[str], emit: Emit) -> None:
     """Every entry is a plain, real tool name."""
     for tool in tools:
         if "(" in tool or tool.startswith("mcp__"):
-            emit("C", "tools-format", f"{key} holds a specifier or MCP pattern: {tool}")
+            emit(C, "tools-format", f"{key} holds a specifier or MCP pattern: {tool}")
         elif tool not in REAL_TOOLS:
-            emit("C", "tools-format", f"{key} holds an unrecognised tool name: {tool}")
+            emit(C, "tools-format", f"{key} holds an unrecognised tool name: {tool}")
 
 
 def check_tier1_bash(
@@ -144,12 +147,12 @@ def check_tier1_bash(
     """Tier 1 disallows Bash unless the allowlist says the role needs it."""
     if "Bash" in tools and not exempt:
         emit(
-            "C",
+            C,
             "tier1-bash",
             f"tier 1 tools hold Bash with no tier1-bash entry in {ALLOWLIST_NOTE}",
         )
     elif "Bash" not in tools and "Bash" not in disallowed:
-        emit("C", "tier1-bash", "tier 1 disallowedTools must list Bash")
+        emit(C, "tier1-bash", "tier 1 disallowedTools must list Bash")
 
 
 def check_effort(
@@ -158,12 +161,12 @@ def check_effort(
     """effort: high on Tier 4-5 sonnet, or an allowlisted Tier 1-3 sonnet."""
     if effort and effort != "high":
         emit(
-            "C",
+            C,
             "effort",
             f"effort '{effort}' is not allowed; the only allowed value is high",
         )
     if effort and model in ("haiku", "opus"):
-        emit("C", "effort", f"effort must be absent on {model}")
+        emit(C, "effort", f"effort must be absent on {model}")
     if model == "sonnet":
         check_sonnet_effort(effort, tier, sonnet_exempt, emit)
 
@@ -173,10 +176,10 @@ def check_sonnet_effort(
 ) -> None:
     """Required on Tier 4-5; on Tier 1-3 only with an allowlist entry."""
     if tier >= 4 and effort != "high":
-        emit("C", "effort", f"tier {tier} sonnet agents require effort: high")
+        emit(C, "effort", f"tier {tier} sonnet agents require effort: high")
     if tier <= 3 and effort and not sonnet_exempt:
         emit(
-            "C",
+            C,
             "effort",
             f"tier {tier} sets effort without a sonnet-instead-of-opus entry in "
             f"{ALLOWLIST_NOTE}",
@@ -186,12 +189,12 @@ def check_sonnet_effort(
 def check_max_turns(max_turns: str, tier: int, emit: Emit) -> None:
     """40 on Tier 4, 25 on Tier 5, absent below."""
     if max_turns and not re.fullmatch(r"[1-9][0-9]*", max_turns):
-        emit("C", "maxturns", f"maxTurns '{max_turns}' is not a positive integer")
+        emit(C, "maxturns", f"maxTurns '{max_turns}' is not a positive integer")
     if tier <= 3 and max_turns:
-        emit("C", "maxturns", f"tier {tier} must not set maxTurns")
+        emit(C, "maxturns", f"tier {tier} must not set maxTurns")
     if tier in TIER_MAX_TURNS and max_turns != TIER_MAX_TURNS[tier]:
         emit(
-            "C",
+            C,
             "maxturns",
             f"tier {tier} requires maxTurns: {TIER_MAX_TURNS[tier]}, got '{max_turns}'",
         )

@@ -1,8 +1,6 @@
 """Behaviour of scripts/catalog_lint.py: the ratchet, allowlist and templates."""
 
-# pytest isn't installed where MegaLinter runs pylint; the pytest job fails
-# on an import that is really missing.
-# pylint: disable=import-error,missing-function-docstring
+# pylint: disable=missing-function-docstring
 # pylint: disable=use-implicit-booleaness-not-comparison
 
 from __future__ import annotations
@@ -14,6 +12,7 @@ import catalog_lint
 import pytest
 from agent_lint import Finding
 from builders import ROOT, TEMPLATES, TIER_DIR, make_agent
+from lint_model import Severity
 
 
 def test_parse_enforced() -> None:
@@ -69,14 +68,14 @@ def test_check_templates_reports_drift_and_missing() -> None:
 
 
 def test_ratchet() -> None:
-    def finding(cls: str, category: str) -> Finding:
-        return Finding(cls, "r", f"categories/{category}/x.md", "m")
+    def finding(severity: Severity, category: str) -> Finding:
+        return Finding(severity, "r", f"categories/{category}/x.md", "m")
 
     findings = [
-        finding("C", "03-enforced"),
-        finding("C", "04-other"),
-        finding("F", "04-other"),
-        finding("W", "03-enforced"),
+        finding(Severity.RATCHETED, "03-enforced"),
+        finding(Severity.RATCHETED, "04-other"),
+        finding(Severity.FAIL, "04-other"),
+        finding(Severity.WARN, "03-enforced"),
     ]
     failures, warnings = catalog_lint.ratchet(findings, {"03-enforced"})
     assert failures == [findings[0], findings[2]]

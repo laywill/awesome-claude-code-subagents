@@ -2,9 +2,7 @@
 
 # Test names say what each test checks, and `== []` shows the unexpected
 # findings in pytest's failure diff where `not ...` would not.
-# pytest isn't installed where MegaLinter runs pylint; the pytest job fails
-# on an import that is really missing.
-# pylint: disable=import-error,missing-function-docstring
+# pylint: disable=missing-function-docstring
 # pylint: disable=use-implicit-booleaness-not-comparison
 
 from __future__ import annotations
@@ -17,6 +15,7 @@ import agent_lint
 import pytest
 from agent_file import Allowlist
 from builders import TEMPLATES, lint, make_agent, rules, stamp_block
+from lint_model import Severity
 
 # -- Baseline -----------------------------------------------------------------
 
@@ -206,7 +205,7 @@ def test_stamp_missing() -> None:
 def test_stamp_drift_always_fails() -> None:
     text = make_agent().replace("You are advisory", "You are advisory, mostly")
     findings = lint(text)
-    assert [(f.cls, f.rule) for f in findings] == [("F", "stamp-drift")]
+    assert [(f.severity, f.rule) for f in findings] == [(Severity.FAIL, "stamp-drift")]
 
 
 def test_stamp_tier_follows_tools() -> None:
@@ -236,7 +235,9 @@ def test_stamp_malformed_always_fails(mangle: Callable[[str], str]) -> None:
     body_at = make_agent().index("You are")
     text = make_agent()
     text = text[:body_at] + mangle(text[body_at:])
-    assert ("F", "stamp-malformed") in {(f.cls, f.rule) for f in lint(text)}
+    assert (Severity.FAIL, "stamp-malformed") in {
+        (f.severity, f.rule) for f in lint(text)
+    }
 
 
 def test_stamp_markers_inside_code_are_ignored() -> None:
@@ -481,7 +482,9 @@ def test_auto_approve_only_banned_under_rollback() -> None:
 )
 def test_invented_metric_only_warns(line: str) -> None:
     findings = lint(make_agent().replace("Domain detail.", line))
-    assert [(f.cls, f.rule) for f in findings] == [("W", "metric-invented")]
+    assert [(f.severity, f.rule) for f in findings] == [
+        (Severity.WARN, "metric-invented")
+    ]
 
 
 # -- Shared parsing ------------------------------------------------------------------

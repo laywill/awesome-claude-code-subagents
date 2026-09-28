@@ -29,100 +29,60 @@ always LF-terminated.
 from __future__ import annotations
 
 import sys
-from collections.abc import Iterator
-from dataclasses import dataclass, field
 from pathlib import Path
 
 from agent_file import (
     ALLOWLIST_FILE,
-    BEGIN_MARK,
     BLANK_RE,
-    END_MARK,
     ROOT,
     TEMPLATE_DIR,
     Allowlist,
     category_tier,
-    closes_fence,
-    fence_open,
-    one_stamp,
     parse_frontmatter,
     read_text,
     split_lines,
     stamp_tier,
 )
+from lint_model import AgentDoc, parse_lines
 
 
 class StampError(Exception):
     """A file that can't be stamped without a hand fix first."""
 
 
-def prose_lines(lines: list[str]) -> Iterator[tuple[int, str]]:
-    """(index, line) for each body line outside fenced code and fence lines."""
-    fm = parse_frontmatter(lines)
-    start = fm.body_start if fm and fm.closed else len(lines)
-    fence: tuple[str, int] | None = None
-    for i in range(start, len(lines)):
-        line = lines[i]
-        stripped = line.lstrip(" \t")
-        if fence:
-            if closes_fence(stripped, *fence):
-                fence = None
-            continue
-        fence = fence_open(stripped)
-        if not fence:
-            yield i, line
-
-
-@dataclass
-class Landmarks:
-    """Where the stamp is, or where it should go, as indexes into the lines."""
-
-    begins: list[int] = field(default_factory=list)
-    ends: list[int] = field(default_factory=list)
-    output: int | None = None  # the "## Output" heading
-    after_output: int | None = None  # the next H2 after it
-
-
-def find_landmarks(lines: list[str]) -> Landmarks:
-    """Stamp markers and the Output section, outside fenced code."""
-    marks = Landmarks()
-    for i, line in prose_lines(lines):
-        if line.startswith(BEGIN_MARK):
-            marks.begins.append(i)
-        if line == END_MARK:
-            marks.ends.append(i)
-        if line == "## Output" and marks.output is None:
-            marks.output = i
-        elif (
-            marks.output is not None
-            and marks.after_output is None
-            and line.startswith("## ")
-        ):
-            marks.after_output = i
-    return marks
-
-
 def stamp(lines: list[str], template: list[str]) -> list[str]:
     """Return lines with the operating-notes block written or refreshed.
 
-    Markers and headings inside fenced code are ignored, as the lint ignores
-    them.
+    The file is read through lint_model.parse_lines(), exactly as the lint
+    reads it, so markers and headings inside fenced code are ignored.
     """
-    marks = find_landmarks(lines)
-    begins, ends, output = marks.begins, marks.ends, marks.output
-    if begins or ends:
-        if not one_stamp(begins, ends):
-            raise StampError("expected one BEGIN and one END marker; fix by hand first")
-        return lines[: begins[0]] + template + lines[ends[0] + 1 :]
+    doc = parse_lines(lines)
+    markers = doc.stamp_markers()
+    if not markers.present:
+        return _insert(doc, template)
+    if markers.span is None:
+        raise StampError("expected one BEGIN and one END marker; fix by hand first")
+    begin, end = markers.span
+    # Line numbers are 1-based: a line's number is the index after it.
+    return lines[: begin - 1] + template + lines[end:]
 
+
+def _insert(doc: AgentDoc, template: list[str]) -> list[str]:
+    """Add the block after the Output section: before the next H2, or at the end.
+
+    Blank lines closing the Output section are replaced by exactly one.
+    """
+    lines = list(doc.lines)
+    output = doc.h2_line("## Output")
     if output is None:
         raise StampError("no ## Output heading; add the skeleton first")
-    insert = len(lines) if marks.after_output is None else marks.after_output
+    next_h2 = doc.next_h2(output)
+    insert = len(lines) if next_h2 is None else next_h2 - 1
     last = insert - 1
-    while last > output and BLANK_RE.match(lines[last]):
+    while last >= output and BLANK_RE.match(lines[last]):
         last -= 1
-    tail = [""] + lines[insert:] if insert < len(lines) else []
-    return lines[: last + 1] + [""] + template + tail
+    tail = ["", *lines[insert:]] if insert < len(lines) else []
+    return [*lines[: last + 1], "", *template, *tail]
 
 
 def stamp_file(path: Path, root: Path, allow: Allowlist) -> str:

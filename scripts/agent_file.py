@@ -1,9 +1,11 @@
-"""Reading agent definition files, shared by the content lint and the stamper.
+"""Reading agent definition files: the primitives under scripts/lint_model.py.
 
-scripts/agent_lint.py and scripts/stamp_sections.py both import this, so the
-two can't disagree about line endings, frontmatter, fenced code, a file's
-tier or its stamp tier. The module name uses underscores, unlike the
-hyphenated shell scripts beside it, so that it can be imported.
+Line endings, frontmatter, fence syntax, a file's tier and its stamp tier,
+the allowlist and the templates. scripts/lint_model.py builds its parsed
+model from these, and the lint, the catalog run and the stamper all read
+through one or the other, so they can't disagree. The module name uses
+underscores, unlike the hyphenated shell scripts beside it, so that it can be
+imported.
 
 Standard library only: CI runs it with the runner's system Python.
 """
@@ -11,13 +13,8 @@ Standard library only: CI runs it with the runner's system Python.
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-
-# How the lint's rule modules report a finding: emit(cls, rule, message).
-# scripts/agent_lint.py binds it to the file being linted.
-Emit = Callable[[str, str, str], None]
 
 ROOT = Path(__file__).resolve().parent.parent
 ALLOWLIST_FILE = "scripts/lint-allowlist.txt"
@@ -156,11 +153,6 @@ class Allowlist:
     def allows(self, name: str, rule: str) -> bool:
         """Whether name has a reviewed exemption from rule."""
         return (name, rule) in self.exemptions
-
-
-def one_stamp(begins: list[int], ends: list[int]) -> bool:
-    """Exactly one BEGIN and one END marker, in that order."""
-    return len(begins) == 1 and len(ends) == 1 and begins[0] < ends[0]
 
 
 def stamp_tier(name: str, tools: list[str], tier: int, allow: Allowlist) -> int:
