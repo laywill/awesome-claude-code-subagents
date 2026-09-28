@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Compress agent frontmatter ``description`` fields with a local Ollama model.
 
-Rewriting an over-budget description to the #327 interim style (one
-sentence, a hard character budget, task type first, concrete nouns) is
+Rewriting an over-budget description to the CLAUDE.md "Description style"
+(one sentence, at most 250 characters, task type first, then concrete
+nouns; "Use proactively when..." only as the opening) is
 mechanical: the output follows from the input with little judgement, so a
 small local model does it instead of spending Claude tokens on it.
 
@@ -67,30 +68,30 @@ BODY_MAX_CHARS = 3000
 NUM_PREDICT = 200
 TEMPERATURE = 0.1
 
-DESCRIPTION_LINE_RE = re.compile(r'^(?P<prefix>\s*description:\s*)"(?P<value>.*)"$')
+DESCRIPTION_LINE_RE = re.compile(
+    r'^(?P<prefix>\s*description:\s*)"(?P<value>.*)"[ \t]*$'
+)
 NAME_LINE_RE = re.compile(r"^\s*name:\s*(?P<value>.+?)\s*$")
 CONTROL_CHAR_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
 # A sentence terminator followed by more text means there's a second
 # sentence; a trailing one at the very end of the string does not match.
 # Some of these are abbreviations rather than real sentence ends (see
-# _is_abbreviation below), and one specific second sentence is allowed (see
-# has_disallowed_extra_sentence below).
+# _is_abbreviation below).
 MULTI_SENTENCE_RE = re.compile(r"[.!?]\s+\S")
-# Abbreviations whose trailing period is not a sentence boundary.
-ABBREVIATIONS = {"e.g.", "i.e.", "etc.", "vs.", "u.s.", "u.k."}
-# The #327 style's one permitted second sentence.
+# Abbreviations whose trailing period is not a sentence boundary. Dotted
+# initialisms (e.g., i.e., U.S.) are caught by INITIALISM_RE instead.
+ABBREVIATIONS = {"etc.", "vs.", "approx.", "incl."}
+INITIALISM_RE = re.compile(r"^(?:[a-z]\.){2,}$")
+# The style allows "Use proactively when..." only as the opening words.
+PROACTIVE_PHRASE_RE = re.compile(r"(?i)\buse proactively\b")
 PROACTIVE_PREFIX_RE = re.compile(r"(?i)^use proactively when\b")
 
 STYLE_RULES = """You compress Claude Code agent frontmatter descriptions to a \
 house style.
 
 Rules for the rewritten description:
-- One sentence describing what the agent does, with a single terminal
-period. Do not split that sentence in two.
-- You may append exactly one more sentence starting with "Use proactively
-when ..." if the current description already makes clear this agent
-should act without being asked; otherwise write only the one sentence.
-Never add any other second sentence.
+- Exactly one sentence, with a single terminal period. Never write a
+second sentence.
 - At most {budget} characters, total.
 - Task type first (what kind of work this agent does), then the concrete
 nouns a user would type: languages, tools, frameworks, file types,
@@ -99,7 +100,12 @@ commands.
 "robust", "powerful", and similar).
 - Preserve the meaning of the current description. Do not invent
 capabilities that are not already there.
-- Plain text only: no surrounding quotes, no markdown, no line breaks.
+- Start with "Use proactively when ..." only if the current description
+already says this agent should act without being asked; the rest of that
+same sentence then says what it does. Never put "Use proactively" anywhere
+but the very start, and leave it out entirely otherwise.
+- Plain text only: no surrounding quotes, no markdown, no line breaks, no
+<example> blocks.
 
 Respond by calling the schema with a single "description" field."""
 
@@ -274,14 +280,16 @@ def _is_abbreviation(text: str, period_index: int) -> bool:
     True
     >>> _is_abbreviation("the U.S. market", 7)
     True
+    >>> _is_abbreviation("tools (e.g. print", 10)
+    True
     >>> _is_abbreviation("Fixes bugs. Then ships", 10)
     False
     """
     start = period_index
     while start > 0 and not text[start - 1].isspace():
         start -= 1
-    token = text[start : period_index + 1].lower()
-    return token in ABBREVIATIONS
+    token = text[start : period_index + 1].lower().lstrip("([{\"'")
+    return token in ABBREVIATIONS or bool(INITIALISM_RE.match(token))
 
 
 def find_sentence_boundaries(text: str) -> list[int]:
@@ -304,29 +312,29 @@ def find_sentence_boundaries(text: str) -> list[int]:
     return boundaries
 
 
-def has_disallowed_extra_sentence(text: str) -> bool:
-    """True if `text` has more sentences than the style allows.
+def has_extra_sentence(text: str) -> bool:
+    """True if `text` has more than one sentence.
 
-    One extra sentence is tolerated only when it is the style's permitted
-    trailing "Use proactively when ..." clause.
-
-    >>> has_disallowed_extra_sentence("Reviews pull requests for style issues.")
+    >>> has_extra_sentence("Reviews pull requests for style issues.")
     False
-    >>> has_disallowed_extra_sentence(
-    ...     "Reviews pull requests. Use proactively when a PR opens."
-    ... )
-    False
-    >>> has_disallowed_extra_sentence("Reviews pull requests. Then merges them.")
+    >>> has_extra_sentence("Reviews pull requests. Use proactively when a PR opens.")
     True
     """
-    boundaries = find_sentence_boundaries(text)
-    if not boundaries:
+    return bool(find_sentence_boundaries(text))
+
+
+def has_misplaced_proactive(text: str) -> bool:
+    """True if "Use proactively" appears anywhere but the very start.
+
+    >>> has_misplaced_proactive("Use proactively when a PR opens to review it.")
+    False
+    >>> has_misplaced_proactive("Reviews PRs; use proactively when one opens.")
+    True
+    """
+    match = PROACTIVE_PHRASE_RE.search(text)
+    if match is None:
         return False
-    if len(boundaries) == 1:
-        remainder = text[boundaries[0] + 1 :].strip()
-        if PROACTIVE_PREFIX_RE.match(remainder):
-            return False
-    return True
+    return not (match.start() == 0 and PROACTIVE_PREFIX_RE.match(text))
 
 
 def validate_candidate(
@@ -345,8 +353,12 @@ def validate_candidate(
         reasons.append("proposal contains control characters")
     if len(text) > budget:
         reasons.append(f"proposal is {len(text)} characters, over the {budget} budget")
-    if has_disallowed_extra_sentence(text):
+    if has_extra_sentence(text):
         reasons.append("looks like more than one sentence")
+    if has_misplaced_proactive(text):
+        reasons.append('"Use proactively when" may only open the description')
+    if "<example" in text.lower():
+        reasons.append("proposal contains an <example> block")
     if text == original.strip():
         reasons.append("proposal is identical to the original description")
     if reasons:
@@ -431,8 +443,9 @@ def propose_description(agent: ParsedAgent, config: GenerationConfig) -> Proposa
             {
                 "role": "user",
                 "content": (
-                    f"That description is invalid: {last_error}. Fix it: one "
-                    f"sentence, no line breaks, at most {config.budget} characters."
+                    f"That description is invalid: {last_error}. Fix it: exactly "
+                    f"one sentence, no line breaks, at most {config.budget} "
+                    "characters."
                 ),
             }
         )
@@ -489,14 +502,17 @@ def save_report(report_path: Path, report: dict[str, Any]) -> None:
 
 def collect_candidates(
     args: argparse.Namespace, report: dict[str, Any]
-) -> tuple[list[tuple[str, ParsedAgent]], int]:
-    """Pick files to propose for: parseable, over-budget if asked, not already done."""
+) -> tuple[list[tuple[str, ParsedAgent]], list[str]]:
+    """Pick files to propose for: parseable, over-budget if asked, not already done.
+
+    Returns the candidates and the keys of files that could not be parsed.
+    """
     candidates: list[tuple[str, ParsedAgent]] = []
-    unparseable = 0
+    unparseable: list[str] = []
     for file_path in collect_files(args.paths):
         agent = parse_agent_file(file_path)
         if agent is None:
-            unparseable += 1
+            unparseable.append(to_key(file_path))
             continue
         if args.over_budget and len(agent.description_value) <= args.budget:
             continue
@@ -522,11 +538,16 @@ def run_propose(args: argparse.Namespace) -> int:
     report = load_report(args.report)
     candidates, unparseable = collect_candidates(args, report)
 
+    for key in unparseable:
+        print(
+            f"skip {key}: no frontmatter with a name and a one-line "
+            'double-quoted description: "..."',
+            file=sys.stderr,
+        )
     total = len(candidates)
     print(
         f"Proposing descriptions for {total} file(s) with {args.model} at "
-        f"{args.host} ({unparseable} file(s) had no parseable frontmatter "
-        "and were skipped)",
+        f"{args.host}; {len(unparseable)} unparseable file(s) skipped",
         file=sys.stderr,
     )
     for position, (key, agent) in enumerate(candidates, start=1):
