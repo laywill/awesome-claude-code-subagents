@@ -1,5 +1,7 @@
-# Claude Code
-.claude/
+# Claude Code — per-developer state; .claude/agents/ and .claude/settings.json stay tracked
+.claude/settings.local.json
+.claude/agent-memory/
+.claude/worktrees/
 .claude_history
 
 # Created by https://www.toptal.com/developers/gitignore/api/windows,linux,macos,visualstudiocode

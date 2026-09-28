@@ -53,11 +53,10 @@ Other top-level pieces:
 
 - `.claude-plugin/marketplace.json` — marketplace manifest; one entry per category, each pointing at `./categories/NN-.../`
 - `categories/NN-*/.claude-plugin/plugin.json` — per-category plugin manifest listing every agent file explicitly
-- `.claude/agents/` — repo-maintenance agents used *on* this repo (description compression, security remediation, token optimization, gold-standard enhancement). Check these first before doing bulk edits by hand.
+- `.claude/agents/` — repo-maintenance agents used *on* this repo: `description-compressor` (condenses frontmatter descriptions), `token-efficiency-optimizer` (compresses verbose agent bodies); `agent-uplifter` is coming in #326. Check these first before doing bulk edits by hand.
 - `install-agents.sh` — interactive installer; works from a clone (local mode) or standalone via the GitHub API (remote mode)
 - `tools/` — Claude Code skills that browse/fetch the catalog, installed to `~/.claude/commands/`
 - `AGENT_SECURITY_GUIDELINES.md` — authoritative keep/delete policy for safety content in agent files (read before writing any)
-- `docs/planning/` — design notes and experiments, not shipped content
 
 ## A New Agent Must Beat the Built-ins
 
