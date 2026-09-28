@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import os
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -37,8 +38,12 @@ pytestmark = pytest.mark.ollama
 
 def installed_models() -> list[str] | None:
     """Model names the server has, or None when no server answers."""
+    if urllib.parse.urlsplit(HOST).scheme not in ("http", "https"):
+        return None
     try:
-        with urllib.request.urlopen(f"{HOST}/api/tags", timeout=3) as response:
+        # Scheme checked above, as ollama_chat() checks it.
+        url = f"{HOST}/api/tags"
+        with urllib.request.urlopen(url, timeout=3) as response:  # nosec B310
             tags: dict[str, Any] = json.load(response)
     except (urllib.error.URLError, OSError):
         return None
@@ -89,19 +94,27 @@ def test_propose_then_apply_with_a_real_model(model: str, tmp_path: Path) -> Non
 
     assert cd.main(argv) == 0
     entry = cd.load_report(report)[cd.to_key(agent_file)]
-    assert entry["attempts"], "no attempt recorded"
-    # The model may fail validation on every retry; that is a legitimate
-    # outcome the report records, not a broken pipeline. A request error is.
-    for attempt in entry["attempts"]:
-        assert not attempt.get("error", "").startswith("request failed"), attempt
+    assert_no_request_errors(entry)
     if entry["status"] != "proposed":
         pytest.skip(f"{model} produced no valid description: {entry['error']}")
 
     assert cd.main(["--apply", "--report", str(report)]) == 0
-    before, after = (
-        AGENT.splitlines(),
-        agent_file.read_text(encoding="utf-8").splitlines(),
-    )
-    changed = [i for i, (a, b) in enumerate(zip(before, after, strict=True)) if a != b]
-    assert changed == [2]  # only the description line
+    assert changed_lines(AGENT, agent_file.read_text(encoding="utf-8")) == [2]
     assert cd.parse_agent_file(agent_file).description_value == entry["proposed"]
+
+
+def assert_no_request_errors(entry: dict[str, Any]) -> None:
+    """Every attempt reached the model and got a parseable reply.
+
+    The model may fail validation on every retry; that is a legitimate
+    outcome the report records, not a broken pipeline. A request error is.
+    """
+    assert entry["attempts"], "no attempt recorded"
+    for attempt in entry["attempts"]:
+        assert not attempt.get("error", "").startswith("request failed"), attempt
+
+
+def changed_lines(before: str, after: str) -> list[int]:
+    """Indexes of the lines that differ; the line count must not change."""
+    pairs = zip(before.splitlines(), after.splitlines(), strict=True)
+    return [i for i, (a, b) in enumerate(pairs) if a != b]
