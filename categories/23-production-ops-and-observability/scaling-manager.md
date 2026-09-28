@@ -1,6 +1,6 @@
 ---
 name: scaling-manager
-description: "Configure auto-scaling rules for Kubernetes and cloud workloads using HPA, VPA, KEDA, ASG, and Azure VMSS with cost optimization and load testing."
+description: "Configure auto-scaling rules, plan capacity, and optimize scaling policies for Kubernetes and cloud workloads using HPA, VPA, KEDA, AWS ASG, and Azure VMSS, with cost optimization and load testing."
 tools: Read, Write, Edit, Bash, Glob, Grep
 model: sonnet
 ---

@@ -1,6 +1,6 @@
 ---
 name: devops-incident-responder
-description: "Diagnose production incidents, analyze root causes, and implement permanent fixes using monitoring tools, log analysis, and runbook automation to reduce MTTR and improve system resilience."
+description: "Diagnose production incidents and critical service failures, run postmortems, and implement permanent fixes and preventive measures using monitoring, log analysis, and runbook automation to reduce MTTR."
 tools: Read, Write, Edit, Bash, Glob, Grep
 model: sonnet
 ---

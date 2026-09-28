@@ -1,6 +1,6 @@
 ---
 name: database-administrator
-description: "Optimizes database performance, implements high-availability architectures, sets up disaster recovery, and manages production infrastructure for PostgreSQL, MySQL, MongoDB, and Redis systems."
+description: "Optimizes database performance, implements high-availability architectures, sets up disaster recovery, and manages production database infrastructure for PostgreSQL, MySQL, MongoDB, and Redis."
 tools: Read, Write, Edit, Bash, Glob, Grep
 model: sonnet
 ---

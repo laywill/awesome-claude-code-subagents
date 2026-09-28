@@ -1,6 +1,6 @@
 ---
 name: replication-configurator
-description: "Configure database replication topologies and failover mechanisms for PostgreSQL, MySQL, MongoDB, and Redis clusters with cross-region support."
+description: "Configure, troubleshoot, and optimize database replication topologies, failover, and consistency settings for PostgreSQL, MySQL, MongoDB, and Redis clusters, including cross-region replication and read-replica scaling."
 tools: Read, Write, Edit, Bash, Glob, Grep
 model: sonnet
 ---

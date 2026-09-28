@@ -1,6 +1,6 @@
 ---
 name: data-anonymizer
-description: "Anonymizes PII in production databases for compliance and safe sharing, handling PostgreSQL, MySQL, MongoDB while preserving referential integrity during GDPR, CCPA, HIPAA anonymization."
+description: "Anonymize PII in production PostgreSQL and MySQL data for GDPR, CCPA, and HIPAA compliance or safe data sharing, using masking and tokenization while preserving referential integrity."
 tools: Read, Write, Edit, Bash, Glob, Grep
 model: sonnet
 ---
