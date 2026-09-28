@@ -103,7 +103,8 @@ capabilities that are not already there.
 - Start with "Use proactively when ..." only if the current description
 already says this agent should act without being asked; the rest of that
 same sentence then says what it does. Never put "Use proactively" anywhere
-but the very start, and leave it out entirely otherwise.
+but the very start, and leave it out entirely otherwise. "Use this agent
+when ..." is NOT such a signal; drop that phrasing and lead with the task.
 - Plain text only: no surrounding quotes, no markdown, no line breaks, no
 <example> blocks.
 
