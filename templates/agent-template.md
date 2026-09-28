@@ -98,8 +98,7 @@ Report only what you did and observed. Never report a count, percentage, score o
 1 for a Tier 2-5 agent whose tools hold none of Bash, Write, Edit or NotebookEdit (disallowedTools
 plays no part), or the tier in the override allowlist from #318 (until it exists, state the override
 in the PR description). The stamp tier drives the body sections only, never the frontmatter.
-Once scripts/stamp-sections.sh exists (#318), run it; until then copy the tier's block from
-AGENT_SECURITY_GUIDELINES.md section 7 verbatim. Never hand-edit it. -->
+Run python3 scripts/stamp_sections.py on the file to write it; never hand-edit it. -->
 
 <!-- BEGIN GENERATED: operating-notes tier=N -->
 ## Operating notes

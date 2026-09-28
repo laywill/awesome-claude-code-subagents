@@ -1,6 +1,6 @@
-# Reviewed per-file exceptions to the content lint (issue #318), read by
-# scripts/validate-catalog.sh, scripts/lint-agent-content.awk and
-# scripts/stamp-sections.sh.
+# Reviewed per-file exceptions to the content lint (issue #318), read through
+# scripts/agent_file.py by scripts/agent_lint.py and scripts/stamp_sections.py,
+# and checked by scripts/catalog_lint.py.
 #
 # One entry per line, reason mandatory:
 #

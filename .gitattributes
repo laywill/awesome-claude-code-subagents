@@ -12,10 +12,9 @@
 # Plugin and marketplace manifests are read by Claude Code.
 *.json text eol=lf
 
-# The content-lint ratchet, allowlist and awk program (issue #318) are read
-# line by line by scripts/validate-catalog.sh and scripts/stamp-sections.sh.
+# The content-lint ratchet and allowlist (issue #318) are read line by line by
+# scripts/lint-enforced-markdown.sh and the Python content lint.
 *.txt text eol=lf
-*.awk text eol=lf
 
 # Force shell scripts to always use LF line endings so that if a repo is accessed
 # on a Windows system, the shell scripts will still work when checked out.
@@ -25,9 +24,10 @@
 # the same reason as shell scripts above.
 *.py text eol=lf
 
-# Python linter configs (extensionless dotfiles, so *.py above doesn't match).
+# Python tool configs.
 .flake8 text eol=lf
 .pylintrc text eol=lf
+*.toml text eol=lf
 
 # Force YAML files to always use LF line endings so that if a repo is accessed
 # on a Windows system, the YAML files will still work when checked out.

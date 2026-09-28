@@ -242,7 +242,7 @@ Review only:
   ```
 
 - The `END` marker names its block, so that other stamp kinds can coexist later without ambiguity.
-- The wording is `AGENT_SECURITY_GUIDELINES.md` §7, stamped from `templates/operating-notes-tierN.md` by `scripts/stamp-sections.sh <file...>`. It is never hand-edited, and the validator fails on drift, and on a template that no longer matches §7.
+- The wording is `AGENT_SECURITY_GUIDELINES.md` §7, stamped from `templates/operating-notes-tierN.md` by `python3 scripts/stamp_sections.py <file...>`. It is never hand-edited, and the validator fails on drift, and on a template that no longer matches §7.
 - `N` is the stamp tier (see Category tier and stamp tier, above).
 - The block **replaces** hand-written `Environment Note`, `Environment adaptability` and `Environment adaptability & scope` preambles. Delete them; don't keep them alongside.
 
@@ -309,14 +309,16 @@ Adding an agent therefore means updating the count in the README badge and in `.
 
 ### Content lint and the per-category ratchet
 
-The rules marked as linted under Agent File Format (frontmatter keys, values and tier rules; Body skeleton; Markup; Operating notes; the Retired and Structural lines of Banned content) are checked by `scripts/lint-agent-content.awk`, which `validate-catalog.sh` runs. Most agent files predate v3, so these findings are ratcheted:
+The rules marked as linted under Agent File Format (frontmatter keys, values and tier rules; Body skeleton; Markup; Operating notes; the Retired and Structural lines of Banned content) are checked by `scripts/agent_lint.py`, one file at a time. `scripts/catalog_lint.py` runs it over the catalog and applies the ratchet, and `validate-catalog.sh` runs that. Both read agent files through `scripts/agent_file.py`, as the stamper does. Most agent files predate v3, so these findings are ratcheted:
 
 - **`scripts/lint-enforced-categories.txt`** lists category directories. In a listed category every content finding fails the build; elsewhere it is a warning. Each category's v3 uplift adds its category as its last step; #328 requires all 24 and removes the ratchet.
 - Two exceptions to the ratchet: a stamped block that exists but has drifted or is malformed always fails, and the invented-metric heuristic (`metric-invented`) only ever warns.
 - Warnings print as counts by rule and by category. `./scripts/validate-catalog.sh --verbose` lists every one; `./scripts/validate-catalog.sh 03-analysis-and-review` lists that category's. Arguments change what is printed, never what fails.
 - **`scripts/lint-allowlist.txt`** holds the reviewed per-file exceptions, one per line as `<agent-name>: <rule> # <reason>`: `tier=N` (stamp override), `tier1-bash`, and `sonnet-instead-of-opus`. The reason is mandatory.
-- **`scripts/stamp-sections.sh <file...>`** writes or refreshes a file's stamped block, choosing the stamp tier as the validator does. It needs explicit paths, and a second run changes nothing.
+- **`python3 scripts/stamp_sections.py <file...>`** writes or refreshes a file's stamped block, choosing the stamp tier as the validator does. It needs explicit paths, and a second run changes nothing.
 - **`scripts/lint-enforced-markdown.sh`** runs markdownlint and cspell, blocking, over the listed categories only.
+
+The Python scripts use the standard library only. `tests/` covers them with pytest (`python3 -m pytest`, configured in `pyproject.toml`), and CI runs the tests in `validate.yml`. Change a lint rule by changing its test first.
 
 ### Linting
 

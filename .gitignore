@@ -7,6 +7,11 @@
 # scripts/compress-descriptions.py report (resumable working state, not source)
 description-proposals.json
 
+# Python caches from running scripts/ and tests/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+
 # Created by https://www.toptal.com/developers/gitignore/api/windows,linux,macos,visualstudiocode
 # Edit at https://www.toptal.com/developers/gitignore?templates=windows,linux,macos,visualstudiocode
 

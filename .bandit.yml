@@ -1,0 +1,7 @@
+---
+# Read by MegaLinter's bandit in place of its default config.
+#
+# pytest checks with assert. B101 exists because python -O strips asserts
+# from shipped code; tests are never run that way.
+assert_used:
+  skips: ["tests/*.py", "*/tests/*.py"]

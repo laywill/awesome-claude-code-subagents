@@ -1,0 +1,27 @@
+# Tool configuration only: nothing here is packaged. scripts/*.py are
+# standalone, and tests/ covers scripts/agent_lint.py and
+# scripts/stamp_sections.py. Run the tests with: python3 -m pytest
+#
+# MegaLinter ignores this file for bandit, isort, mypy and ruff: it passes its
+# own default config unless the repo has .bandit.yml, .isort.cfg, .mypy.ini or
+# .ruff.toml. Its defaults already suit these scripts except bandit's, hence
+# .bandit.yml.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["scripts", "tests"]
+addopts = "--strict-markers"
+
+# The tests import the scripts as top-level modules, as pytest's pythonpath
+# arranges.
+[tool.mypy]
+mypy_path = ["scripts", "tests"]
+
+[tool.pyright]
+extraPaths = ["scripts", "tests"]
+# MegaLinter's pyright has no pytest to resolve; a missing import still shows,
+# and the pytest job fails on one that is really missing.
+reportMissingImports = "warning"
+
+[tool.isort]
+profile = "black"
