@@ -14,32 +14,16 @@ from __future__ import annotations
 
 import argparse
 import doctest
-import importlib.util
 import io
 import json
-import sys
 from collections.abc import Callable, Iterator
 from pathlib import Path
-from types import ModuleType
 from typing import Any
 
 import pytest
+from builders import load_compress_descriptions
 
-ROOT = Path(__file__).resolve().parent.parent
-
-
-def _load() -> ModuleType:
-    """Import the script, whose hyphenated name can't be imported directly."""
-    path = ROOT / "scripts" / "compress-descriptions.py"
-    spec = importlib.util.spec_from_file_location("compress_descriptions", path)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-cd = _load()
+cd = load_compress_descriptions()
 
 LONG = (
     "Use this agent when you need a world-class expert to review pull requests "

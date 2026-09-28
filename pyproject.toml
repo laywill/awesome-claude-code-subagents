@@ -14,7 +14,10 @@
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["scripts", "tests"]
-addopts = "--strict-markers"
+# Tests marked ollama call a real local Ollama server and are deselected by
+# default; run them with: python3 -m pytest -m ollama
+addopts = "--strict-markers -m 'not ollama'"
+markers = ["ollama: calls a real local Ollama server (opt in with -m ollama)"]
 
 # The tests import the scripts as top-level modules, as pytest's pythonpath
 # arranges.

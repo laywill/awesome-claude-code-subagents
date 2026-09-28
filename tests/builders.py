@@ -6,7 +6,10 @@ test changes one thing and asserts on the rule that fires.
 
 from __future__ import annotations
 
+import importlib.util
+import sys
 from pathlib import Path
+from types import ModuleType
 
 import agent_file
 import agent_lint
@@ -109,3 +112,17 @@ def lint(
 def rules(findings: list[agent_lint.Finding]) -> set[str]:
     """The distinct rules that fired."""
     return {f.rule for f in findings}
+
+
+def load_compress_descriptions() -> ModuleType:
+    """Import scripts/compress-descriptions.py, whose hyphen blocks import."""
+    name = "compress_descriptions"
+    if name in sys.modules:
+        return sys.modules[name]
+    path = ROOT / "scripts" / "compress-descriptions.py"
+    spec = importlib.util.spec_from_file_location(name, path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module

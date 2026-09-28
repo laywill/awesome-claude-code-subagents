@@ -319,7 +319,7 @@ The rules marked as linted under Agent File Format (frontmatter keys, values and
 - **`scripts/lint-enforced-markdown.sh`** runs markdownlint and cspell, blocking, over the listed categories only.
 - **Cutover (#328):** once all 24 categories are listed, delete the ratchet file, `scripts/lint-enforced-markdown.sh` and the `enforced-markdown` job in `validate.yml`; make content findings fail everywhere; and remove `MARKDOWN_MARKDOWNLINT` and `SPELL_CSPELL` from `DISABLE_ERRORS_LINTERS` in `.mega-linter.yml`, so MegaLinter blocks on them directly.
 
-The Python scripts use the standard library only. `tests/` covers them with pytest (`python3 -m pytest`, configured in `pyproject.toml`), and CI runs the tests in `validate.yml` before the catalog check. Change a lint rule by changing its test first.
+The Python scripts use the standard library only. `tests/` covers them with pytest (`python3 -m pytest`, configured in `pyproject.toml`), and CI runs the tests in `validate.yml` before the catalog check. Change a lint rule by changing its test first. Tests that need a real local Ollama server (`compress-descriptions.py`'s contract with its API) are marked `ollama` and deselected by default; run `python3 -m pytest -m ollama` after changing how the script talks to Ollama.
 
 ### Linting
 
