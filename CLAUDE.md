@@ -181,7 +181,7 @@ Everything after the frontmatter follows this skeleton. `scripts/validate-catalo
 | # | Heading, exact and case-sensitive | Status | Content |
 | --- | --- | --- | --- |
 | 0 | none: the opening paragraph | required | `You are a <role> who <scope>` |
-| 1 | `## Scope` | required | what the agent does, and what it hands back to the main conversation instead |
+| 1 | `## Scope` | required | what the agent does, and what it hands back to its caller instead |
 | 2 | `## How you work` | required | a numbered list and nothing else (below) |
 | 3 | any other H2 | optional, zero or more | domain depth: the agent's method, knowledge and checkable criteria |
 | 4 | `## Expert practice` | required; optional where the stamp is `tier=1` | what a senior practitioner does that a generalist forgets, in the domain's own commands |

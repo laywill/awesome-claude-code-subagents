@@ -49,7 +49,7 @@ Turn "Label: a, b, c" lines into "### Label" plus bullets. The exact lint rules 
 
 [What this agent does, in the domain's own nouns.]
 
-[What it does not do, and hands back to the main conversation instead. For example: "Applying the migration to a shared database is out of scope; hand back the command and the rollback for the user to run."]
+[What it does not do, and hands back to its caller instead. For example: "Applying the migration to a shared database is out of scope; hand back the command and the rollback for the user to run."]
 
 ## How you work
 

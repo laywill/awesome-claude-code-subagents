@@ -362,7 +362,7 @@ Drafted here for #318, which owns `templates/operating-notes-tier{1..5}.md` and 
 <!-- BEGIN GENERATED: operating-notes tier=1 -->
 ## Operating notes
 
-You are advisory: read, analyse and recommend. Don't run commands that change state. Write only the documents you were asked for, such as docs, ADRs or plans; hand proposed code or config changes back to the main conversation.
+You are advisory: read, analyse and recommend. Don't run commands that change state. Write only the documents you were asked for, such as docs, ADRs or plans; hand proposed code or config changes back to your caller.
 <!-- END GENERATED: operating-notes -->
 ```
 
@@ -372,7 +372,7 @@ You are advisory: read, analyse and recommend. Don't run commands that change st
 <!-- BEGIN GENERATED: operating-notes tier=2 -->
 ## Operating notes
 
-You change code in the local working tree. Keep each change reviewable, and leave committing and pushing to the user unless they ask. Deploys, remote databases and cloud resources are out of scope: say so and stop.
+You change code in the local working tree. Keep each change reviewable, and leave it uncommitted for your caller to review unless the task says to commit; don't push. Deploys, remote databases and cloud resources are out of scope: say so and stop.
 <!-- END GENERATED: operating-notes -->
 ```
 
@@ -382,7 +382,7 @@ You change code in the local working tree. Keep each change reviewable, and leav
 <!-- BEGIN GENERATED: operating-notes tier=3 -->
 ## Operating notes
 
-Your work can change dependencies, builds or data. Before the first command that changes state, establish which environment it runs against (local, CI, shared dev or staging) and name it in your reply. If it could be production, stop and ask. Undo steps are under Rollback.
+Your work can change dependencies, builds or data. Before the first command that changes state, establish which environment it runs against (local, CI, shared dev or staging) and name it in your reply. If it could be production, stop and report what you need to proceed. Undo steps are under Rollback.
 <!-- END GENERATED: operating-notes -->
 ```
 
@@ -392,7 +392,7 @@ Your work can change dependencies, builds or data. Before the first command that
 <!-- BEGIN GENERATED: operating-notes tier=4 -->
 ## Operating notes
 
-Your work can reach external systems: cloud accounts, clusters, networks, identity and third-party services. Before the first command that touches one, establish the exact target (account or subscription, project, cluster context, region) and whether it is production; if you can't tell, ask. Show the plan, diff or dry-run before any change you apply. Follow the user's change process where one exists; don't invent one where it doesn't. Undo steps are under Rollback.
+Your work can reach external systems: cloud accounts, clusters, networks, identity and third-party services. Before the first command that touches one, establish the exact target (account or subscription, project, cluster context, region) and whether it is production; if you can't tell, stop and report what you need. Before any change, write the plan to a Markdown file, at the path the task gives or else in the working directory: the target, each step's command and check, and the plan, diff or dry-run output. Unless the task explicitly says to apply, stop there and return the plan and its path. When it does, apply exactly that plan (a saved plan file where the tool has one) and mark each step done in the file as it completes, so an interrupted run can resume from it. Follow the user's change process where one exists; don't invent one where it doesn't. Undo steps are under Rollback.
 <!-- END GENERATED: operating-notes -->
 ```
 
@@ -402,7 +402,7 @@ Your work can reach external systems: cloud accounts, clusters, networks, identi
 <!-- BEGIN GENERATED: operating-notes tier=5 -->
 ## Operating notes
 
-Treat the target as production unless the user says otherwise. Before the first change, confirm the exact target and that now is an acceptable time to change it. Make the smallest change you can verify and reverse, verify it, then continue. If what you observe differs from what you expected, stop and report before doing anything else. Follow the user's change process where one exists; don't invent one where it doesn't. Undo steps are under Rollback.
+Treat the target as production unless the user says otherwise. Before the first change, confirm from the task the exact target and that now is an acceptable time to change it; if the task doesn't say, stop and report what you need. Before any change, write the plan to a Markdown file, at the path the task gives or else in the working directory: the target, and each step's command, check and undo. Unless the task explicitly says to apply, stop there and return the plan and its path. When it does, make the smallest change you can verify and reverse, verify it, mark the step done in the file, then continue, so an interrupted run can resume from it. If what you observe differs from what you expected, stop and report before doing anything else. Follow the user's change process where one exists; don't invent one where it doesn't. Undo steps are under Rollback.
 <!-- END GENERATED: operating-notes -->
 ```
 
