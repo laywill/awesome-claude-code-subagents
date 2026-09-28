@@ -83,7 +83,7 @@ def scripted_chat(*replies: dict[str, Any] | Exception) -> tuple[FakeChat, list[
 def config(retries: int = 2, budget: int = 120) -> Any:
     return cd.GenerationConfig(
         model="test-model",
-        host="http://localhost:11434",
+        host=cd.DEFAULT_HOST,
         budget=budget,
         retries=retries,
         timeout=1.0,
@@ -248,18 +248,16 @@ def test_ollama_chat_request(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(cd.urllib.request, "urlopen", fake_urlopen)
     messages = [{"role": "user", "content": "hi"}]
-    reply = cd.ollama_chat("http://localhost:11434/", "m", messages, 5.0)
+    reply = cd.ollama_chat(cd.DEFAULT_HOST + "/", "m", messages, 5.0)
     assert reply == chat_reply("ok")
-    assert seen["url"] == "http://localhost:11434/api/chat"
+    assert seen["url"] == cd.DEFAULT_HOST + "/api/chat"  # one slash
     assert seen["timeout"] == 5.0
     body = seen["body"]
     assert (body["model"], body["messages"], body["stream"]) == ("m", messages, False)
     assert body["format"] == cd.RESPONSE_SCHEMA
 
 
-@pytest.mark.parametrize(
-    "host", ["file:///etc/passwd", "ftp://host", "localhost:11434"]
-)
+@pytest.mark.parametrize("host", ["file:///etc/passwd", "ftp://host", "ollama:11434"])
 def test_ollama_chat_refuses_non_http_hosts(host: str) -> None:
     with pytest.raises(ValueError, match="unsupported host scheme"):
         cd.ollama_chat(host, "m", [], 1.0)
