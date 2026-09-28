@@ -309,7 +309,7 @@ Adding an agent therefore means updating the count in the README badge and in `.
 
 ### Content lint and the per-category ratchet
 
-The rules marked as linted under Agent File Format (frontmatter keys, values and tier rules; Body skeleton; Markup; Operating notes; the Retired and Structural lines of Banned content) are checked by `scripts/agent_lint.py`, one file at a time. `scripts/catalog_lint.py` runs it over the catalog and applies the ratchet, and `validate-catalog.sh` runs that. Both read agent files through `scripts/agent_file.py`, as the stamper does. Most agent files predate v3, so these findings are ratcheted:
+The rules marked as linted under Agent File Format (frontmatter keys, values and tier rules; Body skeleton; Markup; Operating notes; the Retired and Structural lines of Banned content) are checked by `scripts/agent_lint.py`, one file at a time, with the rules themselves in `scripts/lint_frontmatter.py` and `scripts/lint_body.py`. `scripts/catalog_lint.py` runs it over the catalog and applies the ratchet, and `validate-catalog.sh` runs that. Both read agent files through `scripts/agent_file.py`, as the stamper does. Most agent files predate v3, so these findings are ratcheted:
 
 - **`scripts/lint-enforced-categories.txt`** lists category directories. In a listed category every content finding fails the build; elsewhere it is a warning. Each category's v3 uplift adds its category as its last step; #328 requires all 24 and removes the ratchet.
 - Two exceptions to the ratchet: a stamped block that exists but has drifted or is malformed always fails, and the invented-metric heuristic (`metric-invented`) only ever warns.

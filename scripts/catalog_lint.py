@@ -89,26 +89,28 @@ def check_allowlist(text: str, agent_tiers: dict[str, int]) -> list[str]:
                 f"{where} names {name}, which is not an agent in categories/"
             )
             continue
-        tier = agent_tiers[name]
-        if TIER_OVERRIDE_RE.fullmatch(rule):
-            continue
-        if rule == "tier1-bash":
-            if tier != 1:
-                failures.append(
-                    f"{where}: tier1-bash applies only to Tier 1 agents; {name} is "
-                    f"Tier {tier}"
-                )
-        elif rule == "sonnet-instead-of-opus":
-            if tier > 3:
-                failures.append(
-                    f"{where}: sonnet-instead-of-opus applies only to Tier 1-3; "
-                    f"Tier {tier} sonnet agents set effort: high anyway"
-                )
-        else:
-            failures.append(
-                f"{where}: unknown rule '{rule}' ({', '.join(ALLOWLIST_RULES)})"
-            )
+        problem = misapplied_rule(name, rule, agent_tiers[name])
+        if problem:
+            failures.append(f"{where}: {problem}")
     return failures
+
+
+def misapplied_rule(name: str, rule: str, tier: int) -> str:
+    """Why an allowlist rule can't apply to an agent of tier, or ""."""
+    if TIER_OVERRIDE_RE.fullmatch(rule):
+        return ""
+    if rule == "tier1-bash":
+        if tier != 1:
+            return f"tier1-bash applies only to Tier 1 agents; {name} is Tier {tier}"
+        return ""
+    if rule == "sonnet-instead-of-opus":
+        if tier > 3:
+            return (
+                "sonnet-instead-of-opus applies only to Tier 1-3; "
+                f"Tier {tier} sonnet agents set effort: high anyway"
+            )
+        return ""
+    return f"unknown rule '{rule}' ({', '.join(ALLOWLIST_RULES)})"
 
 
 def guideline_blocks(text: str) -> list[list[str]]:

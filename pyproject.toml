@@ -1,6 +1,6 @@
 # Tool configuration only: nothing here is packaged. scripts/*.py are
-# standalone, and tests/ covers scripts/agent_lint.py and
-# scripts/stamp_sections.py. Run the tests with: python3 -m pytest
+# standalone, and tests/ covers the content lint (agent_lint.py and its rule
+# modules) and scripts/stamp_sections.py. Run the tests with: python3 -m pytest
 #
 # MegaLinter ignores this file for bandit, isort, mypy and ruff: it passes its
 # own default config unless the repo has .bandit.yml, .isort.cfg, .mypy.ini or

@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Iterator
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from agent_file import (
@@ -43,6 +44,7 @@ from agent_file import (
     category_tier,
     closes_fence,
     fence_open,
+    one_stamp,
     parse_frontmatter,
     read_text,
     split_lines,
@@ -71,34 +73,51 @@ def prose_lines(lines: list[str]) -> Iterator[tuple[int, str]]:
             yield i, line
 
 
+@dataclass
+class Landmarks:
+    """Where the stamp is, or where it should go, as indexes into the lines."""
+
+    begins: list[int] = field(default_factory=list)
+    ends: list[int] = field(default_factory=list)
+    output: int | None = None  # the "## Output" heading
+    after_output: int | None = None  # the next H2 after it
+
+
+def find_landmarks(lines: list[str]) -> Landmarks:
+    """Stamp markers and the Output section, outside fenced code."""
+    marks = Landmarks()
+    for i, line in prose_lines(lines):
+        if line.startswith(BEGIN_MARK):
+            marks.begins.append(i)
+        if line == END_MARK:
+            marks.ends.append(i)
+        if line == "## Output" and marks.output is None:
+            marks.output = i
+        elif (
+            marks.output is not None
+            and marks.after_output is None
+            and line.startswith("## ")
+        ):
+            marks.after_output = i
+    return marks
+
+
 def stamp(lines: list[str], template: list[str]) -> list[str]:
     """Return lines with the operating-notes block written or refreshed.
 
     Markers and headings inside fenced code are ignored, as the lint ignores
     them.
     """
-    begins: list[int] = []
-    ends: list[int] = []
-    output = insert = None
-    for i, line in prose_lines(lines):
-        if line.startswith(BEGIN_MARK):
-            begins.append(i)
-        if line == END_MARK:
-            ends.append(i)
-        if line == "## Output" and output is None:
-            output = i
-        elif output is not None and insert is None and line.startswith("## "):
-            insert = i
-
+    marks = find_landmarks(lines)
+    begins, ends, output = marks.begins, marks.ends, marks.output
     if begins or ends:
-        if len(begins) != 1 or len(ends) != 1 or ends[0] < begins[0]:
+        if not one_stamp(begins, ends):
             raise StampError("expected one BEGIN and one END marker; fix by hand first")
         return lines[: begins[0]] + template + lines[ends[0] + 1 :]
 
     if output is None:
         raise StampError("no ## Output heading; add the skeleton first")
-    if insert is None:
-        insert = len(lines)
+    insert = len(lines) if marks.after_output is None else marks.after_output
     last = insert - 1
     while last > output and BLANK_RE.match(lines[last]):
         last -= 1

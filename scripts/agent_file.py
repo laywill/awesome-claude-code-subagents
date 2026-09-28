@@ -11,8 +11,13 @@ Standard library only: CI runs it with the runner's system Python.
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
+
+# How the lint's rule modules report a finding: emit(cls, rule, message).
+# scripts/agent_lint.py binds it to the file being linted.
+Emit = Callable[[str, str, str], None]
 
 ROOT = Path(__file__).resolve().parent.parent
 ALLOWLIST_FILE = "scripts/lint-allowlist.txt"
@@ -88,6 +93,18 @@ class Frontmatter:
         """The value for key, or "" when absent."""
         return self.values.get(key, "")
 
+    def add(self, line: str) -> str:
+        """Record a "key: value" line, unquoting the value; return the key."""
+        key, _, value = line.partition(":")
+        value = value.strip(" \t")
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+            value = value[1:-1]
+        if key in self.values:
+            self.duplicates.append(key)
+        self.values[key] = value
+        self.keys.append(key)
+        return key
+
     def tool_set(self, key: str) -> list[str]:
         """The comma-separated entries of tools or disallowedTools."""
         return [t.strip(" \t") for t in self.get(key).split(",") if t.strip(" \t")]
@@ -105,15 +122,7 @@ def parse_frontmatter(lines: list[str]) -> Frontmatter | None:
             fm.body_start = i + 1
             return fm
         if KEY_RE.match(line):
-            key, _, value = line.partition(":")
-            value = value.strip(" \t")
-            if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
-                value = value[1:-1]
-            if key in fm.values:
-                fm.duplicates.append(key)
-            fm.values[key] = value
-            fm.keys.append(key)
-            last_key = key
+            last_key = fm.add(line)
         elif not COMMENT_OR_BLANK_RE.match(line) and last_key == "description":
             fm.description_multiline = True
     fm.body_start = len(lines)
@@ -147,6 +156,11 @@ class Allowlist:
     def allows(self, name: str, rule: str) -> bool:
         """Whether name has a reviewed exemption from rule."""
         return (name, rule) in self.exemptions
+
+
+def one_stamp(begins: list[int], ends: list[int]) -> bool:
+    """Exactly one BEGIN and one END marker, in that order."""
+    return len(begins) == 1 and len(ends) == 1 and begins[0] < ends[0]
 
 
 def stamp_tier(name: str, tools: list[str], tier: int, allow: Allowlist) -> int:
