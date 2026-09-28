@@ -15,7 +15,7 @@ Platform facts below were checked against the Claude Code docs on 2026-09-25 (so
 3. **Keep domain approval gates**, but only where they encode a real human process in this domain, such as DBA sign-off for production DDL or a pentest's rules of engagement.
 4. **Stamp one operating-notes block per tier**, generated from a template, never hand-written.
 5. **Delete** generic Emergency Stop, generic Blast Radius Controls, generic Approval Gates, Input Validation that amounts to "validate inputs", Audit Logging, embedded implementation code, and invented thresholds.
-6. **Enforce through frontmatter, not prose.** `tools`, `disallowedTools`, `isolation` and `maxTurns` are the only controls an agent file really enforces.
+6. **Enforce through frontmatter, not prose.** `tools`, `disallowedTools` and `maxTurns` are the only controls an agent file really enforces. (`isolation` is not set in agent files; see §2.)
 
 The `## Security Safeguards` heading and its LOW/MEDIUM/HIGH/CRITICAL matrix are retired. Content that survives moves into the #327 template's sections: **Expert practice**, the stamped **Operating notes**, **Rollback** and **Approval gates**.
 
@@ -76,7 +76,7 @@ By default the classifier allows local file operations, installing dependencies 
 | `mcpServers` | **Ignored in plugin agents** | **Never use.** |
 | `initialPrompt` | **Ignored in plugin agents**; applies only when the agent runs as the main session agent | **Never use.** |
 
-Which tier gets which of `disallowedTools`, `isolation`, `maxTurns`, `effort` and `color` is decided by #319. That table is in CLAUDE.md under Agent File Format; this document doesn't restate it.
+Which tier gets which of `disallowedTools`, `maxTurns`, `effort` and `color` is decided by #319. That table is in CLAUDE.md under Agent File Format; this document doesn't restate it.
 
 Two consequences:
 
@@ -106,7 +106,6 @@ This goes under **Expert practice** in the #327 template.
 - The commands must undo *this agent's* changes. `git revert <sha>` alone is not domain rollback. Every agent can do that, so it fails the swap test (§4).
 - Prefer targeted commands (`git restore --source=<sha> -- <path>`) over blanket ones (`git checkout .`, `git reset --hard`), which the classifier blocks anyway.
 - No `-auto-approve`, `--force` or `--yes` in a rollback path that runs against shared infrastructure.
-- A rollback must not print a secret or write one to disk. Use the provider's version mechanism (`vault kv rollback -version=<n> <path>`, `aws secretsmanager update-secret-version-stage`), and verify by version ID, not by value.
 - A rollback must not print a secret or write one to disk. Use the provider's version mechanism (`vault kv rollback -version=<n> <path>`, `aws secretsmanager update-secret-version-stage`), and verify by version ID, not by value.
 
 **Domain approval gates.** A gate is kept only if it passes all three tests:
@@ -144,7 +143,7 @@ Tier is the category's tier (CLAUDE.md, Repository Structure). This replaces the
 | Domain approval gates | — | rarely | where a real process exists | where a real process exists | where a real process exists |
 | Emergency Stop, generic Blast Radius, generic Approval Gates, generic Input Validation, Audit Logging, embedded code | never | never | never | never | never |
 
-**Read-only override:** an agent in Tier 3–5 that holds none of `Bash`, `Write` or `Edit` gets the Tier 1 operating notes and no Rollback section. It changes nothing, so there is nothing to roll back. #318 can derive this from `tools` mechanically.
+**Read-only override:** an agent in Tier 2–5 whose `tools` hold none of `Bash`, `Write`, `Edit` or `NotebookEdit` gets the Tier 1 operating notes and no Rollback section. It changes nothing, so there is nothing to roll back. The test is on `tools` alone; the `disallowedTools` read-only marker plays no part. The override changes only the stamp and the body sections, never the frontmatter, which follows the category tier (CLAUDE.md, Agent File Format).
 
 **Tier 2 rollback:** changes in the working tree are undone with git, and every model knows how. A Tier 2 agent gets a Rollback section only when it changes state that git doesn't track: a local database migration, an installed toolchain, generated artifacts outside the repo.
 
@@ -357,14 +356,14 @@ Drafted here for #318, which owns `templates/operating-notes-tier{1..5}.md` and 
 
 **Per-file override.** A few agents sit in a category whose tier doesn't describe what they touch: `chaos-engineer` (Tier 2) injects faults into running systems. #318 keeps a reviewed allowlist that maps such a file to a different stamp with a one-line reason, for example `chaos-engineer: tier=5 # targets running systems`. The validator accepts the listed tier for that file and no other. Where the category is simply wrong, move the agent (#337) instead; use the override only where the category is right and the stamp isn't.
 
-### Tier 1 🟢 (and any read-only agent)
+### Tier 1 🟢 (and Tier 2–5 agents whose `tools` hold none of Bash, Write, Edit or NotebookEdit)
 
 ```markdown
 <!-- BEGIN GENERATED: operating-notes tier=1 -->
 ## Operating notes
 
 You are advisory: read, analyse and recommend. Don't run commands that change state. Write only the documents you were asked for, such as docs, ADRs or plans; hand proposed code or config changes back to the main conversation.
-<!-- END GENERATED -->
+<!-- END GENERATED: operating-notes -->
 ```
 
 ### Tier 2 🟡
@@ -374,7 +373,7 @@ You are advisory: read, analyse and recommend. Don't run commands that change st
 ## Operating notes
 
 You change code in the local working tree. Keep each change reviewable, and leave committing and pushing to the user unless they ask. Deploys, remote databases and cloud resources are out of scope: say so and stop.
-<!-- END GENERATED -->
+<!-- END GENERATED: operating-notes -->
 ```
 
 ### Tier 3 🟠
@@ -384,7 +383,7 @@ You change code in the local working tree. Keep each change reviewable, and leav
 ## Operating notes
 
 Your work can change dependencies, builds or data. Before the first command that changes state, establish which environment it runs against (local, CI, shared dev or staging) and name it in your reply. If it could be production, stop and ask. Undo steps are under Rollback.
-<!-- END GENERATED -->
+<!-- END GENERATED: operating-notes -->
 ```
 
 ### Tier 4 🔴
@@ -394,7 +393,7 @@ Your work can change dependencies, builds or data. Before the first command that
 ## Operating notes
 
 Your work can reach external systems: cloud accounts, clusters, networks, identity and third-party services. Before the first command that touches one, establish the exact target (account or subscription, project, cluster context, region) and whether it is production; if you can't tell, ask. Show the plan, diff or dry-run before any change you apply. Follow the user's change process where one exists; don't invent one where it doesn't. Undo steps are under Rollback.
-<!-- END GENERATED -->
+<!-- END GENERATED: operating-notes -->
 ```
 
 ### Tier 5 ⛔
@@ -404,7 +403,7 @@ Your work can reach external systems: cloud accounts, clusters, networks, identi
 ## Operating notes
 
 Treat the target as production unless the user says otherwise. Before the first change, confirm the exact target and that now is an acceptable time to change it. Make the smallest change you can verify and reverse, verify it, then continue. If what you observe differs from what you expected, stop and report before doing anything else. Follow the user's change process where one exists; don't invent one where it doesn't. Undo steps are under Rollback.
-<!-- END GENERATED -->
+<!-- END GENERATED: operating-notes -->
 ```
 
 The Tier 3–5 notes refer to a Rollback section, so #318 should require one wherever those blocks are stamped. The read-only override takes the Tier 1 block and needs none.

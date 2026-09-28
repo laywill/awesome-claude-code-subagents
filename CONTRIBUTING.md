@@ -16,15 +16,9 @@ Thank you for your interest in contributing to this collection!
 
 ### Subagent Requirements
 
-Each subagent should include:
+Start from [`templates/agent-template.md`](templates/agent-template.md) and delete its `TEMPLATE:` guidance as you fill it in. The rules live in one place, [CLAUDE.md, "Agent File Format"](CLAUDE.md#agent-file-format): the frontmatter policy by tier, the description style, the required section skeleton and its order, the stamped operating notes, and the banned content. This page doesn't restate them, so it can't drift from them.
 
-- Clear role definition
-- List of expertise areas
-- Required MCP tools (if any)
-- Communication protocol examples
-- Core capabilities
-- Example usage scenarios
-- Best practices
+In outline, a subagent has minimal `tools` for its role, a one-sentence description, a `You are a …` opening line, and the template's sections in the template's order. The old upstream shape doesn't apply: no communication protocol, no context-manager queries, no MCP tool requirements, and no `## Security Safeguards` section. Run `./scripts/validate-catalog.sh` before opening a PR.
 
 ### Required Updates When Adding a New Agent
 
@@ -41,8 +35,8 @@ When you add a new agent, you MUST update these files:
    - If applicable, add to "Common Technology Stacks" section
 
 3. **Your Agent File** (e.g., `categories/02-language-specialists/your-agent.md`)
-   - Follow the standard template structure
-   - Include all required sections
+   - Follow [`templates/agent-template.md`](templates/agent-template.md)
+   - Include all required sections (see Subagent Requirements above)
 
 ### Adding a Tool
 
