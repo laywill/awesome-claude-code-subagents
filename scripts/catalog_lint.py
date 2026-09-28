@@ -10,11 +10,11 @@ templates against AGENT_SECURITY_GUIDELINES.md section 7, and runs the
 per-file rules in scripts/agent_lint.py over every agent file. A finding's
 class decides whether it fails:
 
-    C  content finding: FAIL in a category listed in
-       scripts/lint-enforced-categories.txt, WARN everywhere else
-    F  always FAIL: a stamped block that exists but is malformed or has
-       drifted from its template
-    W  always WARN: the invented-metric heuristic
+    C   content finding: FAIL in a category listed in
+        scripts/lint-enforced-categories.txt, WARN everywhere else
+    F   always FAIL: a stamped block that exists but is malformed or has
+        drifted from its template
+    W   always WARN: the invented-metric heuristic
 
 Outside the enforced categories the pre-v3 catalog raises thousands of
 warnings, so by default they print as counts by rule and by category.

@@ -16,9 +16,9 @@ The stamp tier is chosen as CLAUDE.md, "Category tier and stamp tier",
 describes, and exactly as scripts/agent_lint.py checks it (the two share
 agent_file.stamp_tier):
 
-  1. a "<name>: tier=N" entry in scripts/lint-allowlist.txt, else
-  2. tier 1 when `tools` holds none of Bash, Write, Edit or NotebookEdit, else
-  3. the category tier, from the category directory number.
+    1. a "<name>: tier=N" entry in scripts/lint-allowlist.txt, else
+    2. tier 1 when `tools` holds none of Bash, Write, Edit or NotebookEdit, else
+    3. the category tier, from the category directory number.
 
 An existing block is replaced in place. Otherwise the block goes after the
 "## Output" section, before the next H2 (Rollback, Approval gates) or at the
