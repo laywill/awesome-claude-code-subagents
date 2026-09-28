@@ -82,24 +82,30 @@ Bump versions when publishing changes: the category's `plugin.json` `version`, a
 
 ## Agent File Format
 
+`templates/agent-template.md` is the v3 agent file for every tier. Copy it, fill it in, and delete its `TEMPLATE:` guidance. Its shape:
+
 ```markdown
 ---
 name: agent-name
-description: "When this agent should be invoked — one sentence, under ~50 tokens"
+description: "Task type first, then the nouns a user types; one sentence, at most 250 characters"
 tools: Read, Grep, Glob
 model: sonnet
 color: green                                # optional fields per the tier table below
 disallowedTools: Write, Edit, NotebookEdit, Bash
 ---
 
-You are a [senior role] with expertise in [domain]...
+You are a <senior role> who <does what, in one line>.
 
-When invoked:
-1. ...
-
-## Communication Protocol
-## Development Workflow
-## Security Safeguards   # only if the agent's risk level requires it
+## Scope
+## How you work                             # numbered list
+## <Domain section>                         # optional, any number, only here
+## Expert practice
+## Output
+<!-- BEGIN GENERATED: operating-notes tier=N -->
+## Operating notes
+<!-- END GENERATED -->
+## Rollback                                 # conditional, see Body skeleton
+## Approval gates                           # conditional, see Body skeleton
 ```
 
 All four frontmatter keys are required on every agent file — `name`, `description`, `tools`, `model` — although Claude Code itself requires only the first two. `name` must match the filename.
@@ -151,6 +157,76 @@ Claude Code recognises 18 fields and silently ignores unknown or misspelled ones
 | `experimental` | `cacheTtl: 5m \| 1h` | not used. The cache TTL is a billing choice for the user |
 | `permissionMode`, `hooks`, `mcpServers`, `initialPrompt` | — | **forbidden**. Ignored in plugin agents, so they would ship as dead config |
 
+### Description style
+
+Interim, until #316 measures a better one. The 50-token budget above is enforced as a character count.
+
+- One sentence, **at most 250 characters**, with no line breaks and no `<example>` blocks.
+- The task type first ("Review…", "Migrate…", "Write…"), then the concrete nouns a user types: languages, frameworks, tools, file types.
+- Start with `Use proactively when…` only for an agent that should fire without being named. Everything else leaves it out.
+- `scripts/compress-descriptions.py` (#362) rewrites a description to this style with a local model.
+
+### Body skeleton
+
+Everything after the frontmatter follows this skeleton. #318 lints it, so the rules are exact:
+
+| # | Heading, exact and case-sensitive | Status | Content |
+| --- | --- | --- | --- |
+| 0 | none: the opening paragraph | required | `You are a <role> who <scope>`, before any heading |
+| 1 | `## Scope` | required | what the agent does, and what it hands back to the main conversation instead |
+| 2 | `## How you work` | required | a numbered list and nothing else (below) |
+| 3 | any other H2 | optional, zero or more | domain depth: the agent's method, knowledge and checkable criteria |
+| 4 | `## Expert practice` | required; optional where the stamp is `tier=1` | what a senior practitioner does that a generalist forgets, in the domain's own commands |
+| 5 | `## Output` | required | what the final report contains; only what was done and measured |
+| 6 | `## Operating notes`, inside the stamped block | required, exactly one | generated, never hand-edited (below) |
+| 7 | `## Rollback` | required where the stamp is `tier=3`, `4` or `5`; optional at `tier=2`; absent at `tier=1` | real CLI commands that undo this agent's changes |
+| 8 | `## Approval gates` | optional; absent at `tier=1` | one line per real domain process: *trigger → who confirms* |
+
+- The fixed headings (rows 1, 2 and 4–8) each appear at most once and in this order. Headings inside fenced code blocks don't count.
+- A domain H2 (row 3) sits between `## How you work` and `## Expert practice`, or `## Output` where Expert practice is absent. Nowhere else. It may not reuse a fixed heading or a banned one.
+- **Rollback in Tier 2** is for state git doesn't track: a local database migration, an installed toolchain, artifacts outside the repo. Working-tree changes are undone with git, and every model knows how, so they get no section. The linter can't tell the difference; review does.
+- **Approval gates** only where the domain has a real human process the agent can't satisfy alone (a DBA, a data owner, a maintenance window, rules of engagement). `AGENT_SECURITY_GUIDELINES.md` §3 has the three tests.
+- **Body length is not the enemy; generic text is.** The body costs nothing until the agent runs. A sentence that would read the same in `content-marketer` and in `kubernetes-specialist` goes.
+
+### How you work
+
+- Required in every file, and always a numbered list starting at `1.`, directly under the heading. Items may hold nested bullets or code; the section holds nothing else.
+- No inline `When invoked: (1)… (2)…` sentences, no `When invoked:` or `On invocation:` labels anywhere in the file. The heading replaces them.
+- Step 1 says where the context comes from (the conversation, the codebase, the issue tracker) and to ask when something needed is missing. Nothing else supplies it: the context-manager query that the upstream "gather context" step relied on is gone (#315).
+- The remaining steps are domain-specific and use the domain's own commands and file names.
+
+### Markup
+
+- H2 for the skeleton's sections and for domain sections; H3 for sub-parts inside them. No H1, no H4 or deeper.
+- No line that is only bold text (`**Label**` or `**Label**:`) used as a heading (markdownlint MD036); use an H3. A bold lead-in inside a list item (`- **Term**: text`) is fine. Plain `Label:` lines that introduce a list are the same smell; use an H3.
+- Fenced code blocks name their language.
+- The only HTML comments in an agent file are the stamp markers. Every `TEMPLATE:` line from the template is deleted.
+
+### Operating notes (stamped)
+
+- The block is exactly this, between `## Output` and `## Rollback`:
+
+  ```markdown
+  <!-- BEGIN GENERATED: operating-notes tier=N -->
+  ## Operating notes
+
+  <wording for tier N>
+  <!-- END GENERATED -->
+  ```
+
+- The wording is `AGENT_SECURITY_GUIDELINES.md` §7, stamped from `templates/operating-notes-tierN.md` by `scripts/stamp-sections.sh` (#318). It is never hand-edited, and the validator fails on drift. Until #318 lands, copy the §7 block verbatim.
+- `N` is the category's tier, with two exceptions. **Read-only override:** a Tier 3–5 agent whose `tools` hold none of `Bash`, `Write` or `Edit` takes `tier=1` and has no Rollback. **Per-file override:** where the category is right but the stamp isn't, a reviewed allowlist in #318 maps the file to another tier with a reason, e.g. `chaos-engineer: tier=5 # targets running systems`. Nothing else changes `N`.
+- The block **replaces** hand-written `Environment Note`, `Environment adaptability` and `Environment adaptability & scope` preambles. Delete them; don't keep them alongside.
+
+### Banned content
+
+`scripts/validate-catalog.sh` is the enforcing copy; the rest is added by #318 or caught in review.
+
+- **Enforced today:** the headings `Communication Protocol`, `Progress Tracking`, `Integration with Other Agents` and `Audit Logging`, at any level; the phrases `requesting_agent`, `request_type`, `Delivery notification`, `Progress tracking:`, `integration with other agents`, `query context manager` and `context manager for`.
+- **Retired by #354, to be linted by #318:** the `Security Safeguards` heading and its LOW/MEDIUM/HIGH/CRITICAL subsections; `Emergency Stop` and `EMERGENCY_STOP` stop-file checks; `Blast Radius Controls`; generic `Approval Gates` (change ticket, on-call, peer review, `read -p` prompts); `Input Validation` that amounts to "validate inputs"; `-auto-approve` in a rollback path; hand-written environment preambles (above).
+- **Structural, #318:** `When invoked:` and `On invocation:`, a `## How you work` that isn't a numbered list, headings out of the skeleton's order, leftover `TEMPLATE:` guidance, and descriptions over 250 characters or holding `<example>` blocks.
+- **Review:** invented metrics (counts, percentages, scores, durations or thresholds the agent can't measure or that have no source, such as "coverage > 80% confirmed"), embedded validation or logging code, and inter-agent coordination prose.
+
 ## Security Safeguards
 
 `AGENT_SECURITY_GUIDELINES.md` is the source of truth. It has a keep/delete test for any piece of safeguard content, with worked examples. The essentials:
@@ -168,7 +244,7 @@ A Tier 3–5 agent with none of `Bash`, `Write` or `Edit` takes the Tier 1 notes
 
 **Delete on sight:** generic Emergency Stop (stop-file checks), generic Blast Radius Controls, generic Approval Gates (change ticket, on-call, `read -p CONFIRM`), Input Validation that amounts to "validate inputs", and invented thresholds ("rollback in < 5 min").
 
-**Enforce through frontmatter, not prose:** `tools`, `disallowedTools`, `isolation`, `maxTurns`. Plugin agents ignore `permissionMode`, `hooks`, `mcpServers` and `initialPrompt`, and `permissionMode` can't tighten a session that's already in auto, acceptEdits or bypass mode. Never use any of the four.
+**Enforce through frontmatter, not prose:** `tools`, `disallowedTools`, `maxTurns`. (`isolation` is not set in agent files; see Frontmatter fields.) Plugin agents ignore `permissionMode`, `hooks`, `mcpServers` and `initialPrompt`, and `permissionMode` can't tighten a session that's already in auto, acceptEdits or bypass mode. Never use any of the four.
 
 Two rules that get violated repeatedly:
 
@@ -260,10 +336,10 @@ Labels and commit types are separate vocabularies. `content`, `design` and `infr
 
 ## Subagent Storage in Claude Code
 
-| Type    | Path              | Scope                |
-| ------- | ----------------- | -------------------- |
-| Project | `.claude/agents/` | Current project only |
-| Global  | `~/.claude/agents/` | All projects       |
+| Type    | Path                | Scope                |
+| ------- | ------------------- | -------------------- |
+| Project | `.claude/agents/`   | Current project only |
+| Global  | `~/.claude/agents/` | All projects         |
 
 Project subagents take precedence over global ones with the same name.
 

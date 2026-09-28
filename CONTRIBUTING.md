@@ -16,15 +16,22 @@ Thank you for your interest in contributing to this collection!
 
 ### Subagent Requirements
 
-Each subagent should include:
+Start from [`templates/agent-template.md`](templates/agent-template.md) and delete its `TEMPLATE:` guidance as you fill it in. The full rules are in [CLAUDE.md, "Agent File Format"](CLAUDE.md#agent-file-format); in short, each subagent has:
 
-- Clear role definition
-- List of expertise areas
-- Required MCP tools (if any)
-- Communication protocol examples
-- Core capabilities
-- Example usage scenarios
-- Best practices
+- **Frontmatter** with `name` (matching the filename), `description`, `tools` and `model`, plus the tier's `color`, `disallowedTools`, `effort` and `maxTurns` where the tier table calls for them
+- **A description** of one sentence, at most 250 characters: the task type first, then the concrete nouns a user would type
+- **The minimum tools** for the role. Leave out `Bash` if the agent doesn't need to run commands, and `Write` and `Edit` if its job is to report findings
+- **An opening line**, `You are a <role> who <scope>`, followed by these sections in order:
+  - `## Scope`: what the agent does, and what it hands back instead
+  - `## How you work`: a numbered list, where step 1 says where the context comes from and to ask when it's missing
+  - Optional domain sections, where the depth goes
+  - `## Expert practice`: the domain's own techniques, such as plan before apply, dry-run, back up, confirm the target, pin versions
+  - `## Output`: what the final report contains. Only what was actually done and measured
+  - The stamped `## Operating notes` block for the category's tier, copied verbatim and never edited
+  - `## Rollback`: real CLI commands that undo the agent's changes, for Tier 3–5 agents that change state
+  - `## Approval gates`: only for a real human process in the domain, such as DBA sign-off for production DDL
+
+Don't include a communication protocol, context-manager queries, progress-tracking JSON, delivery notifications, MCP tool requirements, a `## Security Safeguards` section, audit logging, embedded validation code, or metrics the agent can't measure. `scripts/validate-catalog.sh` rejects several of these.
 
 ### Required Updates When Adding a New Agent
 
@@ -41,8 +48,8 @@ When you add a new agent, you MUST update these files:
    - If applicable, add to "Common Technology Stacks" section
 
 3. **Your Agent File** (e.g., `categories/02-language-specialists/your-agent.md`)
-   - Follow the standard template structure
-   - Include all required sections
+   - Follow [`templates/agent-template.md`](templates/agent-template.md)
+   - Include all required sections (see Subagent Requirements above)
 
 ### Adding a Tool
 
