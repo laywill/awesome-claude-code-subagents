@@ -14,7 +14,7 @@ You are a senior software engineer collaborating with a peer. Prioritize thoroug
 
 This is a curated collection of Claude Code subagent definitions — specialized AI assistants for specific development tasks. Subagents are markdown files with YAML frontmatter that Claude Code loads as agents.
 
-There is no build system or test suite. The "source" is markdown; correctness means the manifests, READMEs, and agent files stay in sync, which `scripts/validate-catalog.sh` checks and CI enforces (see Verification below).
+There is no build system. The "source" is markdown; correctness means the manifests, READMEs, and agent files stay in sync, which `scripts/validate-catalog.sh` checks and CI enforces (see Verification below). The Python under `scripts/` that does the checking has its own tests and lint (see Linting).
 
 ## Repository Structure
 
@@ -309,7 +309,7 @@ Adding an agent therefore means updating the count in the README badge and in `.
 
 ### Content lint and the per-category ratchet
 
-The rules marked as linted under Agent File Format (frontmatter keys, values and tier rules; Body skeleton; Markup; Operating notes; the Retired and Structural lines of Banned content) are checked by `scripts/agent_lint.py`, one file at a time, with the rules themselves in `scripts/lint_frontmatter.py` and `scripts/lint_body.py`. `scripts/catalog_lint.py` runs it over the catalog and applies the ratchet, and `validate-catalog.sh` runs that. Both read agent files through `scripts/agent_file.py`, as the stamper does. Most agent files predate v3, so these findings are ratcheted:
+The rules marked as linted under Agent File Format (frontmatter keys, values and tier rules; Body skeleton; Markup; Operating notes; the Retired and Structural lines of Banned content) are checked by `scripts/agent_lint.py`, one file at a time. It parses each file once into `scripts/lint_model.py`'s immutable model, then runs the rules in `scripts/lint_frontmatter.py`, `scripts/lint_body.py` and `scripts/lint_content.py`, which are functions over that model and never re-parse text. `scripts/catalog_lint.py` runs it over the catalog and applies the ratchet, and `validate-catalog.sh` runs that. The stamper reads files through the same model, so the two can't disagree about a heading, a fence or a stamp marker. Most agent files predate v3, so these findings are ratcheted:
 
 - **`scripts/lint-enforced-categories.txt`** lists category directories. In a listed category every content finding fails the build; elsewhere it is a warning. Each category's v3 uplift adds its category as its last step; #328 requires all 24 and removes the ratchet.
 - Two exceptions to the ratchet: a stamped block that exists but has drifted or is malformed always fails, and the invented-metric heuristic (`metric-invented`) only ever warns.
@@ -319,24 +319,33 @@ The rules marked as linted under Agent File Format (frontmatter keys, values and
 - **`scripts/lint-enforced-markdown.sh`** runs markdownlint and cspell, blocking, over the listed categories only.
 - **Cutover (#328):** once all 24 categories are listed, delete the ratchet file, `scripts/lint-enforced-markdown.sh` and the `enforced-markdown` job in `validate.yml`; make content findings fail everywhere; and remove `MARKDOWN_MARKDOWNLINT` and `SPELL_CSPELL` from `DISABLE_ERRORS_LINTERS` in `.mega-linter.yml`, so MegaLinter blocks on them directly.
 
-The Python scripts use the standard library only. `tests/` covers them with pytest (`python3 -m pytest`, configured in `pyproject.toml`), and CI runs the tests in `validate.yml`. Change a lint rule by changing its test first.
+The Python scripts use the standard library only. `tests/` covers them with pytest (`python3 -m pytest`, configured in `pyproject.toml`), and CI runs the tests in `validate.yml` before the catalog check. Change a lint rule by changing its test first.
 
 ### Linting
 
-MegaLinter (`.mega-linter.yml`, `.github/workflows/mega-linter.yml`) covers generic file hygiene; `validate-catalog.sh` covers what is specific to this catalog. Don't duplicate a check across the two.
+MegaLinter (`.mega-linter.yml`, `.github/workflows/mega-linter.yml`) covers generic file hygiene; `validate-catalog.sh` covers what is specific to this catalog; `scripts/lint-python.sh` covers Python. Don't duplicate a check across them.
+
+**Python** is not linted by MegaLinter (`DISABLE: PYTHON`). `scripts/lint-python.sh` runs ruff, black, isort, flake8, pylint, `mypy --strict`, bandit and radon over all of `scripts/` and `tests/`, from the `python-lint` job in `validate.yml`, on every run. Tool versions are pinned in `requirements-dev.txt` (Dependabot bumps them); config is in `pyproject.toml`, except flake8's in `.flake8`. All of it blocks, including radon: no function worse than cyclomatic complexity B (10), and every module maintainability A. Before pushing Python:
+
+```bash
+python3 -m pip install -r requirements-dev.txt
+./scripts/lint-python.sh && python3 -m pytest
+```
+
+When the radon gate fails, fix the design rather than splitting a function to hide a branch count: rules stay functions over `lint_model.py`'s parsed types, with policy in tables. Don't add `# noqa` or `# pylint: disable` without a comment saying why.
 
 - **Blocking:** editorconfig-checker (LF endings, exactly one final newline, per `.editorconfig`), actionlint, shellcheck, yamllint, jsonlint and the secret scanners.
 - **Report-only, catalog-wide, promoted to blocking per category by the ratchet:** markdownlint (`.markdownlint.json`), cspell (`.cspell.json`, en-GB and en-US) — see `scripts/lint-enforced-markdown.sh`, above.
 - **Report-only, not ratcheted:** jscpd.
 - **No auto-fix commits** (`APPLY_FIXES: none`). Fix locally and commit.
 
-PRs lint only the files they change; pushes to `main` lint everything. For fast local feedback, `pre-commit install` runs the hooks in `.pre-commit-config.yaml`, and `pre-commit install --hook-type pre-push` adds `validate-catalog.sh` before each push.
+PRs lint only the files they change; pushes to `main` lint everything. For fast local feedback, `pre-commit install` runs the hooks in `.pre-commit-config.yaml`, including `lint-python.sh` when a `.py` file changes, and `pre-commit install --hook-type pre-push` adds pytest and `validate-catalog.sh` before each push.
 
 `.github/workflows/validate.yml` also runs `claude plugin validate . --strict`, the Claude Code CLI's own check of the marketplace and plugin manifests. It needs no credentials. It does not read agent frontmatter, which is `validate-catalog.sh`'s job.
 
 ## GitHub Actions
 
-Workflows: `validate.yml` (catalog consistency), `mega-linter.yml` (linting), `codeql.yml` (workflow security analysis) and `labels.yml` (syncs `.github/labels.yml` into the repo's labels; it never deletes a label). Dependabot (`.github/dependabot.yml`) raises weekly grouped bumps for them. Every workflow, existing or new, must pin every action to a full 40-character commit SHA, with a trailing comment naming the semantic version that SHA corresponds to:
+Workflows: `validate.yml` (catalog consistency, Python tests and Python lint), `mega-linter.yml` (linting), `codeql.yml` (workflow security analysis) and `labels.yml` (syncs `.github/labels.yml` into the repo's labels; it never deletes a label). Dependabot (`.github/dependabot.yml`) raises weekly grouped bumps for their actions and for `requirements-dev.txt`. Every workflow, existing or new, must pin every action to a full 40-character commit SHA, with a trailing comment naming the semantic version that SHA corresponds to:
 
 ```yaml
 steps:

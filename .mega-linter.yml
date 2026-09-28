@@ -19,6 +19,14 @@ DISABLE_LINTERS:
   - JSON_PRETTIER  # Disable beautifying JSON with Prettier
   - YAML_PRETTIER  # Disable beautifying YAML with Prettier
 
+# Python is linted by scripts/lint-python.sh, from the python-lint job in
+# .github/workflows/validate.yml: every file on every run, with the tool
+# versions in requirements-dev.txt and the config in pyproject.toml. Running
+# MegaLinter's copies too would check the same code twice with different
+# versions and default configs.
+DISABLE:
+  - PYTHON
+
 # Report-only for now. The agent files predate any linting: on main,
 # markdownlint reports ~2,800 findings once line length is excluded, and
 # cspell reports ~1,400. DISABLE_ERRORS_LINTERS applies to a linter as a

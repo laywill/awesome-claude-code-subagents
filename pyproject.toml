@@ -1,11 +1,15 @@
 # Tool configuration only: nothing here is packaged. scripts/*.py are
 # standalone, and tests/ covers the content lint (agent_lint.py and its rule
-# modules) and scripts/stamp_sections.py. Run the tests with: python3 -m pytest
+# modules) and scripts/stamp_sections.py.
 #
-# MegaLinter ignores this file for bandit, isort, mypy and ruff: it passes its
-# own default config unless the repo has .bandit.yml, .isort.cfg, .mypy.ini or
-# .ruff.toml. Its defaults already suit these scripts except bandit's, hence
-# .bandit.yml.
+# scripts/lint-python.sh runs every Python check with this config, in CI and
+# locally; requirements-dev.txt pins the tools. flake8 alone can't read this
+# file, so its settings are in .flake8. Complexity thresholds (radon, via
+# xenon) are in the script, which states them.
+#
+#     python3 -m pip install -r requirements-dev.txt
+#     ./scripts/lint-python.sh
+#     python3 -m pytest
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -16,12 +20,45 @@ addopts = "--strict-markers"
 # arranges.
 [tool.mypy]
 mypy_path = ["scripts", "tests"]
+strict = true
 
-[tool.pyright]
-extraPaths = ["scripts", "tests"]
-# MegaLinter's pyright has no pytest to resolve; a missing import still shows,
-# and the pytest job fails on one that is really missing.
-reportMissingImports = "warning"
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+# pyflakes and pycodestyle, plus bugbear, pyupgrade, simplify, ruff's own,
+# comprehensions, pie, returns, pathlib, performance, naming and implicit
+# string concatenation. Left out because another tool here owns them: S
+# (bandit), I (isort), C90 (radon), PL (pylint). T20 is left out because
+# these are CLI scripts that print by design.
+select = [
+    "E", "W", "F", "B", "UP", "SIM", "RUF", "C4", "PIE", "RET", "PTH", "PERF",
+    "N", "ISC",
+]
+
+[tool.pylint.main]
+# Where the scripts and tests import each other from, as pytest arranges.
+source-roots = ["scripts", "tests"]
+
+[tool.pylint.basic]
+# scripts/ uses hyphenated filenames throughout (validate-catalog.sh,
+# install-agents.sh, compress-descriptions.py); allow the same for modules.
+module-rgx = "[a-z_][a-z0-9_-]*$"
+
+[tool.pylint.design]
+# ParsedAgent groups one agent file's frontmatter, and BodyLine one parsed
+# line; that many fields is cohesive state, not a design smell.
+max-attributes = 10
+
+[tool.bandit.assert_used]
+# pytest checks with assert. B101 exists because python -O strips asserts
+# from shipped code; tests are never run that way.
+skips = ["tests/*.py", "*/tests/*.py"]
+
+[tool.black]
+line-length = 88
+target-version = ["py312"]
 
 [tool.isort]
 profile = "black"

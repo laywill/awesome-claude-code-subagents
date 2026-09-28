@@ -12,11 +12,29 @@ repos:
       - id: detect-private-key
       - id: mixed-line-ending
 
-  # Catalog consistency and banned-scaffolding checks. Runs on push rather than
-  # on every commit because it walks all 203 agent files.
-  # Enable with: pre-commit install --hook-type pre-push
   - repo: local
     hooks:
+      # Every Python check CI runs, whenever a .py file is committed. Needs
+      # the tools installed: python3 -m pip install -r requirements-dev.txt
+      - id: lint-python
+        name: lint python
+        entry: ./scripts/lint-python.sh
+        language: script
+        pass_filenames: false
+        files: \.py$
+
+      # The rest run on push rather than on every commit.
+      # Enable with: pre-commit install --hook-type pre-push
+      - id: pytest
+        name: pytest
+        entry: python3 -m pytest -q
+        language: system
+        pass_filenames: false
+        files: \.py$
+        stages: [pre-push]
+
+      # Catalog consistency and banned-scaffolding checks; walks every agent
+      # file.
       - id: validate-catalog
         name: validate catalog
         entry: ./scripts/validate-catalog.sh
