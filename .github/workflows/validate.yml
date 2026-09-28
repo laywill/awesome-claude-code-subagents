@@ -25,3 +25,48 @@ jobs:
 
       - name: Validate catalog
         run: ./scripts/validate-catalog.sh
+
+  plugin-schema:
+    name: Plugin manifest schema (claude plugin validate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          # Nothing here pushes; don't leave the token in .git/config
+          persist-credentials: false
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: "22"
+
+      # Needs no ANTHROPIC_API_KEY or login: checked for #318 by running it
+      # with an empty HOME and config directory. Pinned to an exact version so
+      # a CLI release can't change what --strict rejects; bump deliberately.
+      - name: Install the Claude Code CLI
+        run: npm install --global @anthropic-ai/claude-code@2.1.283
+
+      # Checks .claude-plugin/marketplace.json and each category's
+      # plugin.json against Claude Code's own schema: dangling agent paths,
+      # unknown or missing manifest fields. It doesn't read agent
+      # frontmatter; scripts/validate-catalog.sh does.
+      - name: Validate plugin and marketplace manifests
+        run: claude plugin validate . --strict
+
+  enforced-markdown:
+    name: markdownlint/cspell, blocking for ratcheted categories
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          # Nothing here pushes; don't leave the token in .git/config
+          persist-credentials: false
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: "22"
+
+      # MegaLinter runs markdownlint and cspell report-only across the
+      # catalog. This makes them blocking for the categories listed in
+      # scripts/lint-enforced-categories.txt, and does nothing while it's empty.
+      - name: markdownlint and cspell for ratcheted categories
+        run: ./scripts/lint-enforced-markdown.sh

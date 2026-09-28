@@ -18,6 +18,24 @@ set -uo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 
+# Usage: ./scripts/validate-catalog.sh [--verbose] [category-dir ...]
+#
+# The content checks (issue #318) warn outside the categories listed in
+# scripts/lint-enforced-categories.txt, and the pre-v3 catalog raises
+# thousands of warnings. By default they print as counts by rule and by
+# category. --verbose prints every warning; naming category directories
+# (e.g. 03-analysis-and-review) prints every warning for those. Arguments
+# change only what is printed, never what fails.
+
+verbose=0
+detail_categories=' '
+for arg in "$@"; do
+  case "$arg" in
+    --verbose) verbose=1 ;;
+    *) detail_categories+="${arg%/} " ;;
+  esac
+done
+
 failures=0
 
 fail() {
@@ -253,6 +271,150 @@ while IFS= read -r file; do
     fail "$file:${hit%%:*} has banned scaffolding: ${hit#*:}"
   done < <(grep -niE "$banned_phrases" "$file")
 done < <(agent_files)
+
+
+# ---------------------------------------------------------------------------
+section 'The content-lint ratchet and allowlist are well-formed'
+# ---------------------------------------------------------------------------
+# Enforced everywhere. A typo in either file would otherwise silently
+# enforce nothing, or opt nothing out.
+
+enforced_file='scripts/lint-enforced-categories.txt'
+allowlist_file='scripts/lint-allowlist.txt'
+declare -A enforced=()
+
+if [ ! -f "$enforced_file" ]; then
+  fail "$enforced_file does not exist"
+else
+  while IFS= read -r line; do
+    line="${line%$'\r'}"
+    line="${line%%#*}"
+    line="${line//[[:space:]]/}"
+    [ -n "$line" ] || continue
+    if [ -d "categories/$line" ]; then
+      enforced["$line"]=1
+    else
+      fail "$enforced_file lists $line, which is not a directory under categories/"
+    fi
+  done <"$enforced_file"
+fi
+
+if [ ! -f "$allowlist_file" ]; then
+  fail "$allowlist_file does not exist"
+else
+  declare -A agent_tier=()
+  while IFS= read -r file; do
+    base=$(basename "$file" .md)
+    num=${file#categories/}
+    num=$((10#${num:0:2}))
+    if [ "$num" -le 6 ]; then agent_tier["$base"]=1
+    elif [ "$num" -le 13 ]; then agent_tier["$base"]=2
+    elif [ "$num" -le 17 ]; then agent_tier["$base"]=3
+    elif [ "$num" -le 21 ]; then agent_tier["$base"]=4
+    else agent_tier["$base"]=5
+    fi
+  done < <(agent_files)
+
+  declare -A seen_entry=()
+  line_no=0
+  while IFS= read -r line; do
+    line_no=$((line_no + 1))
+    line="${line%$'\r'}"
+    trimmed="${line#"${line%%[![:space:]]*}"}"
+    case "$trimmed" in
+      '' | '#'*) continue ;;
+    esac
+    where="$allowlist_file:$line_no"
+    if ! [[ "$line" =~ ^([a-z0-9-]+):[[:space:]]+([a-z0-9=-]+)[[:space:]]+#[[:space:]]*(.*)$ ]]; then
+      fail "$where is not '<agent-name>: <rule> # <reason>': $line"
+      continue
+    fi
+    entry_name="${BASH_REMATCH[1]}"
+    entry_rule="${BASH_REMATCH[2]}"
+    entry_reason="${BASH_REMATCH[3]}"
+    [ -n "${entry_reason//[[:space:]]/}" ] || fail "$where has no reason after '#'"
+    [ -z "${seen_entry[$entry_name:$entry_rule]:-}" ] || fail "$where repeats $entry_name: $entry_rule"
+    seen_entry["$entry_name:$entry_rule"]=1
+
+    entry_tier="${agent_tier[$entry_name]:-}"
+    if [ -z "$entry_tier" ]; then
+      fail "$where names $entry_name, which is not an agent in categories/"
+      continue
+    fi
+    case "$entry_rule" in
+      tier=[1-5]) ;;
+      tier1-bash)
+        [ "$entry_tier" -eq 1 ] || fail "$where: tier1-bash applies only to Tier 1 agents; $entry_name is Tier $entry_tier" ;;
+      sonnet-instead-of-opus)
+        [ "$entry_tier" -le 3 ] || fail "$where: sonnet-instead-of-opus applies only to Tier 1-3; Tier $entry_tier sonnet agents set effort: high anyway" ;;
+      *) fail "$where: unknown rule '$entry_rule' (tier=N, tier1-bash or sonnet-instead-of-opus)" ;;
+    esac
+  done <"$allowlist_file"
+fi
+
+# ---------------------------------------------------------------------------
+section 'Operating-notes templates match AGENT_SECURITY_GUIDELINES.md §7'
+# ---------------------------------------------------------------------------
+# §7 is the wording's source of truth; templates/ is what gets stamped. The
+# N-th markdown code block in §7 is the tier-N block.
+
+for tier in 1 2 3 4 5; do
+  template="templates/operating-notes-tier$tier.md"
+  if [ ! -f "$template" ]; then
+    fail "$template does not exist"
+    continue
+  fi
+  section7=$(awk -v want="$tier" '
+    /^## 7\./ { s = 1; next }
+    !inb && /^## / { s = 0 }
+    s && /^```markdown$/ { n++; inb = 1; f = (n == want); next }
+    s && /^```$/ { inb = 0; f = 0; next }
+    f { print }
+  ' AGENT_SECURITY_GUIDELINES.md)
+  [ "$section7" = "$(cat "$template")" ] ||
+    fail "$template differs from the tier $tier block in AGENT_SECURITY_GUIDELINES.md §7"
+done
+
+# ---------------------------------------------------------------------------
+section 'Agent content: frontmatter, body skeleton, markup, stamp, banned content (#318)'
+# ---------------------------------------------------------------------------
+# The rules are CLAUDE.md's "Agent File Format"; scripts/lint-agent-content.awk
+# is the enforcing copy. Each finding is ratcheted per category: FAIL in a
+# category listed in scripts/lint-enforced-categories.txt, WARN elsewhere.
+# Two exceptions: a stamped block that exists but is malformed or has drifted
+# from its template always fails, and the invented-metric heuristic only
+# ever warns.
+
+warnings=0
+declare -A warn_rule=()
+declare -A warn_cat=()
+
+while IFS=$'\t' read -r cls rule file msg; do
+  cat="${file#categories/}"
+  cat="${cat%%/*}"
+  if [ "$cls" = F ] || { [ "$cls" = C ] && [ -n "${enforced[$cat]:-}" ]; }; then
+    fail "$file: [$rule] $msg"
+    continue
+  fi
+  warnings=$((warnings + 1))
+  warn_rule["$rule"]=$((${warn_rule[$rule]:-0} + 1))
+  warn_cat["$cat"]=$((${warn_cat[$cat]:-0} + 1))
+  if [ "$verbose" -eq 1 ] || [[ "$detail_categories" == *" $cat "* ]]; then
+    printf 'WARN  %s: [%s] %s\n' "$file" "$rule" "$msg"
+  fi
+done < <(agent_files | LC_ALL=C xargs awk -v allowfile="$allowlist_file" -v tmpldir=templates -f scripts/lint-agent-content.awk)
+
+if [ "$warnings" -ne 0 ]; then
+  printf 'Warnings by rule:\n'
+  for rule in "${!warn_rule[@]}"; do
+    printf '  %6s  %s\n' "${warn_rule[$rule]}" "$rule"
+  done | sort -rn
+  printf 'Warnings by category:\n'
+  for cat in "${!warn_cat[@]}"; do
+    printf '  %6s  %s\n' "${warn_cat[$cat]}" "$cat"
+  done | sort -rn
+  printf '%s warning(s), not enforced: pass --verbose or a category directory to list them.\n' "$warnings"
+fi
 
 # ---------------------------------------------------------------------------
 

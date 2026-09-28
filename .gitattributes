@@ -12,6 +12,11 @@
 # Plugin and marketplace manifests are read by Claude Code.
 *.json text eol=lf
 
+# The content-lint ratchet, allowlist and awk program (issue #318) are read
+# line by line by scripts/validate-catalog.sh and scripts/stamp-sections.sh.
+*.txt text eol=lf
+*.awk text eol=lf
+
 # Force shell scripts to always use LF line endings so that if a repo is accessed
 # on a Windows system, the shell scripts will still work when checked out.
 *.sh text eol=lf
