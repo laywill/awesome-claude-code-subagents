@@ -53,7 +53,7 @@ Other top-level pieces:
 
 - `.claude-plugin/marketplace.json` — marketplace manifest; one entry per category, each pointing at `./categories/NN-.../`
 - `categories/NN-*/.claude-plugin/plugin.json` — per-category plugin manifest listing every agent file explicitly
-- `.claude/agents/` — repo-maintenance agents used *on* this repo: `description-compressor` (condenses frontmatter descriptions), `token-efficiency-optimizer` (compresses verbose agent bodies); `agent-uplifter` is coming in #326. Check these first before doing bulk edits by hand.
+- `.claude/agents/` — repo-maintenance agents used *on* this repo: `description-compressor` (condenses frontmatter descriptions), `token-efficiency-optimizer` (compresses verbose agent bodies); `agent-uplifter` is coming in #326. Both predate v3 and conflict with it: the compressor targets 50 tokens, not the 250-character budget, and the optimizer preserves every safeguard, including Audit Logging and other banned content. Don't use them for v3 uplifts until #326 updates them.
 - `install-agents.sh` — interactive installer; works from a clone (local mode) or standalone via the GitHub API (remote mode)
 - `tools/` — Claude Code skills that browse/fetch the catalog, installed to `~/.claude/commands/`
 - `AGENT_SECURITY_GUIDELINES.md` — authoritative keep/delete policy for safety content in agent files (read before writing any)
@@ -109,7 +109,7 @@ You are a <senior role> who <does what, in one line>.
 
 All four frontmatter keys are required on every agent file — `name`, `description`, `tools`, `model` — although Claude Code itself requires only the first two. `name` must match the filename.
 
-- **`description`**: a single sentence Claude Code uses for auto-selection. At most 250 characters; see Description style — the `description-compressor` agent in `.claude/agents/` does this.
+- **`description`**: a single sentence Claude Code uses for auto-selection. At most 250 characters; see Description style.
 - **`tools`**: assign the minimum for the role. If an agent doesn't need Bash, don't give it Bash — this is the single biggest risk reducer. Always set it: an explicit list already excludes every MCP tool, so `mcp__*` in `disallowedTools` is redundant here. Omitting `tools` inherits everything, MCP included.
 - **`model`**: an alias — `haiku`, `sonnet` or `opus`. No full model IDs (they go stale), no `fable` or `inherit`. Frontmatter outranks the user's `CLAUDE_CODE_SUBAGENT_MODEL`, so an `opus` pin overrides a user who set a cheaper model:
   - `haiku`: narrow, mechanical roles where the output follows from the input with little judgement (formatting, lookup, changelogs). Never set `effort` on it; Haiku doesn't support effort.
