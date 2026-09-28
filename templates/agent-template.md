@@ -2,7 +2,7 @@
 # TEMPLATE: Copy this file to categories/NN-category/<name>.md, fill it in, then delete every
 # TEMPLATE: line that starts with "# TEMPLATE:" and every "<!-- TEMPLATE: ... -->" comment.
 # TEMPLATE: The rules behind each field are in CLAUDE.md, "Agent File Format".
-#
+# TEMPLATE: Frontmatter always follows the CATEGORY tier (the directory), never a stamp override.
 # TEMPLATE: Kebab-case, equal to the filename stem, unique across all categories.
 name: <agent-name>
 # TEMPLATE: One sentence, at most 250 characters. Task type first, then the concrete nouns a
@@ -40,7 +40,10 @@ You are a [senior role] who [does what, in this domain, in one line].
   ## Operating notes    required; stamped, inside the GENERATED markers
   ## Rollback           required with a tier=3, 4 or 5 stamp; Tier 2 only for state git doesn't track; never with tier=1
   ## Approval gates     only for a real human process in this domain; never with tier=1
-Use H3 for sub-parts under any of them. No H1, no H4 or deeper, no line that is only **bold text**. -->
+Use H3 for sub-parts, except under How you work and inside the generated block. ATX headings only:
+no H1, no H4 or deeper, no setext, no line that is only **bold text**, no ## Development Workflow.
+Turn "Label: a, b, c" lines into "### Label" plus bullets. The exact lint rules are in CLAUDE.md,
+"Body skeleton". -->
 
 ## Scope
 
@@ -87,18 +90,22 @@ and pass the swap test; name the concrete tool rather than the principle. Typica
 
 [What the final report contains, in order. For example: findings by severity with `file:line`, the commands run and what they returned, and what is left for the user to do.]
 
+<!-- TEMPLATE: The sentence below is recommended, not required. -->
+
 Report only what you did and observed. Never report a count, percentage, score or duration you did not measure.
 
-<!-- TEMPLATE: The block below is generated. Set N to the stamp tier: the category tier, or 1 for a
-Tier 3-5 agent whose tools hold none of Bash, Write or Edit, or the tier in the reviewed override
-allowlist (#318). Once scripts/stamp-sections.sh exists (#318), run it; until then copy the tier's
-block from AGENT_SECURITY_GUIDELINES.md section 7 verbatim. Never hand-edit it. -->
+<!-- TEMPLATE: The block below is generated. Set N to the stamp tier: the category tier, except
+1 for a Tier 2-5 agent whose tools hold none of Bash, Write, Edit or NotebookEdit (disallowedTools
+plays no part), or the tier in the override allowlist from #318 (until it exists, state the override
+in the PR description). The stamp tier drives the body sections only, never the frontmatter.
+Once scripts/stamp-sections.sh exists (#318), run it; until then copy the tier's block from
+AGENT_SECURITY_GUIDELINES.md section 7 verbatim. Never hand-edit it. -->
 
 <!-- BEGIN GENERATED: operating-notes tier=N -->
 ## Operating notes
 
 [Stamped from templates/operating-notes-tierN.md. Do not edit.]
-<!-- END GENERATED -->
+<!-- END GENERATED: operating-notes -->
 
 ## Rollback
 

@@ -532,30 +532,7 @@ Note: When naming conflicts occur, project-specific subagents override global on
 
 ## 📖 Subagent Structure
 
-Each subagent follows a standardized template:
-
-```yaml
----
-name: subagent-name
-description: When this agent should be invoked
-tools: Read, Write, Edit, Bash, Glob, Grep
-model: sonnet
----
-
-You are a [role description]...
-
-## Key steps to summarise what to do
-[When invoked:]
-
-## Define agent specific behaviour in detail
-[Agent-specific checklists, patterns, guidelines]
-
-## Communication Protocol
-[Inter-agent communication specs]
-
-## Development Workflow
-[Structured implementation phases]
-```
+Every subagent is a Markdown file with YAML frontmatter, built from [`templates/agent-template.md`](templates/agent-template.md). The frontmatter policy, the required section skeleton and the banned content are defined in [CLAUDE.md, "Agent File Format"](CLAUDE.md#agent-file-format).
 
 ## 📝 Contributing
 

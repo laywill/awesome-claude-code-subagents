@@ -103,14 +103,14 @@ You are a <senior role> who <does what, in one line>.
 ## Output
 <!-- BEGIN GENERATED: operating-notes tier=N -->
 ## Operating notes
-<!-- END GENERATED -->
+<!-- END GENERATED: operating-notes -->
 ## Rollback                                 # conditional, see Body skeleton
 ## Approval gates                           # conditional, see Body skeleton
 ```
 
 All four frontmatter keys are required on every agent file — `name`, `description`, `tools`, `model` — although Claude Code itself requires only the first two. `name` must match the filename.
 
-- **`description`**: a single sentence Claude Code uses for auto-selection. Keep it under 50 tokens — the `description-compressor` agent in `.claude/agents/` does this.
+- **`description`**: a single sentence Claude Code uses for auto-selection. At most 250 characters; see Description style — the `description-compressor` agent in `.claude/agents/` does this.
 - **`tools`**: assign the minimum for the role. If an agent doesn't need Bash, don't give it Bash — this is the single biggest risk reducer. Always set it: an explicit list already excludes every MCP tool, so `mcp__*` in `disallowedTools` is redundant here. Omitting `tools` inherits everything, MCP included.
 - **`model`**: an alias — `haiku`, `sonnet` or `opus`. No full model IDs (they go stale), no `fable` or `inherit`. Frontmatter outranks the user's `CLAUDE_CODE_SUBAGENT_MODEL`, so an `opus` pin overrides a user who set a cheaper model:
   - `haiku`: narrow, mechanical roles where the output follows from the input with little judgement (formatting, lookup, changelogs). Never set `effort` on it; Haiku doesn't support effort.
@@ -128,7 +128,7 @@ A **read-only role** is one whose deliverable is findings returned to the conver
 
 ### Optional fields by tier
 
-Tier here is the category's tier from Repository Structure, the same tier Security Safeguards keys its content by.
+Tier here is the **category tier**, from Repository Structure. Frontmatter always follows it; stamp overrides never change it (see Category tier and stamp tier, below).
 
 | Field | Tier 1 🟢 | Tier 2 🟡 | Tier 3 🟠 | Tier 4 🔴 | Tier 5 ⛔ |
 | --- | --- | --- | --- | --- | --- |
@@ -159,12 +159,21 @@ Claude Code recognises 18 fields and silently ignores unknown or misspelled ones
 
 ### Description style
 
-Interim, until #316 measures a better one. The 50-token budget above is enforced as a character count.
+Interim, until #316 measures a better one.
 
 - One sentence, **at most 250 characters**, with no line breaks and no `<example>` blocks.
 - The task type first ("Review…", "Migrate…", "Write…"), then the concrete nouns a user types: languages, frameworks, tools, file types.
 - Start with `Use proactively when…` only for an agent that should fire without being named. Everything else leaves it out.
 - `scripts/compress-descriptions.py` (#362) rewrites a description to this style with a local model.
+
+### Category tier and stamp tier
+
+Two tiers apply to every agent file, and they drive different things:
+
+- **Category tier** comes from the category directory (Repository Structure) and nothing else. It drives the **frontmatter**: `color`, `effort`, `maxTurns`, and the Tier 1 `Bash` rule in `disallowedTools`. No override changes it.
+- **Stamp tier** is the `N` in the stamped block. It drives the **body**: which operating notes are stamped, and whether Expert practice, Rollback and Approval gates are required, optional or absent. It equals the category tier except for two overrides:
+  - **Read-only override:** a Tier 2–5 agent whose `tools` hold none of `Bash`, `Write`, `Edit` or `NotebookEdit` takes `tier=1`, and has no Rollback. The test is on `tools` alone. The `disallowedTools` read-only marker plays no part in choosing the stamp, so `penetration-tester` (`Read, Grep, Glob, Bash`) keeps its category's stamp.
+  - **Per-file override:** where the category is right but the stamp isn't, the reviewed override allowlist from #318 maps the file to another stamp tier with a one-line reason, e.g. `chaos-engineer: tier=5 # targets running systems`. Until #318's allowlist exists, an uplift PR that needs an override says so in its description, and #318 seeds the allowlist from those PRs.
 
 ### Body skeleton
 
@@ -172,35 +181,54 @@ Everything after the frontmatter follows this skeleton. #318 lints it, so the ru
 
 | # | Heading, exact and case-sensitive | Status | Content |
 | --- | --- | --- | --- |
-| 0 | none: the opening paragraph | required | `You are a <role> who <scope>`, before any heading |
+| 0 | none: the opening paragraph | required | `You are a <role> who <scope>` |
 | 1 | `## Scope` | required | what the agent does, and what it hands back to the main conversation instead |
 | 2 | `## How you work` | required | a numbered list and nothing else (below) |
 | 3 | any other H2 | optional, zero or more | domain depth: the agent's method, knowledge and checkable criteria |
 | 4 | `## Expert practice` | required; optional where the stamp is `tier=1` | what a senior practitioner does that a generalist forgets, in the domain's own commands |
-| 5 | `## Output` | required | what the final report contains; only what was done and measured |
+| 5 | `## Output` | required | what the final report contains |
 | 6 | `## Operating notes`, inside the stamped block | required, exactly one | generated, never hand-edited (below) |
 | 7 | `## Rollback` | required where the stamp is `tier=3`, `4` or `5`; optional at `tier=2`; absent at `tier=1` | real CLI commands that undo this agent's changes |
 | 8 | `## Approval gates` | optional; absent at `tier=1` | one line per real domain process: *trigger → who confirms* |
 
-- The fixed headings (rows 1, 2 and 4–8) each appear at most once and in this order. Headings inside fenced code blocks don't count.
-- A domain H2 (row 3) sits between `## How you work` and `## Expert practice`, or `## Output` where Expert practice is absent. Nowhere else. It may not reuse a fixed heading or a banned one.
-- **Rollback in Tier 2** is for state git doesn't track: a local database migration, an installed toolchain, artifacts outside the repo. Working-tree changes are undone with git, and every model knows how, so they get no section. The linter can't tell the difference; review does.
+Lint rules (#318). Every rule applies outside fenced code blocks only:
+
+- **Fences:** a fence opens on a line whose first non-space characters are three or more backticks or three or more tildes, at any indent, so fences inside list items count. It closes on a line holding only the same character, repeated at least as many times as the opener. Four-backtick fences occur, so track the character and the length.
+- **Opening paragraph (row 0):** the first non-blank line after the closing `---` of the frontmatter matches `^You are an?[ ]`. It starts the only paragraph before `## Scope`; nothing else precedes `## Scope`, not even an H3. The wording after "You are a" ("who …") is checked in review.
+- **Headings:** ATX only: `##` plus one space for H2, `###` plus one space for H3. Setext headings (a line of `=` or `-` under text) are banned. H1 and H4 or deeper are banned.
+- **Fixed headings** (rows 1, 2 and 4–8) match exactly, case-sensitively, with a single space after `##` and no trailing text. Each appears at most once, in the table's order. An H2 that equals a fixed heading once case and whitespace are ignored, but not exactly (`## Expert Practice`, `##  Scope`), is an error, not a domain section.
+- **Domain H2s** (row 3) sit between `## How you work` and `## Expert practice`, or `## Output` where Expert practice is absent. Nowhere else. A domain H2 may not use a banned heading (Banned content, below), including `## Development Workflow`.
+- **H3** is allowed under any H2 except `## How you work` (its list rule excludes it) and inside the stamped block.
+- **`## How you work`:** after the heading, only blank lines, then a line matching `^1\.[ ]`. From there to the next H2, every non-blank line either matches `^[0-9]+\.[ ]` or starts with at least 3 spaces (a continuation line, a nested list or an indented fence). `1)` items and unindented (lazy) continuation lines are not allowed.
+- **Stamped block:** the `BEGIN` line comes after the `## Output` section's content, and only blank lines sit between the `END` line and the next H2 or the end of the file. The region between the markers is compared byte for byte with `templates/operating-notes-tierN.md`.
+
+Review rules, not linted:
+
+- **Rollback in Tier 2** is for state git doesn't track: a local database migration, an installed toolchain, artifacts outside the repo. Working-tree changes are undone with git, and every model knows how, so they get no section.
 - **Approval gates** only where the domain has a real human process the agent can't satisfy alone (a DBA, a data owner, a maintenance window, rules of engagement). `AGENT_SECURITY_GUIDELINES.md` §3 has the three tests.
+- **Output** should end with the recommended sentence "Report only what you did and observed. Never report a count, percentage, score or duration you did not measure." It is recommended, not required, and not linted.
 - **Body length is not the enemy; generic text is.** The body costs nothing until the agent runs. A sentence that would read the same in `content-marketer` and in `kubernetes-specialist` goes.
 
 ### How you work
 
-- Required in every file, and always a numbered list starting at `1.`, directly under the heading. Items may hold nested bullets or code; the section holds nothing else.
-- No inline `When invoked: (1)… (2)…` sentences, no `When invoked:` or `On invocation:` labels anywhere in the file. The heading replaces them.
-- Step 1 says where the context comes from (the conversation, the codebase, the issue tracker) and to ask when something needed is missing. Nothing else supplies it: the context-manager query that the upstream "gather context" step relied on is gone (#315).
-- The remaining steps are domain-specific and use the domain's own commands and file names.
+- Required in every file, and always a numbered list, per the lint rule above.
+- No inline `When invoked: (1)… (2)…` sentences, no `When invoked:` or `On invocation:` labels anywhere in the file. The heading replaces them. Domain-specific phases from an old `## Development Workflow` fold into these steps or into Expert practice.
+- Step 1 says where the context comes from (the conversation, the codebase, the issue tracker) and to ask when something needed is missing. Nothing else supplies it: the context-manager query that the upstream "gather context" step relied on is gone (#315). Checked in review.
+- The remaining steps are domain-specific and use the domain's own commands and file names. Checked in review.
 
 ### Markup
 
-- H2 for the skeleton's sections and for domain sections; H3 for sub-parts inside them. No H1, no H4 or deeper.
-- No line that is only bold text (`**Label**` or `**Label**:`) used as a heading (markdownlint MD036); use an H3. A bold lead-in inside a list item (`- **Term**: text`) is fine. Plain `Label:` lines that introduce a list are the same smell; use an H3.
-- Fenced code blocks name their language.
-- The only HTML comments in an agent file are the stamp markers. Every `TEMPLATE:` line from the template is deleted.
+Linted (#318):
+
+- The heading rules above: ATX only, H2 and H3 only, no setext.
+- No line that is only bold text: `**Label**` or `**Label**:` alone on a line (markdownlint MD036). Use an H3.
+- The only HTML comments are the stamp markers. Every `TEMPLATE:` line from the template is deleted.
+
+Review only:
+
+- `**Label:** text` inside a list item is fine.
+- Plain `Label:` lines and `**Label:** text` paragraphs outside a list, the main form of domain depth in the upstream files, are converted during uplift: `Label: a, b, c` becomes `### Label` with one bullet per item, under a domain H2.
+- Fenced code blocks name their language (markdownlint MD040, report-only).
 
 ### Operating notes (stamped)
 
@@ -211,11 +239,12 @@ Everything after the frontmatter follows this skeleton. #318 lints it, so the ru
   ## Operating notes
 
   <wording for tier N>
-  <!-- END GENERATED -->
+  <!-- END GENERATED: operating-notes -->
   ```
 
+- The `END` marker names its block, so that other stamp kinds can coexist later without ambiguity.
 - The wording is `AGENT_SECURITY_GUIDELINES.md` §7, stamped from `templates/operating-notes-tierN.md` by `scripts/stamp-sections.sh` (#318). It is never hand-edited, and the validator fails on drift. Until #318 lands, copy the §7 block verbatim.
-- `N` is the category's tier, with two exceptions. **Read-only override:** a Tier 3–5 agent whose `tools` hold none of `Bash`, `Write` or `Edit` takes `tier=1` and has no Rollback. **Per-file override:** where the category is right but the stamp isn't, a reviewed allowlist in #318 maps the file to another tier with a reason, e.g. `chaos-engineer: tier=5 # targets running systems`. Nothing else changes `N`.
+- `N` is the stamp tier (see Category tier and stamp tier, above).
 - The block **replaces** hand-written `Environment Note`, `Environment adaptability` and `Environment adaptability & scope` preambles. Delete them; don't keep them alongside.
 
 ### Banned content
@@ -224,7 +253,7 @@ Everything after the frontmatter follows this skeleton. #318 lints it, so the ru
 
 - **Enforced today:** the headings `Communication Protocol`, `Progress Tracking`, `Integration with Other Agents` and `Audit Logging`, at any level; the phrases `requesting_agent`, `request_type`, `Delivery notification`, `Progress tracking:`, `integration with other agents`, `query context manager` and `context manager for`.
 - **Retired by #354, to be linted by #318:** the `Security Safeguards` heading and its LOW/MEDIUM/HIGH/CRITICAL subsections; `Emergency Stop` and `EMERGENCY_STOP` stop-file checks; `Blast Radius Controls`; generic `Approval Gates` (change ticket, on-call, peer review, `read -p` prompts); `Input Validation` that amounts to "validate inputs"; `-auto-approve` in a rollback path; hand-written environment preambles (above).
-- **Structural, #318:** `When invoked:` and `On invocation:`, a `## How you work` that isn't a numbered list, headings out of the skeleton's order, leftover `TEMPLATE:` guidance, and descriptions over 250 characters or holding `<example>` blocks.
+- **Structural, #318:** the heading `## Development Workflow`; `When invoked:` and `On invocation:`; any breach of the Body skeleton lint rules; leftover `TEMPLATE:` guidance; and descriptions over 250 characters or holding `<example>` blocks.
 - **Review:** invented metrics (counts, percentages, scores, durations or thresholds the agent can't measure or that have no source, such as "coverage > 80% confirmed"), embedded validation or logging code, and inter-agent coordination prose.
 
 ## Security Safeguards
@@ -240,7 +269,7 @@ What protects a user is the permission mode, not agent prose. In Manual mode the
 | Rollback (real CLI commands for the domain) | — | state outside git only | ✓ | ✓ | ✓ |
 | Domain approval gates (a real human process, e.g. DBA sign-off) | — | rarely | if real | if real | if real |
 
-A Tier 3–5 agent with none of `Bash`, `Write` or `Edit` takes the Tier 1 notes and has no Rollback section.
+The tiers in this table are stamp tiers: a Tier 2–5 agent whose `tools` hold none of `Bash`, `Write`, `Edit` or `NotebookEdit` takes the Tier 1 notes and has no Rollback section (see Category tier and stamp tier).
 
 **Delete on sight:** generic Emergency Stop (stop-file checks), generic Blast Radius Controls, generic Approval Gates (change ticket, on-call, `read -p CONFIRM`), Input Validation that amounts to "validate inputs", and invented thresholds ("rollback in < 5 min").
 
