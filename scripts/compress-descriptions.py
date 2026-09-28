@@ -204,25 +204,26 @@ def split_line_ending(line: str) -> tuple[str, str]:
     return line, ""
 
 
+def frontmatter_end(lines: list[str]) -> int | None:
+    """Index of the closing --- line, or None when there is no frontmatter."""
+    if not lines or split_line_ending(lines[0])[0] != "---":
+        return None
+    return next(
+        (i for i in range(1, len(lines)) if split_line_ending(lines[i])[0] == "---"),
+        None,
+    )
+
+
 def parse_agent_file(path: Path) -> ParsedAgent | None:
     """Parse an agent file's frontmatter, or return None if it has none."""
     with path.open("r", encoding="utf-8", newline="") as handle:
         lines = handle.readlines()
-    if not lines or split_line_ending(lines[0])[0] != "---":
-        return None
-    end_index = None
-    for index in range(1, len(lines)):
-        if split_line_ending(lines[index])[0] == "---":
-            end_index = index
-            break
+    end_index = frontmatter_end(lines)
     if end_index is None:
         return None
 
     name = None
-    description_value = None
-    description_line_no = None
-    description_prefix = ""
-    line_ending = "\n"
+    description = None
     for index in range(1, end_index):
         body, ending = split_line_ending(lines[index])
         name_match = NAME_LINE_RE.match(body)
@@ -230,20 +231,19 @@ def parse_agent_file(path: Path) -> ParsedAgent | None:
             name = name_match.group("value")
         description_match = DESCRIPTION_LINE_RE.match(body)
         if description_match:
-            description_value = unescape_double_quoted(description_match.group("value"))
-            description_line_no = index
-            description_prefix = description_match.group("prefix")
-            line_ending = ending or "\n"
+            # The last description line wins, as a YAML parser would read it.
+            description = (description_match, index, ending or "\n")
 
-    if name is None or description_line_no is None or description_value is None:
+    if name is None or description is None:
         return None
+    match, line_no, line_ending = description
     return ParsedAgent(
         path=path,
         lines=lines,
         name=name,
-        description_value=description_value,
-        description_line_no=description_line_no,
-        description_prefix=description_prefix,
+        description_value=unescape_double_quoted(match.group("value")),
+        description_line_no=line_no,
+        description_prefix=match.group("prefix"),
         line_ending=line_ending,
         frontmatter_end=end_index,
     )
@@ -342,29 +342,46 @@ def validate_candidate(
     candidate: str | None, original: str, budget: int
 ) -> tuple[str | None, list[str]]:
     """Validate a proposed description; return (escaped_value, reasons_if_invalid)."""
-    reasons: list[str] = []
     if candidate is None:
         return None, ["model returned no description"]
     text = candidate.strip()
     if not text:
         return None, ["proposal is empty"]
-    if "\n" in candidate or "\r" in candidate:
-        reasons.append("proposal is not a single line")
-    if CONTROL_CHAR_RE.search(candidate):
-        reasons.append("proposal contains control characters")
-    if len(text) > budget:
-        reasons.append(f"proposal is {len(text)} characters, over the {budget} budget")
-    if has_extra_sentence(text):
-        reasons.append("looks like more than one sentence")
-    if has_misplaced_proactive(text):
-        reasons.append('"Use proactively when" may only open the description')
-    if "<example" in text.lower():
-        reasons.append("proposal contains an <example> block")
-    if text == original.strip():
-        reasons.append("proposal is identical to the original description")
+    reasons = candidate_problems(candidate, text, original, budget)
     if reasons:
         return None, reasons
     return escape_double_quoted(text), []
+
+
+def candidate_problems(
+    candidate: str, text: str, original: str, budget: int
+) -> list[str]:
+    """Why a non-empty proposal (text is it stripped) can't be used, in order."""
+    checks = (
+        (
+            "\n" in candidate or "\r" in candidate,
+            "proposal is not a single line",
+        ),
+        (
+            bool(CONTROL_CHAR_RE.search(candidate)),
+            "proposal contains control characters",
+        ),
+        (
+            len(text) > budget,
+            f"proposal is {len(text)} characters, over the {budget} budget",
+        ),
+        (has_extra_sentence(text), "looks like more than one sentence"),
+        (
+            has_misplaced_proactive(text),
+            '"Use proactively when" may only open the description',
+        ),
+        ("<example" in text.lower(), "proposal contains an <example> block"),
+        (
+            text == original.strip(),
+            "proposal is identical to the original description",
+        ),
+    )
+    return [reason for failed, reason in checks if failed]
 
 
 def ollama_chat(
@@ -391,7 +408,8 @@ def ollama_chat(
     # explicit --host flag); scheme is checked above. nosec: B310
     with urllib.request.urlopen(request, timeout=timeout) as response:  # nosec B310
         raw = response.read()
-    return json.loads(raw)
+    reply: dict[str, Any] = json.loads(raw)
+    return reply
 
 
 def propose_description(agent: ParsedAgent, config: GenerationConfig) -> Proposal:
@@ -472,7 +490,9 @@ def collect_files(patterns: list[str]) -> list[Path]:
         elif candidate_path.is_file():
             found = [candidate_path]
         else:
-            found = sorted(Path(match) for match in glob.glob(pattern, recursive=True))
+            # Path.glob() can't take an absolute or drive-rooted pattern.
+            matches = glob.glob(pattern, recursive=True)  # noqa: PTH207
+            found = sorted(Path(match) for match in matches)
         for item in found:
             if item.name == "README.md":
                 continue
@@ -488,7 +508,8 @@ def load_report(report_path: Path) -> dict[str, Any]:
     """Load the JSON report, or an empty dict if it does not exist yet."""
     if report_path.exists():
         with report_path.open("r", encoding="utf-8") as handle:
-            return json.load(handle)
+            report: dict[str, Any] = json.load(handle)
+            return report
     return {}
 
 
