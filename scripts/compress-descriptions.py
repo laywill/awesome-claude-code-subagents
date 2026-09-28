@@ -10,15 +10,15 @@ Two-phase workflow
 ------------------
 
 1. Propose (default): read agent files, ask a local Ollama model to
-   rewrite each ``description:`` line, validate every candidate, and write
-   the results to a JSON report. The report is resumable: a file already
-   present in the report is skipped on a later run unless ``--force`` is
-   given. Nothing under ``categories/`` is touched in this phase.
+rewrite each ``description:`` line, validate every candidate, and write
+the results to a JSON report. The report is resumable: a file already
+present in the report is skipped on a later run unless ``--force`` is
+given. Nothing under ``categories/`` is touched in this phase.
 
 2. Apply (``--apply``): re-read the report and rewrite ONLY the
-   ``description:`` line of each file that has a valid ("proposed")
-   entry, leaving every other byte of the file identical. No Ollama call
-   happens in this phase.
+``description:`` line of each file that has a valid ("proposed")
+entry, leaving every other byte of the file identical. No Ollama call
+happens in this phase.
 
 Examples
 --------
@@ -55,7 +55,7 @@ from pathlib import Path
 from typing import Any
 
 DEFAULT_MODEL = "qwen3-coder:30b"
-DEFAULT_HOST = "http://localhost:11434"
+DEFAULT_HOST = "http://localhost:11434"  # DevSkim: ignore DS162092
 DEFAULT_BUDGET = 250
 DEFAULT_REPORT = "description-proposals.json"
 DEFAULT_RETRIES = 2
@@ -78,18 +78,18 @@ house style.
 
 Rules for the rewritten description:
 - Exactly one sentence, with a single terminal period. Never split it into
-  two sentences.
+two sentences.
 - At most {budget} characters, total.
 - Task type first (what kind of work this agent does), then the concrete
-  nouns a user would type: languages, tools, frameworks, file types,
-  commands.
+nouns a user would type: languages, tools, frameworks, file types,
+commands.
 - No marketing words ("expert", "world-class", "seamless", "cutting-edge",
-  "robust", "powerful", and similar).
+"robust", "powerful", and similar).
 - Preserve the meaning of the current description. Do not invent
-  capabilities that are not already there.
+capabilities that are not already there.
 - Only say "Use proactively when ..." if the current description already
-  makes clear this agent should act without being asked; otherwise leave
-  that out entirely.
+makes clear this agent should act without being asked; otherwise leave
+that out entirely.
 - Plain text only: no surrounding quotes, no markdown, no line breaks.
 
 Respond by calling the schema with a single "description" field."""
