@@ -16,6 +16,14 @@
 # on a Windows system, the shell scripts will still work when checked out.
 *.sh text eol=lf
 
+# Python scripts are invoked with a shebang on Linux CI runners; pin to LF for
+# the same reason as shell scripts above.
+*.py text eol=lf
+
+# Python linter configs (extensionless dotfiles, so *.py above doesn't match).
+.flake8 text eol=lf
+.pylintrc text eol=lf
+
 # Force YAML files to always use LF line endings so that if a repo is accessed
 # on a Windows system, the YAML files will still work when checked out.
 *.yaml text eol=lf
