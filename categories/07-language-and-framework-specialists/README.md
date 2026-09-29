@@ -105,7 +105,7 @@ Modern PHP specialist with expertise in PHP 8+ features, Composer ecosystem, and
 
 **Use when:** Developing PHP applications, modernizing legacy PHP code, implementing PHP APIs, or working with PHP frameworks.
 
-### [**powershell-expert**](powershell-expert.md) - PowerShell 5.1 and 7+ scripting, modules and tooling
+### [**powershell-expert**](powershell-expert.md) - PowerShell scripting, modules and tooling
 Writes and tests PowerShell for both Windows PowerShell 5.1 and PowerShell 7+, detecting the edition rather than guessing it. Covers advanced functions, modules, manifests and profiles, Pester and PSScriptAnalyzer, RSAT, Az and Microsoft Graph automation code, and WinForms, WPF or terminal front ends kept separate from the logic underneath.
 
 **Use when:** Writing or refactoring PowerShell scripts, packaging scripts into a module, making code run on both 5.1 and 7, publishing to PSGallery, or giving an automation tool a front end.
