@@ -77,7 +77,7 @@ Adding, renaming, moving, or deleting an agent means updating all four, or the p
 
 Exception to 4: category 07 is summarised in the root README with a "View all 34 language specialists →" link rather than itemised, so a new language specialist adds nothing there — update the count and the inline list instead.
 
-Bump versions when publishing changes: the category's `plugin.json` `version`, and `.claude-plugin/marketplace.json` `metadata.version`.
+Bump versions when publishing changes: the category's `plugin.json` `version`, and `.claude-plugin/marketplace.json` `metadata.version`. The exception is work on an open release train (see Git Workflow), where the train sets every version once and PRs into it change none.
 
 ## Agent File Format
 
@@ -391,6 +391,16 @@ git update-index --chmod=+x scripts/your-script.sh
 - `gh pr create` defaults to **upstream** in a fork — always pass `--repo laywill/awesome-claude-code-subagents`.
 - Branch before editing, never commit to `main`: `git checkout main && git pull && git checkout -b <branch>`.
 - Don't switch branches while subagents are still writing files.
+
+### Release trains
+
+A major release that changes many categories runs on a release branch, not `main`, because `main` is what the marketplace installs from. Merging category changes into `main` one by one would ship them before the release and under the old version number.
+
+- The train is `release/vX.Y.Z`, branched from `main`. Its first commit sets every category `plugin.json`, every `marketplace.json` plugin entry and `metadata.version` to the release version, so `claude plugin validate . --strict` passes on every PR into it. It also adds `release/**` to the CI triggers.
+- While a train is open, the milestone's issues branch from the train, open PRs with `--base release/vX.Y.Z`, and change no version.
+- When `main` moves, merge `main` into the train. Never rebase it: that needs a force-push.
+- One draft PR merges the train into `main` at release. Tag `main` after that merge.
+- `release/v3.0.0` is open now: #383 is the release PR, and #324 lists the milestone.
 
 ### Conventions
 
