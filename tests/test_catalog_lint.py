@@ -146,3 +146,63 @@ def test_run_fails_on_unknown_enforced_category(repo: Path) -> None:
 def test_run_fails_on_template_drift(repo: Path) -> None:
     (repo / "templates/operating-notes-tier3.md").write_text("changed\n")
     assert catalog_lint.run(repo, verbose=False, detail=set()) == 1
+
+
+# -- run(only=...): the single-file mode agent-uplifter uses (#367) -------------
+
+
+def test_run_only_lists_every_finding_for_named_files(
+    repo: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    add_agent(repo, "bad-agent", make_agent(name="bad-agent", color="blue"))
+    add_agent(repo, "sibling", make_agent(name="sibling", color="blue"))
+    only = [str(repo / TIER_DIR[1] / "bad-agent.md")]
+    assert catalog_lint.run(repo, verbose=False, detail=set(), only=only) == 0
+    out = capsys.readouterr().out
+    assert "WARN  categories/03-analysis-and-review/bad-agent.md: [color-tier]" in out
+    assert "sibling" not in out
+    assert "Warnings by rule" not in out
+    assert out.rstrip().endswith("1 finding(s) in 1 file(s).")
+
+
+def test_run_only_does_not_read_siblings(repo: Path) -> None:
+    (repo / TIER_DIR[1] / "unreadable.md").write_bytes(b"\xff\xfe not utf-8")
+    only = [str(repo / TIER_DIR[1] / "clean-agent.md")]
+    assert catalog_lint.run(repo, verbose=False, detail=set(), only=only) == 0
+
+
+def test_run_only_keeps_the_ratchet(
+    repo: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    add_agent(repo, "bad-agent", make_agent(name="bad-agent", color="blue"))
+    (repo / catalog_lint.ENFORCED_FILE).write_text("03-analysis-and-review\n")
+    only = [str(repo / TIER_DIR[1] / "bad-agent.md")]
+    assert catalog_lint.run(repo, verbose=False, detail=set(), only=only) == 1
+    captured = capsys.readouterr()
+    assert "FAIL  categories/03-analysis-and-review/bad-agent.md: [color-tier]" in (
+        captured.err
+    )
+    assert captured.out.rstrip().endswith("1 finding(s) in 1 file(s).")
+
+
+def test_run_only_clean_file(repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    only = [str(repo / TIER_DIR[1] / "clean-agent.md")]
+    assert catalog_lint.run(repo, verbose=False, detail=set(), only=only) == 0
+    assert capsys.readouterr().out.rstrip().endswith("0 finding(s) in 1 file(s).")
+
+
+@pytest.mark.parametrize(
+    "path",
+    ["categories/03-analysis-and-review/missing.md", "README.md", "../outside.md"],
+)
+def test_run_only_rejects_non_agent_paths(
+    repo: Path, path: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert catalog_lint.run(repo, verbose=False, detail=set(), only=[path]) == 1
+    assert "is not an agent file under categories/" in capsys.readouterr().err
+
+
+def test_main_rejects_file_with_categories() -> None:
+    with pytest.raises(SystemExit) as exc:
+        catalog_lint.main(["--file", "x.md", "03-analysis-and-review"])
+    assert exc.value.code == 2

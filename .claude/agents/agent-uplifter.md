@@ -20,14 +20,14 @@ Everything else belongs to the caller, because several uplifts run in parallel o
    - `AGENT_SECURITY_GUIDELINES.md` §3 to §5 and §8. A worked example in §5 may cover only part of its file; apply the §4 tests to the rest yourself.
    - `templates/agent-template.md`, the v3 template: the frontmatter and body skeleton every uplifted file ends up with, with guidance on each field and section in `# TEMPLATE:` lines and `<!-- TEMPLATE: ... -->` comments. The guidance is for you; none of it goes into the target file.
 2. Read the whole target file. Take the category tier from its directory number (CLAUDE.md, Repository Structure). Record the baseline findings for this file alone:
-   `python3 scripts/catalog_lint.py <category-dir> 2>&1 | grep -F "categories/<category-dir>/<name>.md"`
-   Use `python` where `python3` is not the interpreter (Windows). No output, and grep's exit status 1, means no findings.
+   `python3 scripts/catalog_lint.py --file categories/<category-dir>/<name>.md 2>&1`
+   Use `python` where `python3` is not the interpreter (Windows). It reads no other agent file, prints every `FAIL` and `WARN` finding for this file, and ends with `N finding(s) in 1 file(s).`; `0 finding(s)` means clean. Any other `FAIL` line (an allowlist entry naming a missing agent, say) is outside this file and goes in the report.
 3. Read the frontmatter and opening lines of every sibling agent in the category and the category README. You need them for the overlap check and the model choice below.
 4. Decide the role before touching frontmatter: what the agent's deliverable is, whether its job is done with the file tree unchanged (read-only), and which tools that needs. Then work out the stamp tier, because it decides which body sections are required.
 5. Rewrite the frontmatter. `color`, `effort`, `maxTurns` and the Tier 1 Bash rule follow the category tier; `tools`, `disallowedTools` and `model` follow the role; the description follows Description style. Keep `name` unchanged.
 6. Rebuild the body to the skeleton, sorting every block of the old body by the rules under Content decisions, below. Rewrite the whole body with Write, with LF line endings and exactly one final newline. Leave the operating-notes block out entirely, including its markers; step 7 inserts it after `## Output`.
 7. Stamp the operating notes on this file only: `python3 scripts/stamp_sections.py categories/<category-dir>/<name>.md`. Never pass a directory or another agent's file, and never hand-edit the block.
-8. Rerun the filtered lint from step 2 and fix every finding for this file. Repeat until none remain, or until what remains needs a change outside this file (an allowlist entry, say), which goes in the report.
+8. Rerun the single-file lint from step 2 and fix every finding for this file. Repeat until none remain, or until what remains needs a change outside this file (an allowlist entry, say), which goes in the report.
 9. Read `git diff -- <file>` from top to bottom, at every level: headings, list items and single lines. Every deleted line should be scaffolding, retired safeguard content, or generic text that fails the swap test. If domain knowledge went missing, put it back.
 
 ## Content decisions
@@ -69,7 +69,7 @@ Make the change you believe is right in the file, then report what the caller ha
 
 ## Working tree
 
-Other uplifts may be editing sibling files at the same time. Change only the target file. Don't run `git add`, `commit`, `checkout`, `restore`, `stash` or `reset`, and don't run `validate-catalog.sh`; the caller runs the catalog-wide checks once the category is done. The commands you run are the filtered lint, the stamper on your file, and read-only `git diff` and `git status`.
+Other uplifts may be editing sibling files at the same time. Change only the target file. Don't run `git add`, `commit`, `checkout`, `restore`, `stash` or `reset`, and don't run `validate-catalog.sh`; the caller runs the catalog-wide checks once the category is done. The commands you run are the single-file lint, the stamper on your file, and read-only `git diff` and `git status`.
 
 ## Output
 

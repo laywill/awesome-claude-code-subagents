@@ -4,6 +4,7 @@
 Called by scripts/validate-catalog.sh, which passes its arguments through:
 
     python3 scripts/catalog_lint.py [--verbose] [category-dir ...]
+    python3 scripts/catalog_lint.py --file <agent-file> [--file ...]
 
 It checks the ratchet and allowlist files, checks the operating-notes
 templates against AGENT_SECURITY_GUIDELINES.md section 7, and runs the
@@ -21,6 +22,12 @@ warnings, so by default they print as counts by rule and by category.
 --verbose prints every warning; naming category directories (e.g.
 03-analysis-and-review) prints every warning for those. Arguments change only
 what is printed, never what fails.
+
+--file lints only the named agent files, which is what agent-uplifter needs
+while other uplifts edit sibling files: no other agent file is read. Every
+finding for them prints in full, FAIL or WARN by the same ratchet, followed by
+a count. The ratchet, allowlist and template checks still run; they read file
+names and config, not agent files.
 
 Standard library only: CI runs it with the runner's system Python.
 """
@@ -233,8 +240,35 @@ def load_ratchet(
     return enforced, allow
 
 
-def run(root: Path, verbose: bool, detail: set[str]) -> int:
-    """All content-lint checks for the repository at root; returns failures."""
+def select_files(
+    root: Path, files: list[str], only: list[str], out: Reporter
+) -> list[str]:
+    """The agent files named by only, repo-relative; failures for the rest.
+
+    A relative path is taken from root, the repository, whatever the cwd.
+    """
+    known = set(files)
+    selected = []
+    base = root.resolve()
+    for arg in only:
+        try:
+            rel = (root / arg).resolve().relative_to(base).as_posix()
+        except ValueError:
+            rel = ""
+        if rel in known:
+            selected.append(rel)
+        else:
+            out.fail(f"{arg} is not an agent file under categories/")
+    return selected
+
+
+def run(
+    root: Path, verbose: bool, detail: set[str], only: list[str] | None = None
+) -> int:
+    """All content-lint checks for the repository at root; returns failures.
+
+    With only, lint just those agent files and list every finding for them.
+    """
     out = Reporter()
     files = agent_files(root)
 
@@ -252,15 +286,21 @@ def run(root: Path, verbose: bool, detail: set[str]) -> int:
         "Agent content: frontmatter, body skeleton, markup, stamp, banned content "
         "(#318)"
     )
+    targets = files if only is None else select_files(root, files, only, out)
     findings = [
         finding
-        for f in files
+        for f in targets
         for finding in lint_file(f, read_text(root / f), templates, allow)
     ]
     failures, warnings = ratchet(findings, enforced)
     for f in failures:
         out.fail(f"{f.path}: [{f.rule}] {f.message}")
-    report_warnings(warnings, verbose, detail)
+    if only is None:
+        report_warnings(warnings, verbose, detail)
+    else:
+        for f in warnings:
+            print(f"WARN  {f.path}: [{f.rule}] {f.message}")
+        print(f"{len(findings)} finding(s) in {len(targets)} file(s).")
 
     return out.failures
 
@@ -296,14 +336,22 @@ def main(argv: list[str] | None = None) -> int:
         nargs="*",
         help="category directories whose warnings to print in full",
     )
+    parser.add_argument(
+        "--file",
+        action="append",
+        metavar="PATH",
+        help="lint only this agent file and print every finding (repeatable)",
+    )
     args = parser.parse_args(argv)
+    if args.file and args.categories:
+        parser.error("--file lints named files; don't also name categories")
     # Findings quote agent text, which can hold characters the console
     # encoding (cp1252 on Windows) or strict UTF-8 can't write.
     for stream in (sys.stdout, sys.stderr):
         if isinstance(stream, io.TextIOWrapper):
             stream.reconfigure(errors="backslashreplace")
     detail = {c.rstrip("/").removeprefix("categories/") for c in args.categories}
-    failures = run(ROOT, args.verbose, detail)
+    failures = run(ROOT, args.verbose, detail, args.file)
     if failures:
         print(f"{failures} content check(s) failed.", file=sys.stderr)
         return 1
