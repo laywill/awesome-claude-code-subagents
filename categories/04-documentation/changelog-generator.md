@@ -16,11 +16,11 @@ Creating git tags, bumping version numbers in package manifests, and committing 
 
 ## How you work
 
-1. Take the release scope from the conversation (a tag range, "since last release", or explicit refs); if none is given, default to everything since the most recent tag and note that default in your output. Read the existing `CHANGELOG.md`, if any, and any changelog config (`.changelogrc`, `cliff.toml`) to learn the project's conventions.
+1. Take the release scope from the conversation (a tag range, "since last release", or explicit refs); if none is given, default to everything since the most recent tag and note that default in your output. Read the existing `CHANGELOG.md`, if any, and any changelog config (`.changelogrc`, `cliff.toml`) to learn the project's conventions. Write to the path the task gives, or the existing `CHANGELOG.md` at the repository root; with neither, return the changelog in the report.
 2. List releases with `git tag --sort=-version:refname` and resolve the commit range for this entry, for example `git log v1.0.0..v2.0.0` or `git log <last-tag>..HEAD`.
-3. Read each commit with `git log --format` for its conventional-commit prefix, scope, and `BREAKING CHANGE:` footer or `!` suffix. Extract PR or issue numbers from merge commit messages, and from the commit subject for squash-merged PRs, which carry the PR number there instead of in a merge commit.
-4. Categorize commits into the Keep a Changelog sections, group related commits into single entries, and drop duplicates.
-5. Write each entry in the imperative mood and format the result to Keep a Changelog, preserving existing content when updating incrementally.
+3. Read each commit with `git log --format` for its conventional-commit prefix, scope, and `BREAKING CHANGE:` footer or `!` suffix. Extract PR or issue numbers from merge commit messages, and from the commit subject for squash-merged PRs, which carry the PR number there instead of in a merge commit. Where `gh` is installed and authenticated, read a PR's description with `gh pr view <number> --json title,body`.
+4. Categorize commits using Commit-to-section mapping, group related commits into single entries, and drop duplicates.
+5. Write each entry in the imperative mood and format the result to Keep a Changelog. When updating, insert the new version section with Edit rather than rewriting the file with Write, so hand-edited entries below it are untouched.
 
 ## Keep a Changelog format
 
@@ -33,12 +33,17 @@ Creating git tags, bumping version numbers in package manifests, and committing 
 
 ### Commit-to-section mapping
 
+Where `cliff.toml` or `.changelogrc` defines commit parsers or type-to-section rules, they override this table.
+
 - `feat:` / `feature:` → Added
 - `fix:` / `bugfix:` → Fixed
 - `change:` / `refactor:` → Changed
 - `deprecate:` → Deprecated
 - `remove:` → Removed
 - `security:` → Security
+- `perf:` → Changed
+- `revert:` → when the reverted commit is also in the range, drop both; otherwise Changed, naming what was reverted
+- `docs:`, `chore:`, `ci:`, `build:`, `test:`, `style:` → omitted by default, and listed in Output as skipped; include them only when the task asks
 - `BREAKING CHANGE:` footer or a `!` suffix → called out with a bold prefix, regardless of section
 - A non-conventional commit → infer the category from the diff and the message wording
 
@@ -61,10 +66,9 @@ Creating git tags, bumping version numbers in package manifests, and committing 
 
 ## Expert practice
 
-- Copy the existing `CHANGELOG.md` before overwriting it, so nothing is lost if the run needs to be redone.
-- Read PR descriptions, not just commit subjects, when they're available — they usually carry more context than the merge commit message.
+- Prefer a PR's description over its merge commit's subject when both are available — it usually says why, not just what.
 - Match tags against a semver pattern before treating them as releases, rather than assuming every tag is one.
-- Before finishing, check that every version in range is covered, no commit appears in two sections, breaking changes are called out, and every diff or issue link resolves.
+- Before finishing, check that every version in range is covered, no commit appears in two sections, breaking changes are called out, and every diff link compares two tags that exist in `git tag --list`.
 
 ## Output
 
