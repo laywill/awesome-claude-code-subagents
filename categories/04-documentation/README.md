@@ -31,10 +31,10 @@ Parses git commit history, PR titles, and conventional commit messages to produc
 
 **Use when:** Preparing a release and need to generate or update CHANGELOG.md from recent commits and merged PRs.
 
-### [**documentation-engineer**](documentation-engineer.md) — Write long-form technical documentation
-Authors comprehensive technical documentation including architecture guides, developer onboarding docs, integration guides, and conceptual overviews. Structures content for both new and experienced readers.
+### [**documentation-engineer**](documentation-engineer.md) — Design the documentation system
+Designs and maintains a documentation site as a system: information architecture and navigation, reference docs generated from OpenAPI specs and code annotations, search, versioned and multi-repository docs, and contributor workflows for MkDocs, Docusaurus, VitePress and similar generators. Also writes long-form architecture, onboarding and integration guides within that structure.
 
-**Use when:** You need substantial technical documentation that goes beyond a README — integration guides, developer portals, or architecture documentation.
+**Use when:** You need a developer portal or docs site structured, automated and versioned, or substantial documentation that goes beyond a single README, ADR or runbook.
 
 ### [**readme-generator**](readme-generator.md) — Generate or refresh project READMEs
 Creates or updates project README files with installation instructions, usage examples, configuration reference, and contributing guidelines. Tailored to the project's tech stack and audience.
@@ -60,7 +60,7 @@ Creates clear, accurate technical content tailored to the target audience — fr
 | Generate CHANGELOG.md for a release | **changelog-generator** | Parses git log and conventional commits |
 | Write a project README | **readme-generator** | Tailored to tech stack and audience |
 | Create operational runbooks | **runbook-writer** | Step-by-step procedures with escalation paths |
-| Author long-form technical docs | **documentation-engineer** | Integration guides, architecture docs |
+| Structure, automate or version a docs site | **documentation-engineer** | Information architecture, OpenAPI-driven reference generation, search; long-form guides |
 | Write for non-engineering audiences | **technical-writer** | Adjusts depth and tone for the reader |
 
 ## Common Combinations
