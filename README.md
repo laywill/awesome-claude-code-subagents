@@ -6,7 +6,7 @@
 
 <div align="center">
 
-![Subagent Count](https://img.shields.io/badge/subagents-197-blue?style=flat-square)
+![Subagent Count](https://img.shields.io/badge/subagents-194-blue?style=flat-square)
 [![Last Update](https://img.shields.io/github/last-commit/laywill/awesome-claude-code-subagents?label=Last%20update&style=flat-square)](https://github.com/laywill/awesome-claude-code-subagents)
 [![GitHub forks](https://img.shields.io/github/forks/laywill/awesome-claude-code-subagents?style=social)](https://github.com/laywill/awesome-claude-code-subagents/network/members)
 
@@ -226,9 +226,9 @@ Business and product subagents support business strategy, market analysis, UX re
 
 Language and framework specialists provide expert knowledge for specific programming languages and frameworks. They handle language-specific idioms, best practices, and optimization techniques.
 
-**34 language specialists including:** Angular, C++, C#, Django, .NET Core, .NET Framework, Elixir, Flutter, F#, Go, Haskell, Java, JavaScript, Kotlin, Laravel, Lua, Next.js, OCaml, PHP, PowerShell (5.1, 7, modules, UI), Python, R, Rails, React, Rust, Spring Boot, SQL, Swift, TypeScript, Vue, WordPress
+**31 language specialists including:** Angular, C++, C#, Django, .NET Core, Elixir, Flutter, F#, Go, Haskell, Java, JavaScript, Kotlin, Laravel, Lua, Next.js, OCaml, PHP, PowerShell, Python, R, Rails, React, Rust, Spring Boot, SQL, Swift, TypeScript, Vue, WordPress
 
-[View all 34 language specialists →](categories/07-language-and-framework-specialists/)
+[View all 31 language specialists →](categories/07-language-and-framework-specialists/)
 
 ### 🟡 08. [General Development](categories/08-general-development/)
 
@@ -269,6 +269,7 @@ Testing and QA subagents create automated tests, chaos experiments, fixtures, an
 
 Refactoring and modernization subagents improve code quality by reducing technical debt, applying design patterns, upgrading frameworks, and modernizing language features.
 
+- [**dotnet-modernizer**](categories/10-refactoring-and-modernization/dotnet-modernizer.md) - Legacy .NET (Framework or old .NET Core) migration specialist
 - [**framework-upgrader**](categories/10-refactoring-and-modernization/framework-upgrader.md) - Framework upgrade and migration expert
 - [**language-modernizer**](categories/10-refactoring-and-modernization/language-modernizer.md) - Language feature modernization specialist
 - [**legacy-modernizer**](categories/10-refactoring-and-modernization/legacy-modernizer.md) - Legacy code modernization specialist

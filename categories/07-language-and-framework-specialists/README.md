@@ -40,11 +40,6 @@ Modern .NET expert specializing in cross-platform development, minimal APIs, and
 
 **Use when:** Building cross-platform .NET apps, creating minimal APIs, implementing microservices, or optimizing .NET performance.
 
-### [**dotnet-framework-4.8-expert**](dotnet-framework-4.8-expert.md) - .NET Framework legacy enterprise specialist
-Expert in maintaining and modernizing .NET Framework 4.8 enterprise applications. Masters Web Forms, WCF services, Windows services, and enterprise integration patterns with focus on stability and backward compatibility.
-
-**Use when:** Maintaining legacy .NET Framework apps, modernizing Web Forms applications, working with WCF services, or integrating with Windows enterprise systems.
-
 ### [**elixir-expert**](elixir-expert.md) - Elixir and OTP specialist
 Elixir language expert focusing on fault-tolerant, concurrent systems using OTP patterns. Masters Phoenix, LiveView, and distributed systems on the BEAM VM. Builds highly available applications with "let it crash" philosophy.
 
@@ -110,25 +105,10 @@ Modern PHP specialist with expertise in PHP 8+ features, Composer ecosystem, and
 
 **Use when:** Developing PHP applications, modernizing legacy PHP code, implementing PHP APIs, or working with PHP frameworks.
 
-### [**powershell-5.1-expert**](powershell-5.1-expert.md) - Windows PowerShell 5.1 automation specialist  
-Expert in PowerShell 5.1 scripting for Windows infrastructure, RSAT modules, and legacy .NET Framework environments. Ensures compatibility, stability, and safe automation across AD, DNS, DHCP, and GPO.
+### [**powershell-expert**](powershell-expert.md) - PowerShell scripting, modules and tooling
+Writes and tests PowerShell for both Windows PowerShell 5.1 and PowerShell 7+, detecting the edition rather than guessing it. Covers advanced functions, modules, manifests and profiles, Pester and PSScriptAnalyzer, RSAT, Az and Microsoft Graph automation code, and WinForms, WPF or terminal front ends kept separate from the logic underneath.
 
-**Use when:** Working with Windows-only automation, legacy modules, on-prem infrastructure, or scripts requiring compatibility with older servers and full .NET Framework.
-
-### [**powershell-7-expert**](powershell-7-expert.md) - Cross-platform PowerShell 7 automation specialist  
-Expert in modern PowerShell 7+, .NET 6/7 APIs, cross-platform scripting, CI/CD integration, and cloud automation using Az and Microsoft Graph.
-
-**Use when:** Building modern automation tools, cross-platform scripts, Azure integrations, CI/CD cmdlets, or modernization projects moving off Windows PowerShell.
-
-### [**powershell-module-architect**](powershell-module-architect.md) - PowerShell module and library architect
-Designs reusable PowerShell modules, profiles, and automation libraries that work across Windows PowerShell 5.1 and PowerShell 7. Focuses on structure, versioning, and publishing.
-
-**Use when:** Packaging scripts into a module, designing a shared automation library, handling cross-version compatibility, or publishing to a PowerShell repository.
-
-### [**powershell-ui-architect**](powershell-ui-architect.md) - PowerShell interface designer
-Builds WinForms, WPF, and terminal interfaces on top of PowerShell automation while keeping business logic cleanly separated from the UI layer.
-
-**Use when:** Giving an automation script a graphical front end, building an internal operations tool, choosing between WinForms and WPF, or making an existing script discoverable to non-technical users.
+**Use when:** Writing or refactoring PowerShell scripts, packaging scripts into a module, making code run on both 5.1 and 7, publishing to PSGallery, or giving an automation tool a front end.
 
 ### [**python-pro**](python-pro.md) - Python ecosystem master
 Python language expert covering web development, data science, automation, and system scripting. Masters Pythonic code patterns and the vast Python ecosystem.
@@ -194,7 +174,6 @@ Full-stack WordPress architect covering theme and plugin development, WooCommerc
 | C#/.NET | **csharp-developer** | Windows apps, enterprise software |
 | Django | **django-developer** | Python web apps, REST APIs |
 | .NET Core | **dotnet-core-expert** | Cross-platform .NET, microservices |
-| .NET Framework | **dotnet-framework-4.8-expert** | Legacy enterprise apps, Windows services |
 | Elixir | **elixir-expert** | Fault-tolerant systems, Phoenix/LiveView |
 | Flutter | **flutter-expert** | Cross-platform mobile apps |
 | F# | **fsharp-specialist** | Functional .NET, domain modelling |
@@ -208,10 +187,7 @@ Full-stack WordPress architect covering theme and plugin development, WooCommerc
 | Next.js | **nextjs-developer** | Full-stack React apps |
 | OCaml | **ocaml-specialist** | Verified tooling, parsers |
 | PHP | **php-pro** | Web development, APIs |
-| PowerShell 5.1 | **powershell-5.1-expert** | Windows-only and legacy automation |
-| PowerShell 7 | **powershell-7-expert** | Cross-platform and cloud automation |
-| PowerShell (modules) | **powershell-module-architect** | Reusable automation libraries |
-| PowerShell (UI) | **powershell-ui-architect** | WinForms, WPF, and TUI front ends |
+| PowerShell | **powershell-expert** | Scripts, modules, cross-version 5.1/7 automation, tool UIs |
 | Python | **python-pro** | General purpose, data science |
 | R | **r-specialist** | Statistics, Shiny, reproducible research |
 | Rails | **rails-expert** | Rapid web development |

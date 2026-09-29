@@ -10,6 +10,9 @@
     "css",
     "bash",
     "python",
+    "powershell",
+    "csharp",
+    "dotnet",
     "yaml",
     "json",
     "markdown",
@@ -23,7 +26,7 @@
   ],
   // Agent files mix British and American spelling (upstream is American), so
   // accept both. Add project-specific terms here as they come up.
-  "words": ["laywill", "Linters", "LINTERS", "JSONLINT", "subagent", "subagents", "homelab", "homelabs", "frontmatter", "Frontmatter", "xhigh", "worktrees", "mawk", "setext", "Setext"],
+  "words": ["laywill", "Linters", "LINTERS", "JSONLINT", "subagent", "subagents", "homelab", "homelabs", "frontmatter", "Frontmatter", "xhigh", "worktrees", "mawk", "setext", "Setext", "RSAT", "netstandard", "asax", "YARP", "Blazor", "svcutil", "EDMX"],
   "ignorePaths": [
     ".git",
     ".github",
