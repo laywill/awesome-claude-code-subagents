@@ -12,8 +12,8 @@ Use these subagents when you need to:
 - **Estimate effort** — Get realistic estimates with confidence ranges and assumptions
 - **Plan migrations** — Design phased migration paths between frameworks or platforms
 - **Plan releases** — Define scope, sequencing, and rollout strategy for upcoming releases
-- **Identify risks** — Surface technical risks before they become blockers
-- **Facilitate agile** — Structure sprints, manage backlogs, and run agile ceremonies
+- **Identify risks** — Surface project and delivery risks before they become blockers
+- **Structure agile ceremonies** — Design sprint ceremonies and diagnose team impediments and backlog health
 
 ## Available Subagents
 
@@ -47,21 +47,21 @@ Defines release scope, sequencing, and rollout strategy including feature flags,
 
 **Use when:** Planning a major release and need to define what's in scope, how it rolls out, and what triggers a rollback.
 
-### [**risk-assessor**](risk-assessor.md) — Identify and mitigate technical risks
+### [**risk-assessor**](risk-assessor.md) — Identify and mitigate delivery risks
 
-Identifies technical risks in a proposed approach or project plan, assesses likelihood and impact, and proposes mitigations. Produces a risk register with priority rankings.
+Identifies project and delivery risks in a plan, migration or release (timeline, dependencies, team, operational readiness, third parties), assesses likelihood and impact, and proposes mitigations. Produces a risk register with priority rankings. Architecture-level risk belongs to an architecture review such as **architect-reviewer**.
 
 **Use when:** Before committing to an approach, before a major release, or when you sense unknown unknowns in a project.
 
-### [**scrum-master**](scrum-master.md) — Facilitate agile ceremonies and sprints
+### [**scrum-master**](scrum-master.md) — Design agile ceremonies and sprints
 
-Facilitates sprint planning, retrospectives, and backlog grooming. Manages sprint capacity, identifies impediments, and helps teams work in a healthy agile cadence.
+Designs sprint planning, retrospectives, and backlog refinement as agendas and facilitation guides, with sprint capacity checked against the team's actual availability. Diagnoses impediments and team-health signals. It writes the guide; the team runs the ceremony.
 
 **Use when:** Running a scrum team and need help structuring ceremonies, managing velocity, or improving team processes.
 
 ### [**task-planner**](task-planner.md) — Break features into implementable tasks
 
-Decomposes features or epics into granular, implementable tasks with clear acceptance criteria, ordering constraints, and ownership recommendations.
+Decomposes features or epics into a task-breakdown file of granular, implementable tasks with clear acceptance criteria, dependency ordering, the critical path, and parallel-safe groups. Assigning tasks to people is left to the caller.
 
 **Use when:** A feature is too large or ambiguous to implement directly and needs to be broken down into actionable work items.
 
@@ -69,14 +69,14 @@ Decomposes features or epics into granular, implementable tasks with clear accep
 
 | Task | Subagent | Notes |
 | --- | --- | --- |
-| Break a feature into tasks | **task-planner** | Granular tasks with acceptance criteria and ordering |
+| Break a feature into tasks | **task-planner** | Task-breakdown file with acceptance criteria and ordering |
 | Estimate a sprint or project | **effort-estimator** | Confidence intervals and key assumptions |
 | Plan a framework/platform migration | **migration-planner** | Phased approach with rollback points |
 | Define product requirements | **product-manager** | Requirements, prioritisation, roadmaps |
 | Manage a multi-workstream project | **project-manager** | Milestones, dependencies, resource allocation |
 | Plan a major release | **release-planner** | Scope, rollout strategy, rollback criteria |
-| Identify project risks | **risk-assessor** | Risk register with likelihood, impact, mitigations |
-| Run sprint planning or retrospectives | **scrum-master** | Agile ceremony facilitation |
+| Identify project and delivery risks | **risk-assessor** | Risk register with likelihood, impact, mitigations |
+| Prepare sprint planning or retrospectives | **scrum-master** | Ceremony agendas and facilitation guides |
 
 ## Common Combinations
 
@@ -94,7 +94,7 @@ Decomposes features or epics into granular, implementable tasks with clear accep
 
 ### "Sprint planning and retrospective"
 
-- **task-planner** → breaks backlog items down → **effort-estimator** → sizes each task → **scrum-master** → facilitates capacity planning and assignment.
+- **task-planner** → breaks backlog items down → **effort-estimator** → sizes each task → **scrum-master** → sprint planning agenda with capacity checked against availability.
 
 ## Getting Started
 

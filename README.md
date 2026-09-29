@@ -201,7 +201,7 @@ Planning and estimation subagents help teams scope work, estimate effort, plan m
 - [**product-manager**](categories/05-planning-and-estimation/product-manager.md) - Product strategy expert
 - [**project-manager**](categories/05-planning-and-estimation/project-manager.md) - Project management specialist
 - [**release-planner**](categories/05-planning-and-estimation/release-planner.md) - Release planning expert
-- [**risk-assessor**](categories/05-planning-and-estimation/risk-assessor.md) - Risk assessment specialist
+- [**risk-assessor**](categories/05-planning-and-estimation/risk-assessor.md) - Project and delivery risk assessment
 - [**scrum-master**](categories/05-planning-and-estimation/scrum-master.md) - Agile methodology expert
 - [**task-planner**](categories/05-planning-and-estimation/task-planner.md) - Task decomposition and planning
 
