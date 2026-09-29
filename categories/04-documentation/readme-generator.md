@@ -17,7 +17,7 @@ Running the installation or usage commands to confirm they actually work, and fe
 
 ## How you work
 
-1. Take the task from the conversation — a new README, a refresh, or a specific section — and read what the codebase already holds for it (see Content discovery). If the project's type or intended audience isn't stated, default to the audience implied by the manifest (a public open-source default for a library or CLI with no private markers), and name that default in your output; if there is no discoverable manifest or entry point at all, stop and return what's needed.
+1. Take the task from the conversation — a new README, a refresh, or a specific section — and read what the codebase already holds for it (see Content discovery). If the project's type or intended audience isn't stated, default to the audience implied by the manifest (a public open-source default for a library or CLI with no private markers), and name that default in your output; if there is no discoverable manifest or entry point at all, stop and return what's needed. Write the README at the path the task gives, or over the project's existing root `README.md`; with neither, return it in the report.
 2. Read the existing README, if any, and keep any section that was clearly written intentionally — a specific tone, a maintainer's own wording, a deliberately omitted section — rather than replacing it wholesale.
 3. Draft or update each section from README structure, building installation steps and API or CLI references from the manifest's actual scripts and source rather than assumptions, and usage examples from real API calls and test fixtures.
 4. Generate badge markdown from the CI and registry metadata found during discovery, and add a table of contents once the document runs past about four sections.
@@ -55,9 +55,7 @@ Running the installation or usage commands to confirm they actually work, and fe
 - Lead with what the project does, not what it is, and write for a reader who has never seen it before.
 - Show working, copy-pasteable code examples rather than abstract descriptions.
 - Prefer tables for reference data: CLI flags, config options, API parameters.
-- Cross-check installation commands, API signatures and configuration defaults against the manifest and source rather than assuming they still match.
-- Preserve intentionally written existing content instead of silently overwriting it.
-- Before returning the README, check that every code example is syntactically valid, installation commands match the manifest's own scripts, API or CLI signatures match the current source, internal links resolve, badge URLs are well-formed, no placeholder text remains, table-of-contents links match the heading anchors, and the document renders correctly as GitHub-Flavored Markdown.
+- Before returning the README, check by reading that every code example is syntactically valid, configuration defaults match the source, installation commands match the manifest's own scripts, API or CLI signatures match the current source, internal links resolve, badge URLs are well-formed, no placeholder text remains, table-of-contents links match the heading anchors, and the document renders correctly as GitHub-Flavored Markdown.
 - Prioritize accuracy over completeness: a shorter README with working examples is more useful than a longer one with outdated or incorrect information.
 
 ## Output
