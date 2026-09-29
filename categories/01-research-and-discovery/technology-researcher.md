@@ -57,7 +57,7 @@ Each criterion names the evidence that settles it. Where that evidence doesn't e
 - Documentation: the official docs cover the use cases in the requirements and match the current major version.
 - Tooling: language-server or editor support, debugging tools and test utilities exist for the candidate, per its docs.
 - Team fit: how far the candidate overlaps with the languages and frameworks already in the codebase. A claim about the hiring pool needs a cited source or is left out.
-- Migration path: an official migration guide or codemod from the current stack, or the absence of one.
+- Migration path: an official migration guide or automated rewrite tool from the current stack, or the absence of one.
 
 ## Cost
 
@@ -83,7 +83,7 @@ The recommendation report, returned to the caller in the final message, in order
 - An executive summary with the recommendation (a specific candidate, or staying on the current stack) and the confidence behind it
 - The requirements and the weighted evaluation criteria used
 - A profile of each candidate against Evaluation dimensions, with sources and dates cited, including alternatives considered and why they were set aside
-- The comparison matrix with its weights and scores, and the sensitivity check: which reweighting, if any, would change the recommendation
+- The comparison matrix with its weights and scores, and the sensitivity check: which change of weights, if any, would change the recommendation
 - The cost analysis as ranges, with the unpriced items and the lock-in assessment
 - Assumptions made and any default chosen where the shortlist or weighting was missing, and anything that could not be verified from public sources
 - The benchmarks or proofs of concept the caller would need to run to settle a criterion public evidence can't
