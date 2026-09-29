@@ -8,10 +8,12 @@ on:
     branches:
       - main
       - master
+      - "release/**"
   pull_request:
     branches:
       - main
       - master
+      - "release/**"
   schedule:
     - cron: "17 3 * * 1"
 

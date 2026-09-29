@@ -1,7 +1,7 @@
 {
   "metadata": {
     "description": "Curated collection of 194 specialized Claude Code subagents organized into 24 focused categories with risk-tiered structure",
-    "version": "2.2.1"
+    "version": "3.0.0"
   },
   "name": "laywill-subagents",
   "owner": {
@@ -25,7 +25,7 @@
       ],
       "name": "laywill-research-discovery",
       "source": "./categories/01-research-and-discovery",
-      "version": "2.1.0"
+      "version": "3.0.0"
     },
     {
       "category": "architecture",
@@ -44,7 +44,7 @@
       ],
       "name": "laywill-architecture-design",
       "source": "./categories/02-architecture-and-design",
-      "version": "2.1.0"
+      "version": "3.0.0"
     },
     {
       "category": "quality",
@@ -64,7 +64,7 @@
       ],
       "name": "laywill-analysis-review",
       "source": "./categories/03-analysis-and-review",
-      "version": "2.2.0"
+      "version": "3.0.0"
     },
     {
       "category": "documentation",
@@ -81,7 +81,7 @@
       ],
       "name": "laywill-documentation",
       "source": "./categories/04-documentation",
-      "version": "2.1.0"
+      "version": "3.0.0"
     },
     {
       "category": "planning",
@@ -98,7 +98,7 @@
       ],
       "name": "laywill-planning-estimation",
       "source": "./categories/05-planning-and-estimation",
-      "version": "2.1.0"
+      "version": "3.0.0"
     },
     {
       "category": "business",
@@ -119,7 +119,7 @@
       ],
       "name": "laywill-business-product",
       "source": "./categories/06-business-and-product",
-      "version": "2.1.0"
+      "version": "3.0.0"
     },
     {
       "category": "development",
@@ -158,7 +158,7 @@
       ],
       "name": "laywill-language-specialists",
       "source": "./categories/07-language-and-framework-specialists",
-      "version": "2.1.0"
+      "version": "3.0.0"
     },
     {
       "category": "development",
@@ -177,7 +177,7 @@
       ],
       "name": "laywill-general-development",
       "source": "./categories/08-general-development",
-      "version": "2.1.0"
+      "version": "3.0.0"
     },
     {
       "category": "quality",
@@ -194,7 +194,7 @@
       ],
       "name": "laywill-testing-qa",
       "source": "./categories/09-testing-and-qa",
-      "version": "2.1.0"
+      "version": "3.0.0"
     },
     {
       "category": "development",
@@ -211,7 +211,7 @@
       ],
       "name": "laywill-refactoring-modernization",
       "source": "./categories/10-refactoring-and-modernization",
-      "version": "2.1.0"
+      "version": "3.0.0"
     },
     {
       "category": "quality",
@@ -227,7 +227,7 @@
       ],
       "name": "laywill-bug-fixing-debugging",
       "source": "./categories/11-bug-fixing-and-debugging",
-      "version": "2.1.0"
+      "version": "3.0.0"
     },
     {
       "category": "development",
@@ -245,7 +245,7 @@
       ],
       "name": "laywill-frontend-ui",
       "source": "./categories/12-frontend-and-ui",
-      "version": "2.1.0"
+      "version": "3.0.0"
     },
     {
       "category": "tooling",
@@ -261,7 +261,7 @@
       ],
       "name": "laywill-developer-experience",
       "source": "./categories/13-developer-experience-and-tooling",
-      "version": "2.1.0"
+      "version": "3.0.0"
     },
     {
       "category": "data",
@@ -279,7 +279,7 @@
       ],
       "name": "laywill-data-database",
       "source": "./categories/14-data-and-database",
-      "version": "2.1.0"
+      "version": "3.0.0"
     },
     {
       "category": "data",
@@ -296,7 +296,7 @@
       ],
       "name": "laywill-data-science-ai",
       "source": "./categories/15-data-science-and-ai",
-      "version": "2.1.0"
+      "version": "3.0.0"
     },
     {
       "category": "tooling",
@@ -311,7 +311,7 @@
       ],
       "name": "laywill-dependency-management",
       "source": "./categories/16-dependency-and-package-management",
-      "version": "2.1.1"
+      "version": "3.0.0"
     },
     {
       "category": "infrastructure",
@@ -328,7 +328,7 @@
       ],
       "name": "laywill-build-ci-cd",
       "source": "./categories/17-build-and-ci-cd",
-      "version": "2.1.0"
+      "version": "3.0.0"
     },
     {
       "category": "infrastructure",
@@ -344,7 +344,7 @@
       ],
       "name": "laywill-api-service-integration",
       "source": "./categories/18-api-and-service-integration",
-      "version": "2.1.0"
+      "version": "3.0.0"
     },
     {
       "category": "infrastructure",
@@ -367,7 +367,7 @@
       ],
       "name": "laywill-infrastructure-code",
       "source": "./categories/19-infrastructure-as-code",
-      "version": "2.1.0"
+      "version": "3.0.0"
     },
     {
       "category": "security",
@@ -385,7 +385,7 @@
       ],
       "name": "laywill-security-secrets",
       "source": "./categories/20-security-and-secrets",
-      "version": "2.1.0"
+      "version": "3.0.0"
     },
     {
       "category": "specialized",
@@ -401,7 +401,7 @@
       ],
       "name": "laywill-specialized-domains",
       "source": "./categories/21-specialized-domains",
-      "version": "2.1.0"
+      "version": "3.0.0"
     },
     {
       "category": "infrastructure",
@@ -417,7 +417,7 @@
       ],
       "name": "laywill-deployment-release",
       "source": "./categories/22-deployment-and-release",
-      "version": "2.1.0"
+      "version": "3.0.0"
     },
     {
       "category": "infrastructure",
@@ -436,7 +436,7 @@
       ],
       "name": "laywill-production-ops",
       "source": "./categories/23-production-ops-and-observability",
-      "version": "2.1.0"
+      "version": "3.0.0"
     },
     {
       "category": "data",
@@ -452,7 +452,7 @@
       ],
       "name": "laywill-production-data-ops",
       "source": "./categories/24-production-data-ops",
-      "version": "2.1.0"
+      "version": "3.0.0"
     }
   ]
 }
