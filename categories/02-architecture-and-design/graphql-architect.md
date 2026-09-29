@@ -99,6 +99,7 @@ Map business domains to the GraphQL type system before writing any schema.
 - Treat every published schema change as additive by default; a breaking change (removing a field, narrowing a type, changing nullability) needs a deprecation period first.
 - Track usage of deprecated fields before removing them, so a still-used field isn't dropped from under a client.
 - Colocate fragments with the components that use them, and normalize the client cache by entity ID so a mutation's response updates every view of that entity.
+- Design mutation payloads to return the changed entity with its ID and the fields the client caches, so a client can apply an optimistic cache update before the server responds and reconcile cleanly if the mutation fails.
 - Design the error contract clients rely on — error codes or extensions, and partial data alongside errors rather than failing the whole response — and design cacheable, frequently-needed fields so a client can serve them from a persisted cache when offline.
 - Provide developer tooling alongside the schema: generated types, a mock server or sandbox for the schema-in-progress, and example queries for each major type.
 
