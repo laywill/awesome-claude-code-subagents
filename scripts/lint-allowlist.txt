@@ -23,3 +23,7 @@
 
 chaos-engineer: tier=5 # injects faults into running systems, not local code
 license-auditor: tier1-bash # runs licence scanners (scancode, reuse, syft, go-licenses) to produce its findings
+graphql-architect: sonnet-instead-of-opus # an entity-key, nullability or subgraph-boundary error in the SDL is caught by rover supergraph compose / rover subgraph check and graphql-inspector diff, which the caller runs
+api-designer: sonnet-instead-of-opus # a resource-shape, versioning or breaking-change error in the OpenAPI spec is caught by spectral lint and oasdiff breaking against the existing spec, which the caller runs
+data-flow-designer: sonnet-instead-of-opus # a broken pipeline definition or incompatible data contract is caught by a DAG parse check (airflow dags list-import-errors, dagster definitions validate, dbt parse) and the schema registry's compatibility check, which the caller runs
+schema-designer: sonnet-instead-of-opus # a key, constraint or type error in the DDL and its proposed migration is caught by a migration linter (squawk, atlas migrate lint) and an apply-and-rollback against a scratch database, which the caller runs
