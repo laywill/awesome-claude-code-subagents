@@ -269,7 +269,7 @@ Testing and QA subagents create automated tests, chaos experiments, fixtures, an
 
 Refactoring and modernization subagents improve code quality by reducing technical debt, applying design patterns, upgrading frameworks, and modernizing language features.
 
-- [**dotnet-modernizer**](categories/10-refactoring-and-modernization/dotnet-modernizer.md) - Legacy .NET (Framework or old .NET Core) to current LTS migration specialist
+- [**dotnet-modernizer**](categories/10-refactoring-and-modernization/dotnet-modernizer.md) - Legacy .NET (Framework or old .NET Core) migration specialist
 - [**framework-upgrader**](categories/10-refactoring-and-modernization/framework-upgrader.md) - Framework upgrade and migration expert
 - [**language-modernizer**](categories/10-refactoring-and-modernization/language-modernizer.md) - Language feature modernization specialist
 - [**legacy-modernizer**](categories/10-refactoring-and-modernization/legacy-modernizer.md) - Legacy code modernization specialist
