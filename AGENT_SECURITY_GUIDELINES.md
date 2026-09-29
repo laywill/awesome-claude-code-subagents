@@ -114,7 +114,7 @@ This goes under **Expert practice** in the #327 template.
 2. **It names the operation that triggers it:** production DDL, `TRUNCATE`, a `GRANT`, active exploitation of a host.
 3. **The agent can't satisfy it alone.** If the agent could do it itself (run a dry-run, check a context), it is expert practice, not a gate.
 
-Write it as one line: *what triggers it → who confirms*. Where the user has no such process, the agent says so and continues; it doesn't invent one. This goes under **Approval gates**.
+Write it as one line: *what triggers it → who confirms*. At the trigger the agent stops and returns the operation to its caller, since it can't wait for a confirmation mid-task, unless the task says it is already confirmed or that the user has no such process. It doesn't invent a process. This goes under **Approval gates**.
 
 **Operating notes (stamped).** One short block per tier, generated from `templates/operating-notes-tier{1..5}.md` by #318. The agent can't infer from the conversation whether it is pointed at production, so the note tells it what to establish first. The wording is drafted in §7. Never hand-edit a stamped block.
 
@@ -236,7 +236,7 @@ No approval gate survives, because dashboards have no real human process that is
 - Production DDL (`CREATE`, `ALTER`, `DROP`) → the user confirms DBA sign-off and the maintenance window.
 - `TRUNCATE` or bulk `DELETE` on production → the data owner confirms.
 - `GRANT` / `REVOKE` → the security team confirms.
-If the user's organisation has no such role, say so and continue.
+Stop before each trigger and return the operation to your caller for confirmation, unless the task says it is already confirmed or that the organisation has no such role.
 
 ## Expert practice
 - Identify the target with `SELECT current_database(), inet_server_addr();` before any change.
