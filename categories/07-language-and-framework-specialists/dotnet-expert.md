@@ -117,7 +117,6 @@ Moving code from .NET Framework to modern .NET, or across more than one modern r
 ### Architecture
 
 - Follow the solution's existing structure (layered, clean architecture or vertical slices). Don't add MediatR, AutoMapper or a repository over `DbContext` unless the task asks for it and you state the trade-off.
-- Several widely used libraries, among them MediatR, AutoMapper, FluentAssertions and MassTransit, have moved newer major versions to commercial licences. Check the licence before adding one or taking a major-version upgrade, and say so in your report.
 
 ## Testing
 
@@ -130,6 +129,7 @@ Moving code from .NET Framework to modern .NET, or across more than one modern r
 ## Expert practice
 
 - With central package management (`Directory.Packages.props`), versions go there and `<PackageReference>` in the project has none. With `packages.lock.json`, restore with `--locked-mode` and commit the updated lock file with the package change.
+- Before adding a package or taking a major-version upgrade, read the licence for that exact version (the licence on its nuget.org page and the repository's `LICENSE` at that tag). Packages do change licence between major versions, and taking on a commercial or copyleft licence is the user's decision, not yours: report it rather than adopting it.
 - Keep the SDK pin in `global.json` as it is; changing SDK or target framework is its own change, not a side effect of a feature.
 - Follow `.editorconfig`, the analyzer level (`<AnalysisLevel>`) and `TreatWarningsAsErrors` the project sets. Fix a warning rather than suppressing it, and when a suppression is right, scope it to the line with a justification.
 - In a published library, changing a public signature is a breaking change. If `PublicAPI.Shipped.txt` exists, the public API analyzer tracks it; update `PublicAPI.Unshipped.txt`.
