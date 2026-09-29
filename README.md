@@ -188,7 +188,7 @@ Documentation subagents create and maintain API docs, ADRs, runbooks, READMEs, c
 - [**documentation-engineer**](categories/04-documentation/documentation-engineer.md) - Documentation site architecture, generation and versioning
 - [**readme-generator**](categories/04-documentation/readme-generator.md) - README creation specialist
 - [**runbook-writer**](categories/04-documentation/runbook-writer.md) - Operations runbook author
-- [**technical-writer**](categories/04-documentation/technical-writer.md) - Technical writing specialist
+- [**technical-writer**](categories/04-documentation/technical-writer.md) - Guides, manuals and tutorials adapted to their audience
 
 ### 🟢 05. [Planning and Estimation](categories/05-planning-and-estimation/)
 
