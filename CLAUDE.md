@@ -53,7 +53,7 @@ Other top-level pieces:
 
 - `.claude-plugin/marketplace.json` — marketplace manifest; one entry per category, each pointing at `./categories/NN-.../`
 - `categories/NN-*/.claude-plugin/plugin.json` — per-category plugin manifest listing every agent file explicitly
-- `.claude/agents/` — repo-maintenance agents used *on* this repo: `description-compressor` (condenses frontmatter descriptions), `token-efficiency-optimizer` (compresses verbose agent bodies); `agent-uplifter` is coming in #326. Both predate v3 and conflict with it: the compressor targets 50 tokens, not the 250-character budget, and the optimizer preserves every safeguard, including Audit Logging and other banned content. Don't use them for v3 uplifts until #326 updates them.
+- `.claude/agents/` — repo-maintenance agents used *on* this repo. `agent-uplifter` applies the v3 template to one agent file end to end, stamps it and lints it clean; the per-category uplifts run one per file, and the calling session owns everything outside the file (four places, allowlist, ratchet, version bump). For bulk description rewrites without Claude tokens, use `scripts/compress-descriptions.py`.
 - `install-agents.sh` — interactive installer; works from a clone (local mode) or standalone via the GitHub API (remote mode)
 - `tools/` — Claude Code skills that browse/fetch the catalog, installed to `~/.claude/commands/`
 - `AGENT_SECURITY_GUIDELINES.md` — authoritative keep/delete policy for safety content in agent files (read before writing any)
