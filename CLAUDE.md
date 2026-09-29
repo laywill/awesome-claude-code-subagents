@@ -213,7 +213,7 @@ Review rules, not linted:
 - **No bare keyword lists.** A list of the domain's own named technologies (frameworks, CLIs, services) is domain depth and stays. A bullet that is only an abstract noun phrase ("Caching strategies", "DRY/KISS/YAGNI", "Radar charts") with no criterion, evidence source or command is rewritten into a checkable criterion ("every cache names its invalidation trigger") or cut. The Markup conversion below changes the shape of a list, not whether it earns its place.
 - **Say each point once.** Expert practice doesn't repeat a bullet from a domain section; keep it where it fits best.
 - **Never ask for what the tools can't do.** A step or an Output line that needs Bash (a build, a link check, `git log`) in an agent without Bash names the command for the caller to run instead of running it or reporting its output. An agent without Bash or web tools doesn't source from "the issue tracker" or "git history"; it reads the repo and what the caller passes in.
-- **Say where a document goes.** Every agent that writes a document writes it at the path the task gives, or, with no path, returns it in the report.
+- **Say where a document goes.** Every agent that writes a document writes it at the path the task gives; with no path, to the conventional file it maintains where one exists (`CHANGELOG.md`, the ADR directory); otherwise it returns the document in the report.
 
 ### Agents report to their caller
 
