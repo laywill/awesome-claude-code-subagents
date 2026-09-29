@@ -208,11 +208,21 @@ Review rules, not linted:
 - **Output** should end with the recommended sentence "Report only what you did and observed. Never report a count, percentage, score or duration you did not measure." It is recommended, not required, and not linted.
 - **Body length is not the enemy; generic text is.** The body costs nothing until the agent runs. A sentence that would read the same in `content-marketer` and in `kubernetes-specialist` goes.
 
+### Agents report to their caller
+
+A subagent can't talk to the user. It runs to the end and returns one final message to the session that called it; nothing it writes before then reaches anyone, and it can't wait for an answer. Write every agent file for that:
+
+- **Never "ask the user" or "confirm with the user".** When something needed is missing, the agent proceeds on a stated default where a wrong guess is cheap to redo (local, uncommitted work, or a read-only answer). Otherwise it stops and returns what it needs: an external or production target, an irreversible step, or work a wrong guess would waste. The caller answers, from the conversation or by asking the user, and resumes it.
+- **Anything the user must see is named in `## Output`.** An assumption, a default chosen, a warning about the user's choice, a risk found along the way: if Output doesn't list it, the final report can drop it.
+- **Approval gates stop and hand back.** At a gate's trigger the agent stops and returns the operation and who must confirm it, unless the task already says it is confirmed or that no such process exists.
+
+The stamped operating notes already follow this ("stop and report what you need", "return the plan"). #370 records how the template got it wrong.
+
 ### How you work
 
 - Required in every file, and always a numbered list, per the lint rule above.
 - No inline `When invoked: (1)… (2)…` sentences, no `When invoked:` or `On invocation:` labels anywhere in the file. The heading replaces them. Domain-specific phases from an old `## Development Workflow` fold into these steps or into Expert practice.
-- Step 1 says where the context comes from (the conversation, the codebase, the issue tracker) and to ask when something needed is missing. Nothing else supplies it: the context-manager query that the upstream "gather context" step relied on is gone (#315). Checked in review.
+- Step 1 says where the context comes from (the conversation, the codebase, the issue tracker) and what to do when something needed is missing: proceed on a stated default, or stop and return what's needed (Agents report to their caller, above). Nothing else supplies it: the context-manager query that the upstream "gather context" step relied on is gone (#315). Checked in review.
 - The remaining steps are domain-specific and use the domain's own commands and file names. Checked in review.
 
 ### Markup
