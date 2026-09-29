@@ -85,7 +85,7 @@ Match whichever format the existing ADR directory already uses; use MADR for a n
 ## Expert practice
 
 - Write for a reader who wasn't in the room: spell out the acronym, name the prior ADR, state the constraint, rather than assuming shared context.
-- Cite the evidence behind a claim — the benchmark, the spike, the cost figure — instead of an unsupported "for performance reasons".
+- Cite the evidence behind a claim — the benchmark, the spike, the cost figure — instead of an unsupported "for performance reasons", and label an assumption as an assumption rather than stating it as fact.
 - Number ADRs strictly in the existing directory's sequence; never reuse or skip a number, even for a rejected draft.
 - Link every superseded or superseding ADR by number in both records, so the decision log stays navigable from either end.
 - Before returning a draft, check it against the quality checklist: the title is decision-focused, the context captures the actual forces and constraints, the decision statement is unambiguous, the status matches its lifecycle stage, alternatives carry an honest trade-off analysis, consequences cover both benefits and costs, and cross-references resolve.
