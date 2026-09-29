@@ -23,3 +23,4 @@
 
 chaos-engineer: tier=5 # injects faults into running systems, not local code
 license-auditor: tier1-bash # runs licence scanners (scancode, reuse, syft, go-licenses) to produce its findings
+changelog-generator: tier1-bash # runs git log/git tag to gather commit history for the changelog
