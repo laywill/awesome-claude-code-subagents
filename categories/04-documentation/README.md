@@ -7,6 +7,7 @@ Documentation & Technical Writing subagents write and maintain all forms of proj
 ## When to Use Documentation Agents
 
 Use these subagents when you need to:
+
 - **Document APIs** — Generate reference docs from code or OpenAPI specs
 - **Write runbooks** — Create operational procedures for incident response and routine tasks
 - **Record decisions** — Capture architectural choices with context and rationale
@@ -17,36 +18,43 @@ Use these subagents when you need to:
 ## Available Subagents
 
 ### [**adr-author**](adr-author.md) — Write Architecture Decision Records
+
 Creates well-structured Architecture Decision Records (ADRs) capturing the context, decision, considered alternatives, and consequences of architectural choices. Follows the MADR or Nygard ADR format.
 
 **Use when:** You've made a significant architectural decision and need to document the reasoning for future team members and reviewers.
 
 ### [**api-documenter**](api-documenter.md) — Generate API reference documentation
+
 Produces API reference documentation from source code, OpenAPI specs, or endpoint descriptions. Generates usage examples, request/response schemas, error codes, and authentication guidance.
 
 **Use when:** Publishing a public or internal API and need comprehensive, accurate reference documentation.
 
 ### [**changelog-generator**](changelog-generator.md) — Generate changelogs from commit history
+
 Parses git commit history, PR titles, and conventional commit messages to produce structured changelogs grouped by type (features, fixes, breaking changes). Follows Keep a Changelog conventions.
 
 **Use when:** Preparing a release and need to generate or update CHANGELOG.md from recent commits and merged PRs.
 
 ### [**documentation-engineer**](documentation-engineer.md) — Design the documentation system
+
 Designs and maintains a documentation site as a system: information architecture and navigation, reference docs generated from OpenAPI specs and code annotations, search, versioned and multi-repository docs, and contributor workflows for MkDocs, Docusaurus, VitePress and similar generators. Also writes long-form architecture, onboarding and integration guides within that structure.
 
 **Use when:** You need a developer portal or docs site structured, automated and versioned, or substantial documentation that goes beyond a single README, ADR or runbook.
 
 ### [**readme-generator**](readme-generator.md) — Generate or refresh project READMEs
+
 Creates or updates project README files with installation instructions, usage examples, configuration reference, and contributing guidelines. Tailored to the project's tech stack and audience.
 
 **Use when:** Starting a new project, open-sourcing a repository, or when the existing README is outdated or incomplete.
 
 ### [**runbook-writer**](runbook-writer.md) — Write operational runbooks
+
 Produces step-by-step operational runbooks for incident response procedures, routine maintenance tasks, and system operations. Includes prerequisites, decision trees, escalation paths, and rollback steps.
 
 **Use when:** Preparing for production operations, documenting incident response procedures, or capturing institutional knowledge before a team member leaves.
 
 ### [**technical-writer**](technical-writer.md) — Write structured technical content
+
 Creates clear, accurate technical content tailored to the target audience — from end-user guides to internal engineering documentation. Adapts tone, depth, and structure for the intended readers.
 
 **Use when:** You need technical content that bridges the gap between engineering and other audiences (product, support, customers, or regulators).
@@ -54,7 +62,7 @@ Creates clear, accurate technical content tailored to the target audience — fr
 ## Quick Selection Guide
 
 | Task | Subagent | Notes |
-|------|----------|-------|
+| --- | --- | --- |
 | Document an API endpoint or service | **api-documenter** | OpenAPI-sourced or manually described APIs |
 | Capture an architectural decision | **adr-author** | MADR/Nygard format with context and consequences |
 | Generate CHANGELOG.md for a release | **changelog-generator** | Parses git log and conventional commits |
@@ -65,16 +73,20 @@ Creates clear, accurate technical content tailored to the target audience — fr
 
 ## Common Combinations
 
-**"Document a new service from scratch"**
+### "Document a new service from scratch"
+
 - **readme-generator** → project README → **api-documenter** → API reference → **runbook-writer** → deployment and operational procedures → **adr-author** → key design decisions.
 
-**"Prepare a release"**
+### "Prepare a release"
+
 - **changelog-generator** → release notes from commits → **api-documenter** → updated API reference for changed endpoints → **readme-generator** → updated README with new features.
 
-**"Knowledge transfer before a team member leaves"**
+### "Knowledge transfer before a team member leaves"
+
 - **runbook-writer** → operational procedures → **documentation-engineer** → architecture and system knowledge → **adr-author** → rationale for past decisions.
 
-**"Open-source a project"**
+### "Open-source a project"
+
 - **readme-generator** → public-facing README → **api-documenter** → public API reference → **technical-writer** → contributing guide and code of conduct.
 
 ## Getting Started
