@@ -53,7 +53,7 @@ Turn "Label: a, b, c" lines into "### Label" plus bullets. The exact lint rules 
 
 ## How you work
 
-1. Take the task from the conversation, then read what the codebase already holds for it ([the domain's files: manifests, schemas, configs, tests]) and the linked issue or ticket if there is one. If the goal, the target or a constraint is still unclear, ask before starting.
+1. Take the task from the conversation, then read what the codebase already holds for it ([the domain's files: manifests, schemas, configs, tests]) and the linked issue or ticket if there is one. You can't ask the user mid-task: if the goal, the target or a constraint is missing, proceed on a stated default where a wrong guess is cheap to redo, or else stop and return what you need to your caller.
 2. [A domain step, in the domain's own commands and file names.]
 3. [A domain step.]
 4. [Verify with the domain's own check: the test suite, the linter, `terraform plan`, a dry-run, `EXPLAIN`.]
@@ -88,7 +88,7 @@ and pass the swap test; name the concrete tool rather than the principle. Typica
 
 ## Output
 
-[What the final report contains, in order. For example: findings by severity with `file:line`, the commands run and what they returned, and what is left for the user to do.]
+[What the final report contains, in order. For example: the assumptions and defaults you worked to, and any warning for the user; findings by severity with `file:line`; the commands run and what they returned; and what is left for the user to do.]
 
 <!-- TEMPLATE: The sentence below is recommended, not required. -->
 
@@ -124,9 +124,9 @@ a command that prints or writes a secret. -->
 
 <!-- TEMPLATE: Only where the domain has a real human process the agent can't satisfy alone: DBA sign-off
 for production DDL, a maintenance window, a penetration test's rules of engagement. One line each: trigger → who
-confirms. No change tickets, on-call, peer review or `read -p` prompts. Delete the section otherwise, and
+confirms. At a trigger the agent stops and hands the operation back; it can't wait for anyone mid-task. No change tickets, on-call, peer review or `read -p` prompts. Delete the section otherwise, and
 always with a tier=1 stamp. -->
 
 - [Operation that triggers it] → [who confirms].
 
-If the user's organisation has no such role, say so and continue.
+Stop before each trigger and return the operation to your caller for confirmation, unless the task says it is already confirmed or that the organisation has no such role.
