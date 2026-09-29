@@ -31,7 +31,7 @@ Python web framework specialist focusing on Django's batteries-included philosop
 **Use when:** Creating Django web applications, building REST APIs with DRF, implementing complex database operations, or developing data-driven applications.
 
 ### [**dotnet-expert**](dotnet-expert.md) - C# and .NET on the project's own target framework
-Writes, fixes and tests C# on whatever the project targets, .NET Framework 4.x, `netstandard2.0` or modern .NET, detecting the target framework and language version rather than assuming the newest. Covers ASP.NET Core and minimal APIs, EF Core and EF6, async, dependency injection, xUnit, NUnit and MSTest, Blazor, gRPC, containers, and .NET Framework maintenance: old-style projects, `packages.config`, binding redirects and C# 7.3.
+Writes, fixes and tests C# on whatever the project targets, .NET Framework, `netstandard2.0` or modern .NET, detecting the target framework and language version rather than assuming the newest. Covers ASP.NET Core and minimal APIs, EF Core and EF6, async, dependency injection, xUnit, NUnit and MSTest, Blazor, gRPC, containers, and .NET Framework maintenance: old-style projects, `packages.config`, binding redirects and C# 7.3.
 
 **Use when:** Building or fixing a .NET application or library, maintaining a .NET Framework app that stays on .NET Framework, or writing code for a multi-targeted library. For moving to a newer .NET, use **dotnet-modernizer** (category 10).
 
