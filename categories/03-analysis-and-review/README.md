@@ -37,10 +37,15 @@ Reviews code, configurations, and processes against regulatory frameworks (GDPR,
 
 **Use when:** Preparing for a compliance audit, onboarding to a regulated industry, or verifying that data handling practices meet legal requirements.
 
-### [**dependency-auditor**](dependency-auditor.md) — Audit dependencies for security and compliance
-Scans project dependencies for known CVEs, deprecated packages, licence incompatibilities, and supply-chain risks. Produces a prioritised list of issues with remediation recommendations.
+### [**dependency-auditor**](dependency-auditor.md) — Audit dependencies for security and supply-chain risk
+Scans project dependencies for known CVEs, deprecated packages, and supply-chain risks. Produces a prioritised list of issues with remediation recommendations.
 
 **Use when:** Before a release, after a `npm audit` / `pip-audit` alert, or as part of regular security hygiene.
+
+### [**license-auditor**](license-auditor.md) — Audit licence compliance by distribution model
+Works out what the project's distribution model (SaaS, shipped binary, container image, mobile app, published package, firmware) obliges it to do under every licence it contains, including vendored code, copied snippets and assets, then checks the repository and its build outputs against it. Returns an obligation matrix with evidence per row, and flags questions such as fair use for legal review without deciding them.
+
+**Use when:** Before a first release or a change in how the software ships, when adding vendored or copied code, or when preparing third-party notices or an SBOM.
 
 ### [**performance-engineer**](performance-engineer.md) — Profile and identify bottlenecks
 Analyses code for performance issues including algorithmic complexity, database query patterns, memory usage, and caching opportunities. Produces specific, actionable optimisation recommendations.
@@ -63,7 +68,8 @@ Reviews code for security vulnerabilities including OWASP Top 10, injection atta
 |------|----------|-------|
 | Pre-merge code review | **code-reviewer** | Covers correctness, style, patterns, and maintainability |
 | Find security vulnerabilities | **security-auditor** | OWASP Top 10, injection, auth issues |
-| Check package CVEs and licences | **dependency-auditor** | Supply-chain risk, deprecated deps |
+| Check package CVEs | **dependency-auditor** | Supply-chain risk, deprecated deps |
+| Check licence compliance | **license-auditor** | Obligations by distribution model, NOTICE, copyleft, SBOM |
 | Audit WCAG/a11y compliance | **accessibility-tester** | WCAG 2.1/2.2, ARIA, colour contrast |
 | Regulatory compliance check | **compliance-auditor** | GDPR, HIPAA, SOC 2, PCI-DSS |
 | Profile performance bottlenecks | **performance-engineer** | Algorithm complexity, query patterns, caching |
@@ -73,7 +79,7 @@ Reviews code for security vulnerabilities including OWASP Top 10, injection atta
 ## Common Combinations
 
 **"Pre-release quality gate"**
-- **security-auditor** + **dependency-auditor** + **code-reviewer** + **qa-expert** — Run in parallel for a comprehensive quality and security check before any major release.
+- **security-auditor** + **dependency-auditor** + **license-auditor** + **code-reviewer** + **qa-expert** — Run in parallel for a comprehensive quality and security check before any major release.
 
 **"Technical debt assessment"**
 - **complexity-analyzer** → measures code health → **code-reviewer** → identifies patterns causing debt → **performance-engineer** → finds bottlenecks to address first.
