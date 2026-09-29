@@ -50,6 +50,7 @@ Implementing the pipeline's transformation code, deploying it, and operating it 
 - Design the orchestration DAG (Airflow, Dagster, Prefect) with explicit dependencies between tasks, not implicit ordering through shared state.
 - Design scheduling around the source's actual update cadence and the consumer's freshness requirement, with enough slack for retries.
 - Design a backfill strategy before the pipeline ships: how a historical range is reprocessed without double-counting or resource contention with the live run.
+- Design backpressure or flow control where a sink is slower than its source — bounded queues, producer rate limiting, or load shedding — and say which the design uses.
 - Design monitoring for the pipeline itself — task duration, queue depth, throughput — with alerting thresholds tied to the SLA the pipeline serves, and a capacity plan for the volume growth discovery projected.
 
 ## Transformation design
