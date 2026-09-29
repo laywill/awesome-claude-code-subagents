@@ -26,7 +26,7 @@
   ],
   // Agent files mix British and American spelling (upstream is American), so
   // accept both. Add project-specific terms here as they come up.
-  "words": ["laywill", "Linters", "LINTERS", "JSONLINT", "subagent", "subagents", "homelab", "homelabs", "frontmatter", "Frontmatter", "xhigh", "worktrees", "mawk", "setext", "Setext", "RSAT", "netstandard", "asax", "YARP", "Blazor", "svcutil", "EDMX", "scancode", "syft", "goreleaser", "rseidelsohn", "GOMODCACHE", "NOASSERTION", "lockfiles", "Minifiers", "Vizio"],
+  "words": ["laywill", "Linters", "LINTERS", "JSONLINT", "subagent", "subagents", "homelab", "homelabs", "frontmatter", "Frontmatter", "xhigh", "worktrees", "mawk", "setext", "Setext", "RSAT", "netstandard", "asax", "YARP", "Blazor", "svcutil", "EDMX", "slnx", "vswhere", "vstest", "NETFRAMEWORK", "Swashbuckle", "ASPNETCORE", "MediatR", "appsettings", "netcoreapp", "resx", "scancode", "syft", "goreleaser", "rseidelsohn", "GOMODCACHE", "NOASSERTION", "lockfiles", "Minifiers", "Vizio"],
   "ignorePaths": [
     ".git",
     ".github",

@@ -11,9 +11,8 @@
   "agents": [
     "./angular-architect.md",
     "./cpp-pro.md",
-    "./csharp-developer.md",
     "./django-developer.md",
-    "./dotnet-core-expert.md",
+    "./dotnet-expert.md",
     "./elixir-expert.md",
     "./flutter-expert.md",
     "./fsharp-specialist.md",
