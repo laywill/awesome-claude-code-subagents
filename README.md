@@ -141,7 +141,7 @@ Research and discovery subagents explore new technologies, assess feasibility, a
 
 - [**feasibility-assessor**](categories/01-research-and-discovery/feasibility-assessor.md) - Technical feasibility assessment
 - [**research-analyst**](categories/01-research-and-discovery/research-analyst.md) - Cited research on markets, competitors, trends and datasets
-- [**technology-researcher**](categories/01-research-and-discovery/technology-researcher.md) - Technology landscape explorer
+- [**technology-researcher**](categories/01-research-and-discovery/technology-researcher.md) - Requirements-weighted technology and framework evaluation with a cited recommendation
 
 Codebase search and plan-mode research are covered by Claude Code's built-in `Explore` and `Plan` agents, so this category does not duplicate them.
 
