@@ -6,7 +6,7 @@
 
 <div align="center">
 
-![Subagent Count](https://img.shields.io/badge/subagents-193-blue?style=flat-square)
+![Subagent Count](https://img.shields.io/badge/subagents-194-blue?style=flat-square)
 [![Last Update](https://img.shields.io/github/last-commit/laywill/awesome-claude-code-subagents?label=Last%20update&style=flat-square)](https://github.com/laywill/awesome-claude-code-subagents)
 [![GitHub forks](https://img.shields.io/github/forks/laywill/awesome-claude-code-subagents?style=social)](https://github.com/laywill/awesome-claude-code-subagents/network/members)
 
@@ -171,6 +171,7 @@ Analysis and review subagents audit code quality, security, performance, accessi
 - [**compliance-auditor**](categories/03-analysis-and-review/compliance-auditor.md) - Regulatory compliance expert
 - [**complexity-analyzer**](categories/03-analysis-and-review/complexity-analyzer.md) - Code complexity analysis specialist
 - [**dependency-auditor**](categories/03-analysis-and-review/dependency-auditor.md) - Dependency audit and risk assessment
+- [**license-auditor**](categories/03-analysis-and-review/license-auditor.md) - License compliance by distribution model
 - [**performance-engineer**](categories/03-analysis-and-review/performance-engineer.md) - Performance optimization expert
 - [**qa-expert**](categories/03-analysis-and-review/qa-expert.md) - Test automation specialist
 - [**security-auditor**](categories/03-analysis-and-review/security-auditor.md) - Security vulnerability expert

@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "description": "Curated collection of 193 specialized Claude Code subagents organized into 24 focused categories with risk-tiered structure",
+    "description": "Curated collection of 194 specialized Claude Code subagents organized into 24 focused categories with risk-tiered structure",
     "version": "2.2.1"
   },
   "name": "laywill-subagents",
@@ -56,6 +56,7 @@
         "compliance",
         "complexity-analysis",
         "dependency-audit",
+        "license-compliance",
         "performance-review",
         "qa",
         "quality-assurance",
@@ -63,7 +64,7 @@
       ],
       "name": "laywill-analysis-review",
       "source": "./categories/03-analysis-and-review",
-      "version": "2.1.0"
+      "version": "2.2.0"
     },
     {
       "category": "documentation",
@@ -310,7 +311,7 @@
       ],
       "name": "laywill-dependency-management",
       "source": "./categories/16-dependency-and-package-management",
-      "version": "2.1.0"
+      "version": "2.1.1"
     },
     {
       "category": "infrastructure",

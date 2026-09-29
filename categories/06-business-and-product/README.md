@@ -35,7 +35,7 @@ Develops customer success playbooks, onboarding flows, health scoring models, an
 ### [**legal-advisor**](legal-advisor.md) — Advise on legal and licensing considerations
 Provides guidance on software licensing (open source and commercial), data privacy regulations (GDPR, CCPA), terms of service drafting, and IP considerations. Always advisory — complex decisions should involve qualified legal counsel.
 
-**Use when:** Evaluating licence compatibility for dependencies, understanding data privacy obligations, or drafting terms for a new product or API.
+**Use when:** Interpreting licence terms, including the questions `license-auditor` routes for legal review, understanding data privacy obligations, or drafting terms for a new product or API.
 
 ### [**quant-analyst**](quant-analyst.md) — Quantitative analysis and financial modelling
 Builds financial models, pricing analyses, ROI calculations, and risk quantification frameworks. Applies statistical methods to business problems.
