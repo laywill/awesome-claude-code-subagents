@@ -1,6 +1,6 @@
 # Tool configuration only: nothing here is packaged. scripts/*.py are
 # standalone, and tests/ covers the content lint (agent_lint.py and its rule
-# modules) and scripts/stamp_sections.py.
+# modules), scripts/stamp_sections.py and scripts/version_bump_check.py.
 #
 # scripts/lint-python.sh runs every Python check with this config, in CI and
 # locally; requirements-dev.txt pins the tools. flake8 alone can't read this
