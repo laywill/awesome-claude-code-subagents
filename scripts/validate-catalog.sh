@@ -26,7 +26,18 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 # thousands of warnings. By default they print as counts by rule and by
 # category. --verbose prints every warning; naming category directories
 # (e.g. 03-analysis-and-review) prints every warning for those. Arguments
-# change only what is printed, never what fails.
+# change only what is printed, never what fails, so catalog_lint.py's --file,
+# which narrows what is linted, is refused here: run it directly instead.
+
+for arg in "$@"; do
+  case "$arg" in
+    --file | --file=*)
+      printf '%s
+' "--file narrows the lint; run scripts/catalog_lint.py --file directly." >&2
+      exit 2
+      ;;
+  esac
+done
 
 failures=0
 

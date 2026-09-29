@@ -20,14 +20,17 @@ class decides whether it fails:
 Outside the enforced categories the pre-v3 catalog raises thousands of
 warnings, so by default they print as counts by rule and by category.
 --verbose prints every warning; naming category directories (e.g.
-03-analysis-and-review) prints every warning for those. Arguments change only
-what is printed, never what fails.
+03-analysis-and-review) prints every warning for those. Those arguments change
+only what is printed, never what fails.
 
---file lints only the named agent files, which is what agent-uplifter needs
-while other uplifts edit sibling files: no other agent file is read. Every
-finding for them prints in full, FAIL or WARN by the same ratchet, followed by
-a count. The ratchet, allowlist and template checks still run; they read file
-names and config, not agent files.
+--file is different: it narrows what is linted, so it changes what fails, and
+validate-catalog.sh refuses it. It lints only the named agent files, which is
+what agent-uplifter needs while other uplifts edit sibling files: no other
+agent file is read. A relative path is taken from the repository root. Every
+finding for the named files prints in full, FAIL or WARN by the same ratchet,
+and a count comes last. A path that isn't an agent file fails, and then nothing
+is linted and no count prints. The ratchet, allowlist and template checks
+still run; they read file names and config, not agent files.
 
 Standard library only: CI runs it with the runner's system Python.
 """
@@ -242,13 +245,15 @@ def load_ratchet(
 
 def select_files(
     root: Path, files: list[str], only: list[str], out: Reporter
-) -> list[str]:
-    """The agent files named by only, repo-relative; failures for the rest.
+) -> list[str] | None:
+    """The agent files named by only, repo-relative and each once.
 
     A relative path is taken from root, the repository, whatever the cwd.
+    Returns None, after a failure for each, when any path isn't an agent file.
     """
     known = set(files)
-    selected = []
+    selected: dict[str, None] = {}
+    rejected = False
     base = root.resolve()
     for arg in only:
         try:
@@ -256,10 +261,11 @@ def select_files(
         except ValueError:
             rel = ""
         if rel in known:
-            selected.append(rel)
+            selected[rel] = None
         else:
             out.fail(f"{arg} is not an agent file under categories/")
-    return selected
+            rejected = True
+    return None if rejected else list(selected)
 
 
 def run(
@@ -287,6 +293,8 @@ def run(
         "(#318)"
     )
     targets = files if only is None else select_files(root, files, only, out)
+    if targets is None:
+        return out.failures
     findings = [
         finding
         for f in targets
@@ -300,7 +308,8 @@ def run(
     else:
         for f in warnings:
             print(f"WARN  {f.path}: [{f.rule}] {f.message}")
-        print(f"{len(findings)} finding(s) in {len(targets)} file(s).")
+        # Flushed so the count follows the FAIL lines on stderr, too.
+        print(f"{len(findings)} finding(s) in {len(targets)} file(s).", flush=True)
 
     return out.failures
 
@@ -340,7 +349,10 @@ def main(argv: list[str] | None = None) -> int:
         "--file",
         action="append",
         metavar="PATH",
-        help="lint only this agent file and print every finding (repeatable)",
+        help=(
+            "lint only this agent file, relative to the repository root, and "
+            "print every finding; repeatable; --verbose has no effect with it"
+        ),
     )
     args = parser.parse_args(argv)
     if args.file and args.categories:
