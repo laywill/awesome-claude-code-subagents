@@ -16,6 +16,11 @@ Use these subagents when you need to:
 
 ## Available Subagents
 
+### [**dotnet-framework-modernizer**](dotnet-framework-modernizer.md) — Migrate .NET Framework to modern .NET
+Migrates .NET Framework 4.x applications to modern .NET one project at a time: SDK-style projects, multi-targeting, `System.Web` to ASP.NET Core behind a YARP strangler fig, WCF to CoreWCF or gRPC, Web Forms rewrites, AppDomain and `BinaryFormatter` replacements, and Windows services to worker services.
+
+**Use when:** Moving a .NET Framework solution to .NET 8 or later, assessing what blocks that move, or replacing a Framework-only technology such as WCF, Web Forms or `System.Web`.
+
 ### [**framework-upgrader**](framework-upgrader.md) — Upgrade framework versions
 Upgrades framework dependencies to new major versions, adapts code for breaking API changes, updates configuration, and verifies compatibility. Works with React, Django, Spring, Rails, Angular, and others.
 
@@ -55,6 +60,7 @@ Surveys a codebase for tech debt (duplicated code, magic numbers, poor abstracti
 
 | Task | Subagent | Notes |
 |------|----------|-------|
+| Migrate .NET Framework 4.x to modern .NET | **dotnet-framework-modernizer** | SDK-style projects, System.Web, WCF, Web Forms |
 | Upgrade to a new major framework version | **framework-upgrader** | Handles breaking API changes and config updates |
 | Adopt new language syntax features | **language-modernizer** | Optional chaining, type hints, pattern matching, etc. |
 | Broadly improve a legacy codebase | **legacy-modernizer** | Holistic, prioritised modernisation approach |
