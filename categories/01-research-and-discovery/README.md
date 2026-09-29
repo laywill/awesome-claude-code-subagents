@@ -20,7 +20,7 @@ Searching and mapping a codebase is not on this list. Claude Code's built-in `Ex
 
 ### [**feasibility-assessor**](feasibility-assessor.md) — Validate technical approach
 
-Evaluates whether a proposed technical approach is realistic, identifies potential blockers, estimates effort and complexity, and recommends alternatives if needed. Works across architecture, infrastructure, and implementation domains.
+Evaluates whether a proposed architecture, migration or integration is realistic, identifies risks and blockers, estimates effort as a range, and weighs at least one alternative, ending in a go / conditional-go / no-go verdict with evidence.
 
 **Use when:** You have a proposed solution and need an honest assessment of its viability before investing engineering effort.
 
@@ -46,9 +46,8 @@ Researches technologies, frameworks, and tools in depth, evaluates them against 
 | Find suitable datasets for a data project | **research-analyst** | Provenance, licence and fitness-for-use; it does not run the analysis itself |
 | Validate a proposed architecture or approach | **feasibility-assessor** | Identifies risks, effort, and alternatives before implementation |
 | Understand market size and opportunity | **research-analyst** | TAM/SAM/SOM sized top-down and bottom-up, segmentation |
-| Deep-dive research on a specific technology | **technology-researcher** | Maturity, ecosystem health and fit against your codebase |
 | Find specific facts, documents or sources | **research-analyst** | Targeted search with sources cited; for code search use built-in Explore |
-| Detailed framework/tool evaluation for your use case | **technology-researcher** | Maturity, community, real-world usage against your requirements |
+| Evaluate one technology or tool in depth for your use case | **technology-researcher** | Maturity, ecosystem health, cost and fit against your codebase and requirements |
 | Track emerging technologies or market shifts | **research-analyst** | Separates signals from trends; scenarios with leading indicators |
 
 ## Common Combinations
@@ -71,7 +70,7 @@ Researches technologies, frameworks, and tools in depth, evaluates them against 
 
 ## Getting Started
 
-1. **Identify your question** — Is it about code understanding, technology evaluation, market opportunity, or feasibility? This guides your agent choice.
+1. **Identify your question** — Is it about technology evaluation, market opportunity, or feasibility? This guides your agent choice. For understanding a codebase, use the built-in `Explore` agent.
 2. **Choose your agent** — Use the Quick Selection Guide to find the right fit, or combine agents for complex questions.
 3. **Provide context** — Share your constraints (tech stack, timeline, budget, performance requirements) so the agent can tailor its research.
 4. **Review findings** — Research & Discovery agents produce analysis and recommendations; decide how to act on them with other agent types.

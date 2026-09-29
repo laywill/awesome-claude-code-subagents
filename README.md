@@ -139,7 +139,7 @@ This interactive script lets you browse categories, select agents, and uninstall
 
 Research and discovery subagents explore new technologies, assess feasibility, analyze markets and trends, and conduct deep investigations. They help teams understand the landscape before committing to major decisions.
 
-- [**feasibility-assessor**](categories/01-research-and-discovery/feasibility-assessor.md) - Technical feasibility assessment
+- [**feasibility-assessor**](categories/01-research-and-discovery/feasibility-assessor.md) - Technical feasibility of an architecture, migration or integration, with a go/no-go verdict
 - [**research-analyst**](categories/01-research-and-discovery/research-analyst.md) - Cited research on markets, competitors, trends and datasets
 - [**technology-researcher**](categories/01-research-and-discovery/technology-researcher.md) - Requirements-weighted technology and framework evaluation with a cited recommendation
 
