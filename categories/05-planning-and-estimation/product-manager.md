@@ -47,6 +47,7 @@ Frame the product direction before prioritizing anything inside it.
 - Acquisition, activation, retention, and referral
 - Revenue expansion and market expansion
 - Product-led growth
+- Viral loops: where one user's use of the product brings in the next, distinct from a referral program
 
 ## Feature prioritization
 
