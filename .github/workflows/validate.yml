@@ -15,8 +15,8 @@ concurrency:
 
 # content-lint-tests gates validate: validate-catalog.sh runs the Python
 # content lint, and a lint whose own tests fail gives verdicts nobody should
-# act on. plugin-schema and enforced-markdown don't run that code, so they
-# start straight away rather than waiting behind it.
+# act on. plugin-schema, version-bump and enforced-markdown don't run that
+# code, so they start straight away rather than waiting behind it.
 jobs:
   validate:
     name: Catalog consistency
@@ -105,6 +105,27 @@ jobs:
       # frontmatter; scripts/validate-catalog.sh does.
       - name: Validate plugin and marketplace manifests
         run: claude plugin validate . --strict
+
+  version-bump:
+    name: Plugin versions bumped for agent changes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          # Nothing here pushes; don't leave the token in .git/config
+          persist-credentials: false
+          # The base commit has to be in the checkout to diff against it.
+          fetch-depth: 0
+
+      # A pinned plugin.json version keeps installs on their cached copy, so
+      # an agent change merged without a bump never reaches them (#382). On a
+      # PR, HEAD is the merge commit and the base is the PR's base; on a push
+      # to main, the base is the previous tip, which catches anything that got
+      # past the PR check.
+      - name: Check plugin and marketplace version bumps
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: python3 scripts/version_bump_check.py "$BASE" HEAD
 
   enforced-markdown:
     name: markdownlint/cspell, blocking for ratcheted categories

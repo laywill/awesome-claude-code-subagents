@@ -77,7 +77,7 @@ Adding, renaming, moving, or deleting an agent means updating all four, or the p
 
 Exception to 4: category 07 is summarised in the root README with a "View all 34 language specialists →" link rather than itemised, so a new language specialist adds nothing there — update the count and the inline list instead.
 
-Bump versions when publishing changes: the category's `plugin.json` `version`, and `.claude-plugin/marketplace.json` `metadata.version`.
+Bump versions whenever a PR adds, edits, deletes or renames an agent file, or changes a category's `agents` array: the category's `plugin.json` `version`, its entry's `version` in `.claude-plugin/marketplace.json` (it must equal `plugin.json`'s), and that file's `metadata.version`. `plugin.json` pins the version, so Claude Code keeps existing installs on their cached copy until it changes; a change merged without a bump never reaches them. CI enforces this; see Version bumps under Verification. A README-only change needs no bump.
 
 ## Agent File Format
 
@@ -316,6 +316,16 @@ It reports every failure it finds rather than stopping at the first, and exits n
 | `scripts/lint-enforced-categories.txt` and `scripts/lint-allowlist.txt` are well-formed | a misspelt category that silently enforces nothing; an allowlist entry with no reason, an unknown rule, or an agent that no longer exists |
 
 Adding an agent therefore means updating the count in the README badge and in `.claude-plugin/marketplace.json`, not just the four places.
+
+### Version bumps
+
+`scripts/version_bump_check.py <base> [<head>]` diffs two revisions. For every category whose shipped agents changed (a file in its `agents` array, on either side, added, edited, deleted or renamed; the array itself; or the category added or removed), it fails unless `plugin.json` `version` is strictly greater as `MAJOR.MINOR.PATCH`, and, if any category changed, unless `marketplace.json` `metadata.version` is too. It checks that the version went up, not whether the bump should be major, minor or patch; that is for review. The marketplace entry's `version` matching `plugin.json` is left to `claude plugin validate --strict`, which already fails a mismatch.
+
+The `version-bump` job in `validate.yml` runs it on every PR (base commit against the merge commit) and on every push to `main` (the previous tip against the new one). The push run can't block anything; it turns `main` red if a release got past the PR check.
+
+### Required checks
+
+The `protect main` ruleset requires the `validate.yml` jobs to pass, by job `name`, and requires a branch to be up to date with `main` before it merges. Being up to date is what makes the version check sound: without it, two PRs could each bump `2.1.0` to `2.1.1` against a stale base and both pass. Renaming a job or adding a required one means updating the ruleset in the same change, or every open PR waits forever on a check that never reports.
 
 ### Content lint and the per-category ratchet
 
