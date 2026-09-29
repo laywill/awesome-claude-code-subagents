@@ -25,20 +25,15 @@ Systems programming specialist with deep knowledge of modern C++ standards, memo
 
 **Use when:** Writing high-performance C++ code, implementing system-level software, optimizing memory usage, or working with embedded systems.
 
-### [**csharp-developer**](csharp-developer.md) - .NET ecosystem specialist
-Expert in C# language features and the entire .NET ecosystem. Proficient in ASP.NET Core, Entity Framework, and cross-platform development. Builds enterprise applications with clean architecture.
-
-**Use when:** Developing .NET applications, building ASP.NET Core APIs, implementing Windows applications, or working with Azure services.
-
 ### [**django-developer**](django-developer.md) - Django 4+ web development expert
 Python web framework specialist focusing on Django's batteries-included philosophy. Masters ORM optimization, async views, and Django's security features. Builds scalable web applications rapidly.
 
 **Use when:** Creating Django web applications, building REST APIs with DRF, implementing complex database operations, or developing data-driven applications.
 
-### [**dotnet-core-expert**](dotnet-core-expert.md) - .NET 8 cross-platform specialist
-Modern .NET expert specializing in cross-platform development, minimal APIs, and cloud-native applications. Masters performance optimization with native AOT compilation and microservices patterns.
+### [**dotnet-expert**](dotnet-expert.md) - C# and .NET on the project's own target framework
+Writes, fixes and tests C# on whatever the project targets, .NET Framework 4.x, `netstandard2.0` or modern .NET, detecting the target framework and language version rather than assuming the newest. Covers ASP.NET Core and minimal APIs, EF Core and EF6, async, dependency injection, xUnit, NUnit and MSTest, Blazor, gRPC, containers, and .NET Framework maintenance: old-style projects, `packages.config`, binding redirects and C# 7.3.
 
-**Use when:** Building cross-platform .NET apps, creating minimal APIs, implementing microservices, or optimizing .NET performance.
+**Use when:** Building or fixing a .NET application or library, maintaining a .NET Framework app that stays on .NET Framework, or writing code for a multi-targeted library. For moving to a newer .NET, use **dotnet-modernizer** (category 10).
 
 ### [**elixir-expert**](elixir-expert.md) - Elixir and OTP specialist
 Elixir language expert focusing on fault-tolerant, concurrent systems using OTP patterns. Masters Phoenix, LiveView, and distributed systems on the BEAM VM. Builds highly available applications with "let it crash" philosophy.
@@ -171,9 +166,8 @@ Full-stack WordPress architect covering theme and plugin development, WooCommerc
 |-------------------|----------|----------|
 | Angular | **angular-architect** | Enterprise web apps, complex SPAs |
 | C++ | **cpp-pro** | Systems programming, performance-critical code |
-| C#/.NET | **csharp-developer** | Windows apps, enterprise software |
+| C#/.NET | **dotnet-expert** | .NET Framework and modern .NET apps, libraries, APIs |
 | Django | **django-developer** | Python web apps, REST APIs |
-| .NET Core | **dotnet-core-expert** | Cross-platform .NET, microservices |
 | Elixir | **elixir-expert** | Fault-tolerant systems, Phoenix/LiveView |
 | Flutter | **flutter-expert** | Cross-platform mobile apps |
 | F# | **fsharp-specialist** | Functional .NET, domain modelling |
@@ -214,7 +208,7 @@ Full-stack WordPress architect covering theme and plugin development, WooCommerc
 
 **Enterprise Backend:**
 - **java-architect** + **spring-boot-engineer**
-- **csharp-developer** + **dotnet-core-expert**
+- **dotnet-expert**
 - **python-pro** + **django-developer**
 
 **Systems Programming:**
