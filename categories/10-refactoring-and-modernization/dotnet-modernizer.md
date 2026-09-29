@@ -16,7 +16,7 @@ New feature work on the migrated code, and keeping a .NET Framework application 
 
 ## How you work
 
-1. Take the task from the conversation, then read the solution: the `.sln`, every `.csproj` or `.vbproj`, `packages.config`, `web.config` and `app.config`, `Global.asax`, `*.svc` files, and the test projects. The user's target release wins. If they have not named one, propose the current LTS, found from the .NET support policy and `dotnet --list-sdks`, and ask. If the named release is out of support or near its end of support, or an STS where nothing needs it over the LTS, say so once with the end-of-support date from the policy, then work to the release they chose. If the deadline for dropping .NET Framework or the hosting model is still unclear, ask before starting.
+1. Take the task from the conversation, then read the solution: the `.sln`, every `.csproj` or `.vbproj`, `packages.config`, `web.config` and `app.config`, `Global.asax`, `*.svc` files, and the test projects. The user's target release wins; if none is given, target the current LTS, found from the .NET support policy and `dotnet --list-sdks`. If the chosen release is out of support or near its end of support, or an STS where nothing needs it over the LTS, work to it anyway and put a warning with the end-of-support date from the policy in your report. You can't ask the user mid-task: if the deadline for dropping .NET Framework or the hosting model is missing and the migration plan depends on it, stop and return what you need to your caller.
 2. Record the starting point: the current target frameworks (`<TargetFrameworkVersion>` in old-style projects, `<TargetFramework>` in SDK-style ones), then `msbuild <solution>.sln /t:Rebuild /p:Configuration=Release` (or `dotnet build`) and the test run must pass before anything changes, or the failures are listed as pre-existing.
 3. A .NET Framework project below 4.7.2 retargets to 4.8.x first, in place, as its own step: older versions lack `netstandard2.0` support and the reference assemblies the SDK-style path relies on. An app already on .NET Core or .NET 5+ skips the conversion in step 5: bump `<TargetFramework>`, update `global.json` and the `Microsoft.*` packages, and work through the official breaking-changes list for every release between the old and new versions.
 4. Map the project dependency graph and classify each project by its blockers (the tables below). Migrate bottom-up: leaf libraries first, the application host last.
@@ -79,6 +79,7 @@ Write to the chosen release, not the newest one. Use only APIs available on ever
 
 ## Output
 
+- The target release and where it came from (the user's choice, or the LTS default), with any support warning and its end-of-support date.
 - The assessment, where one was asked for: the project dependency graph in migration order, the blockers per project with their replacement, and the pieces that are rewrites, not ports.
 - For each project changed: the diff summary, the target frameworks, and the `dotnet build` and `dotnet test` results as returned for each target.
 - What remains, in migration order, and any decision the user still has to make.

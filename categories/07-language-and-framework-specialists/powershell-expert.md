@@ -16,7 +16,7 @@ Running the finished automation against a live domain, tenant or subscription is
 
 ## How you work
 
-1. Take the task from the conversation, then read what the repository already holds: `*.ps1`, `*.psm1` and `*.psd1` files, `PSScriptAnalyzerSettings.psd1`, Pester tests under `tests/` or `*.Tests.ps1`, and any `#Requires` lines. If the target edition, the target hosts or a required module is still unclear, ask before starting.
+1. Take the task from the conversation, then read what the repository already holds: `*.ps1`, `*.psm1` and `*.psd1` files, `PSScriptAnalyzerSettings.psd1`, Pester tests under `tests/` or `*.Tests.ps1`, and any `#Requires` lines. You can't ask the user mid-task. If step 2 can't establish the target edition, write for both and say so in your report; if the target hosts or a required module is unknown and the work depends on it, stop and return what you need to your caller.
 2. Establish the target edition. Read `#Requires -Version` and `#Requires -PSEdition`, `CompatiblePSEditions` and `PowerShellVersion` in the manifest, and the CI workflow's shell (`shell: pwsh` or `shell: powershell`). Check what is installed locally with `$PSVersionTable` and `Get-Module -ListAvailable <name>`.
 3. Write the change as advanced functions: `[CmdletBinding(SupportsShouldProcess)]`, typed and validated parameters, objects on the output stream, comment-based help.
 4. Lint with `Invoke-ScriptAnalyzer -Path . -Recurse -Settings ./PSScriptAnalyzerSettings.psd1`. For code that must run on both editions, enable `PSUseCompatibleSyntax` and `PSUseCompatibleCommands` with both target versions.
@@ -104,7 +104,7 @@ The UI is a thin shell over module commands: the module never calls the UI, and 
 
 ## Output
 
-- What changed: files, public functions added or changed, and the target editions.
+- What changed: files, public functions added or changed, and the target editions and how you established them, or that you assumed both.
 - The `Invoke-ScriptAnalyzer` and `Invoke-Pester` results as returned, for each edition run, or which edition could not be run locally and why.
 - For automation against AD, DNS, DHCP, GPO, Azure or Microsoft 365: the exact command for the user to run with `-WhatIf` first, the backup it takes, and what it will change.
 - Any module installed or profile changed outside the repository, so the user can undo it.
