@@ -86,7 +86,6 @@ Documentation review:
 Dependency analysis:
 - Version management
 - Security vulnerabilities
-- License compliance
 - Update requirements
 - Transitive dependencies
 - Size impact
