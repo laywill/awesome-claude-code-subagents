@@ -7,6 +7,7 @@ Research & Discovery subagents help you navigate complexity, evaluate options, a
 ## When to Use Research & Discovery Agents
 
 Use these subagents when you need to:
+
 - **Evaluate technologies** — Compare frameworks, tools, and libraries to find the best fit for your use case
 - **Assess technical feasibility** — Validate whether a proposed approach is viable before committing resources
 - **Research market opportunities** — Analyse trends, size opportunities, and evaluate competitive landscapes
@@ -18,16 +19,19 @@ Searching and mapping a codebase is not on this list. Claude Code's built-in `Ex
 ## Available Subagents
 
 ### [**feasibility-assessor**](feasibility-assessor.md) — Validate technical approach
+
 Evaluates whether a proposed technical approach is realistic, identifies potential blockers, estimates effort and complexity, and recommends alternatives if needed. Works across architecture, infrastructure, and implementation domains.
 
 **Use when:** You have a proposed solution and need an honest assessment of its viability before investing engineering effort.
 
 ### [**research-analyst**](research-analyst.md) — Conduct structured research
+
 Conducts systematic research, from targeted fact-finding to deep investigations: plans the search, goes to primary sources, triangulates findings, and produces reports with citations and recommendations.
 
 **Use when:** You need a deep investigation into a specific topic with well-organised findings and clear recommendations.
 
 ### [**technology-researcher**](technology-researcher.md) — Evaluate frameworks and tools
+
 Researches technologies, frameworks, and tools in depth, evaluates them against your specific requirements, and produces detailed assessments including maturity, community, and real-world usage.
 
 **Use when:** You're evaluating a new technology stack or need a detailed assessment of whether a tool fits your constraints.
@@ -35,7 +39,7 @@ Researches technologies, frameworks, and tools in depth, evaluates them against 
 ## Quick Selection Guide
 
 | Task | Subagent | Notes |
-|------|----------|-------|
+| --- | --- | --- |
 | Understand a new codebase before integrating or refactoring | built-in **Explore** | Ships with Claude Code; not part of this plugin |
 | Decide between 3+ competing libraries or frameworks | **technology-researcher** | Technical fit, ecosystem health and maturity |
 | Map competitors and market positioning | **research-analyst** | Competitor set including substitutes, feature and pricing benchmarks |
@@ -49,16 +53,20 @@ Researches technologies, frameworks, and tools in depth, evaluates them against 
 
 ## Common Combinations
 
-**"Should we adopt this framework?"**
+### "Should we adopt this framework?"
+
 - **feasibility-assessor** + **technology-researcher** — Technology-researcher produces detailed evaluation; feasibility-assessor assesses integration risk and effort for your architecture.
 
-**"Is this market opportunity real?"**
+### "Is this market opportunity real?"
+
 - **research-analyst** + **feasibility-assessor** — Research-analyst sizes the opportunity and checks whether adoption is accelerating or slowing; feasibility-assessor tests whether you can deliver it.
 
-**"Integrate a new library — how big a change is it?"**
+### "Integrate a new library — how big a change is it?"
+
 - built-in **Explore** + **feasibility-assessor** — Explore maps your current architecture; feasibility-assessor estimates the effort and risk of integration.
 
-**"Deep competitive analysis for a product decision"**
+### "Deep competitive analysis for a product decision"
+
 - **research-analyst** + **technology-researcher** — Research-analyst compares competitors' feature sets and assesses the addressable market; technology-researcher evaluates technical maturity and community.
 
 ## Getting Started
