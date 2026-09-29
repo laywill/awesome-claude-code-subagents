@@ -16,7 +16,7 @@ Use these subagents when you need to:
 
 ## Available Subagents
 
-### [**api-designer**](api-designer.md) — Design REST/GraphQL/gRPC API contracts
+### [**api-designer**](api-designer.md) — Design REST and GraphQL API contracts
 Produces API contracts, OpenAPI/Swagger specifications, and GraphQL schemas before any implementation begins. Evaluates versioning strategies, pagination patterns, and error handling conventions.
 
 **Use when:** Starting a new API or extending an existing one and you want a well-structured contract before writing code.
@@ -60,7 +60,7 @@ Produces formal system models using C4, UML sequence diagrams, state machines, o
 
 | Task | Subagent | Notes |
 |------|----------|-------|
-| Design a new REST or GraphQL API | **api-designer** or **graphql-architect** | api-designer for REST/gRPC; graphql-architect for GraphQL federation |
+| Design a new REST or GraphQL API | **api-designer** or **graphql-architect** | api-designer for REST and general GraphQL contracts; graphql-architect for GraphQL federation |
 | Design end-to-end system architecture | **solution-architect** | Covers all layers with component diagrams |
 | Break a monolith into microservices | **microservices-architect** | Defines service boundaries and communication patterns |
 | Design or review a database schema | **schema-designer** | ERDs, normalisation, indexing strategies |

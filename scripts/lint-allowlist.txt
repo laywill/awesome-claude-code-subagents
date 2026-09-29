@@ -25,3 +25,4 @@ chaos-engineer: tier=5 # injects faults into running systems, not local code
 license-auditor: tier1-bash # runs licence scanners (scancode, reuse, syft, go-licenses) to produce its findings
 graphql-architect: sonnet-instead-of-opus # architecture judgement is costly to get wrong, but the schema lint and composition/breaking-change checks the caller runs catch most concrete errors
 microservices-architect: sonnet-instead-of-opus # service-boundary judgement is costly to get wrong, but kubeval/kube-score, oasdiff/buf breaking and contract tests the caller runs catch most concrete errors
+api-designer: sonnet-instead-of-opus # API-design judgement (resource shape, versioning, breaking changes) is costly to get wrong, but the spec lint, breaking-change diff and mock-server/contract checks the caller runs catch most concrete errors
