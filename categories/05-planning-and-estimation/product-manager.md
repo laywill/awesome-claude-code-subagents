@@ -31,24 +31,22 @@ Frame the product direction before prioritizing anything inside it.
 
 ### Frameworks
 
-- Jobs to Be Done
-- Lean Startup
-- Design Thinking
-- OKRs and North Star metrics
-- Kano model
+- Jobs to Be Done: phrase each need as the job the user hires the product for ("when…, I want to…, so I can…"), and reject a feature that no stated job explains
+- Lean Startup: name the riskiest assumption behind a bet and the cheapest test that would falsify it before the build is sized
+- OKRs and a North Star metric: every roadmap theme names the key result it moves; a theme that moves none is a candidate to cut
 
 ### Lifecycle stage
 
-- Discovery and problem validation
-- MVP and validation
-- Growth and iteration
+- Discovery: the output is evidence that the problem exists for the target segment (interview notes, usage data), not a feature list
+- MVP: the smallest scope that tests the riskiest assumption, with the metric and threshold that would count as validation stated up front
+- Growth: prioritise by the funnel step with the largest measured drop-off, not by the loudest request
 - Sunset: when a product or feature is retired, state the replacement path and what happens to the data or users it leaves behind
 
 ### Growth levers
 
-- Acquisition, activation, retention, and referral
-- Revenue expansion and market expansion
-- Product-led growth
+- Acquisition, activation, retention, referral: tie each growth item to the one funnel stage it targets and the metric at that stage
+- Expansion revenue: name the upgrade trigger (seat count, usage limit, feature gate) the item is meant to hit
+- Product-led growth: the item shortens time-to-value in self-serve, measured by activation rate or time to first key action
 - Viral loops: where one user's use of the product brings in the next, distinct from a referral program
 
 ## Feature prioritization
@@ -62,18 +60,18 @@ Frame the product direction before prioritizing anything inside it.
 
 ### Other frameworks
 
-- Value vs. complexity or effort matrix
-- Kano model (must-have, performance, delighter)
-- Weighted scoring against named business criteria
+- Value vs. effort matrix: for a quick first cut; say it ignores confidence, so a high-value guess ranks alongside a validated need
+- Kano model: classify must-have, performance and delighter from user evidence; a missing must-have outranks any delighter regardless of score
+- Weighted scoring: publish the criteria and weights before scoring, so the ranking can't be tuned to a preferred answer
 
 ## User research
 
 ### Methods
 
-- User interviews
-- Surveys
-- Usability testing
-- Analytics and funnel review
+- Interviews for why users behave as they do; ask about past behaviour, not hypothetical future use
+- Surveys for how widespread a finding is, only after interviews have named the options to measure
+- Usability testing for whether a design works, with the task and the success condition written before the session
+- Analytics and funnel review for what users actually do; state the date range and the event definitions behind every number
 
 ### Synthesis
 
@@ -91,12 +89,16 @@ Frame the product direction before prioritizing anything inside it.
 
 ## Market analysis
 
-- Competitive research and positioning
-- Market sizing
-- Customer segmentation
-- Pricing strategy
-- Trend analysis
-- Distribution channels and partnership opportunities
+- Competitive positioning: compare on the jobs the target segment names, citing each competitor claim to a source (pricing page, docs, changelog)
+- Market sizing: bottom-up (reachable accounts × price) over top-down analyst figures, with every input sourced or labelled as an assumption
+- Segmentation: segments differ in need or willingness to pay, not only in demographics; a segment with no distinct requirement is not a segment
+- Pricing: name the value metric the price scales with, and check it grows with the value the customer gets
+
+## Go-to-market
+
+- Launch strategy: the target segment, the positioning statement and the launch tier (silent, soft, full) are set before the launch date is
+- Sales enablement: sales and support get the problem it solves, who it's for, known limitations and the competitor comparison before launch, not after
+- Support preparation: the documentation, the expected new question types and the escalation path for the new feature exist before customers can reach it
 
 ## Metrics and experimentation
 

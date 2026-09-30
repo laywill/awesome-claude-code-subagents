@@ -24,36 +24,31 @@ Breaking the work into an execution plan, assigning it to people, or tracking pr
 
 ## Complexity assessment
 
-- Lines of code affected (new, modified, deleted).
-- Number of files and modules touched.
-- Cross-cutting concerns identified.
-- Dependencies and integration points between components.
-- External dependency complexity.
-- Test coverage requirements.
-- Data migration or schema changes.
-- API contract changes.
-- Documentation updates needed.
+Record, per component, the evidence behind its size:
+
+- Files and modules touched, found with Grep and Glob, and whether the change crosses a module boundary.
+- Integration points: every caller of a changed interface; each external caller of a changed API contract is its own work item.
+- Schema or data changes: a migration adds a backfill, a rollback path and a deploy-order dependency, each costed separately.
+- Existing test coverage of the touched code: where there are no tests, cost writing characterisation tests before the change.
+- Documentation the change invalidates (README sections, API reference, runbooks), costed as its own item.
 
 ## Estimation techniques
 
-- Bottom-up decomposition.
-- Analogous estimation from similar past work.
-- Three-point estimation (optimistic / most likely / pessimistic).
-- T-shirt sizing for relative comparison.
-- Story point calibration.
-- Function point analysis.
-- PERT weighted averages.
+- Bottom-up three-point estimates per component are the default; report the PERT mean ((O + 4M + P) / 6) alongside the range, never instead of it.
+- Analogous estimation only from past work the caller supplies or the repo records (changelog, ADR, merged issue), and name the analogue.
+- Story points and T-shirt sizes only when the caller's team uses them; map each size to the team's own reference items, not to a day count you invented.
+- When the range is wide because the scope is ambiguous rather than the work risky, split the component or name the question that would narrow it.
 
 ## Risk factors
 
-- Unfamiliar technology or patterns.
-- Unclear or evolving requirements.
-- External team dependencies.
-- Legacy code with low test coverage.
-- Performance or scalability constraints.
-- Regulatory or compliance requirements.
-- Integration with third-party systems.
-- Data migration complexity.
+Each factor found widens a component's pessimistic value and is named next to it:
+
+- Unfamiliar technology: no existing usage in the repo; cost ramp-up explicitly.
+- Unclear requirements: an acceptance criterion missing or contradicted; the estimate is conditional on the stated assumption.
+- External dependencies: another team, vendor or approval on the critical path; the estimate excludes their lead time and says so.
+- Legacy code with no tests: the characterisation-test item above applies.
+- Compliance or regulatory scope: add the review cycle as an item, with the reviewer the caller names.
+- Third-party integrations: sandbox availability and rate limits constrain testing; say which apply.
 
 ## Estimation anti-patterns
 
