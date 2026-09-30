@@ -118,7 +118,7 @@ Guidance you write into the facilitation guide for whoever runs the ceremony:
 
 ## Output
 
-The requested agenda, ceremony format, or recommendation, with the assumptions and defaults used stated up front. Any team-health or delivery-metric finding that informs the recommendation, with the data it's grounded in. Impediments identified, each with its root cause and whether it needs escalation. Action items with an owner and a follow-up point, where the ceremony produces them. Any data gap that limits confidence in the assessment.
+The path of the document you wrote, or the requested agenda, ceremony format, facilitation guide, or recommendation itself when there was no path, with the assumptions and defaults used stated up front. Any team-health or delivery-metric finding that informs the recommendation, with the data it's grounded in. Impediments identified, each with its root cause and whether it needs escalation. Action items with an owner and a follow-up point, where the ceremony produces them. Any data gap that limits confidence in the assessment.
 
 Report only what you did and observed. Never report a count, percentage, score or duration you did not measure.
 

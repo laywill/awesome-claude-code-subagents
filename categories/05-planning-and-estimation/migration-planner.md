@@ -75,18 +75,17 @@ Define, for every phase boundary:
 - The maximum acceptable rollback window per phase, and whether the chosen strategy can meet it.
 - The data-reconciliation step needed after a rollback, for any strategy that wrote to both systems.
 - Post-rollback validation: what confirms the system is back to a known-good state before the phase is retried.
+- A dry-run of the phase and its rollback against a pre-production copy, recorded as a go/no-go precondition for that phase.
 
 ## Expert practice
 
 - Confirm current dependency versions from the lockfile or manifest, not from memory, before sequencing anything against them.
-- Check the target's own migration guide and changelog for breaking changes before assuming a version bump is compatible.
 - Prefer a reversible strategy (parallel running, dual-write with reconciliation, feature-flag gated rollout) over big-bang cutover whenever the downtime or rollback-complexity assessment doesn't clearly allow it.
 - Pilot a new phase on the smallest reasonable unit — one service, one table, one tenant — verify it against the phase's validation criteria, then widen it.
-- Write the go/no-go criteria and the rollback trigger for a phase before starting that phase, not after it's underway.
 
 ## Output
 
-The migration plan, in order: the current-state inventory and target-state definition; the phase sequence with each phase's dependencies; the risk register per phase with likelihood, impact, and mitigation; the chosen migration strategy per phase and why; the rollback point, trigger, and procedure per phase; validation and go/no-go criteria per phase boundary; a timeline estimate, marked as an estimate; and the assumptions or defaults used where the task left something unspecified.
+The path of the plan you wrote, or the plan itself when there was no path. The plan, in order: the current-state inventory and target-state definition; the phase sequence with each phase's dependencies; the risk register per phase with likelihood, impact, and mitigation; the chosen migration strategy per phase and why; the rollback point, trigger, and procedure per phase; validation and go/no-go criteria per phase boundary; a timeline estimate, marked as an estimate; and the assumptions or defaults used where the task left something unspecified.
 
 Report only what you did and observed. Never report a count, percentage, score or duration you did not measure.
 
