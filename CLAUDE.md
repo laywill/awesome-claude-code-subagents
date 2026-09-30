@@ -77,7 +77,7 @@ Adding, renaming, moving, or deleting an agent means updating all four, or the p
 
 Exception to 4: category 07 is summarised in the root README with a "View all 34 language specialists →" link rather than itemised, so a new language specialist adds nothing there — update the count and the inline list instead.
 
-Bump versions when publishing changes: the category's `plugin.json` `version`, and `.claude-plugin/marketplace.json` `metadata.version`.
+Bump versions when publishing changes: the category's `plugin.json` `version`, and `.claude-plugin/marketplace.json` `metadata.version`. The exception is work on an open release train (see Git Workflow), where the train sets every version once and PRs into it change none.
 
 ## Agent File Format
 
@@ -110,11 +110,12 @@ You are a <senior role> who <does what, in one line>.
 All four frontmatter keys are required on every agent file — `name`, `description`, `tools`, `model` — although Claude Code itself requires only the first two. `name` must match the filename.
 
 - **`description`**: a single sentence Claude Code uses for auto-selection. At most 250 characters; see Description style.
-- **`tools`**: assign the minimum for the role. If an agent doesn't need Bash, don't give it Bash — this is the single biggest risk reducer. Always set it: an explicit list already excludes every MCP tool, so `mcp__*` in `disallowedTools` is redundant here. Omitting `tools` inherits everything, MCP included.
+- **`tools`**: assign the minimum for the role. If an agent doesn't need Bash, don't give it Bash — this is the single biggest risk reducer. Always set it: an explicit list already excludes every MCP tool, so `mcp__*` in `disallowedTools` is redundant here. Omitting `tools` inherits everything, MCP included. The rows in the table below are starting points, not entitlements: `WebFetch` and `WebSearch` stay only where a step in `## How you work` uses them.
 - **`model`**: an alias — `haiku`, `sonnet` or `opus`. No full model IDs (they go stale), no `fable` or `inherit`. Frontmatter outranks the user's `CLAUDE_CODE_SUBAGENT_MODEL`, so an `opus` pin overrides a user who set a cheaper model:
   - `haiku`: narrow, mechanical roles where the output follows from the input with little judgement (formatting, lookup, changelogs). Never set `effort` on it; Haiku doesn't support effort.
   - `sonnet`: the default. When a mistake would be costly but tools, tests or a plan output can check the result, use `sonnet` + `effort: high` rather than `opus`.
   - `opus`: only when both of these hold, stated in the PR. First, the output is a judgement that is costly to get wrong (architecture decisions, security or threat assessment, compliance or financial-risk findings). Second, a wrong answer would pass every check the agent or its caller can run (tests, linters, scanners, plan output), because the error is in the reasoning (a bad trade-off, a missed threat), not in anything a command reports.
+  - Test the second criterion against the error the first names, not against incidental errors a tool happens to catch. `oasdiff` catching a breaking change doesn't rescue a wrong service boundary, so `microservices-architect` is `opus`; `spectral` and `oasdiff` do check most of what `api-designer` hands back, so it is `sonnet` + `effort: high`. "A human reviews it" is not a check: every output is reviewed. "Each finding cites a file the caller can open" is one. Every uplift PR states the model argument in one line per agent.
 
 | Role type | `tools` |
 | --- | --- |
@@ -161,7 +162,7 @@ Claude Code recognises 18 fields and silently ignores unknown or misspelled ones
 Interim, until #316 measures a better one.
 
 - One sentence, **at most 250 characters**, with no line breaks and no `<example>` blocks.
-- The task type first ("Review…", "Migrate…", "Write…"), then the concrete nouns a user types: languages, frameworks, tools, file types.
+- The task type first, as an imperative verb ("Review…", "Migrate…", "Write…", not "Reviews…"), then the concrete nouns a user types: languages, frameworks, tools, file types.
 - Start with `Use proactively when…` only for an agent that should fire without being named. Everything else leaves it out.
 - `scripts/compress-descriptions.py` (#362) rewrites a description to this style with a local model.
 
@@ -173,6 +174,8 @@ Two tiers apply to every agent file, and they drive different things:
 - **Stamp tier** is the `N` in the stamped block. It drives the **body**: which operating notes are stamped, and whether Expert practice, Rollback and Approval gates are required, optional or absent. It equals the category tier except for two overrides:
   - **Read-only override:** a Tier 2–5 agent whose `tools` hold none of `Bash`, `Write`, `Edit` or `NotebookEdit` takes `tier=1`, and has no Rollback. The test is on `tools` alone. The `disallowedTools` read-only marker plays no part in choosing the stamp, so `penetration-tester` (`Read, Grep, Glob, Bash`) keeps its category's stamp.
   - **Per-file override:** where the category is right but the stamp isn't, an entry in `scripts/lint-allowlist.txt` maps the file to another stamp tier with a one-line reason, e.g. `chaos-engineer: tier=5 # injects faults into running systems, not local code`. The uplift PR that needs an override adds the entry.
+
+**What a Tier 1 agent writes.** The tier-1 notes allow "the documents you were asked for" and hand "code or config changes" back. A specification that *is* the design counts as a document: prose docs, ADRs, plans, diagrams, OpenAPI or AsyncAPI, GraphQL SDL, a schema expressed as DDL or an ERD. Implementation and operational config are returned as proposals in the report: resolvers, tests, migrations, Kubernetes manifests, mesh config, mock servers, docs-site generator config, CI config. Don't reach for a `tier=2` override to let a Tier 1 agent write them; an agent whose job is implementation belongs in a Tier 2 category.
 
 ### Body skeleton
 
@@ -207,12 +210,18 @@ Review rules, not linted:
 - **Approval gates** only where the domain has a real human process the agent can't satisfy alone (a DBA, a data owner, a maintenance window, rules of engagement). `AGENT_SECURITY_GUIDELINES.md` §3 has the three tests.
 - **Output** should end with the recommended sentence "Report only what you did and observed. Never report a count, percentage, score or duration you did not measure." It is recommended, not required, and not linted.
 - **Body length is not the enemy; generic text is.** The body costs nothing until the agent runs. A sentence that would read the same in `content-marketer` and in `kubernetes-specialist` goes.
+- **No bare keyword lists.** A list of the domain's own named technologies (frameworks, CLIs, services) is domain depth and stays. A bullet that is only an abstract noun phrase ("Caching strategies", "DRY/KISS/YAGNI", "Radar charts") with no criterion, evidence source or command is rewritten into a checkable criterion ("every cache names its invalidation trigger") or cut. The Markup conversion below changes the shape of a list, not whether it earns its place.
+- **Say each point once.** Expert practice doesn't repeat a bullet from a domain section; keep it where it fits best.
+- **Never ask for what the tools can't do.** A step or an Output line that needs Bash (a build, a link check, `git log`) in an agent without Bash names the command for the caller to run instead of running it or reporting its output. An agent without Bash or web tools doesn't source from "the issue tracker" or "git history"; it reads the repo and what the caller passes in.
+- **Say where a document goes.** Every agent that writes a document writes it at the path the task gives; with no path, to the conventional file it maintains where one exists (`CHANGELOG.md`, the ADR directory); otherwise it returns the document in the report.
 
 ### Agents report to their caller
 
 A subagent can't talk to the user. It runs to the end and returns one final message to the session that called it; nothing it writes before then reaches anyone, and it can't wait for an answer. Write every agent file for that:
 
 - **Never "ask the user" or "confirm with the user".** When something needed is missing, the agent proceeds on a stated default where a wrong guess is cheap to redo (local, uncommitted work, or a read-only answer). Otherwise it stops and returns what it needs: an external or production target, an irreversible step, or work a wrong guess would waste. The caller answers, from the conversation or by asking the user, and resumes it.
+- **Hard-to-reverse design choices are the job, not a stop trigger.** A design agent choosing a resource shape, an entity key, a service boundary or a partition key doesn't stop at it: it proposes the choice, what reversing it would cost and the alternative it rejected, and lists it in Output as needing the caller's confirmation. It stops only when an input that choice depends on is missing. For a Tier 1 agent a wrong guess usually costs a rerun, so a stated default is usually right.
+- **Write "the caller", not "the user"**, wherever the agent file means whoever invoked it, and don't explain the mechanism in the file ("You can't ask the user mid-task"); state the behaviour.
 - **Anything the user must see is named in `## Output`.** An assumption, a default chosen, a warning about the user's choice, a risk found along the way: if Output doesn't list it, the final report can drop it.
 - **Approval gates stop and hand back.** At a gate's trigger the agent stops and returns the operation and who must confirm it, unless the task already says it is confirmed or that no such process exists.
 
@@ -391,6 +400,16 @@ git update-index --chmod=+x scripts/your-script.sh
 - `gh pr create` defaults to **upstream** in a fork — always pass `--repo laywill/awesome-claude-code-subagents`.
 - Branch before editing, never commit to `main`: `git checkout main && git pull && git checkout -b <branch>`.
 - Don't switch branches while subagents are still writing files.
+
+### Release trains
+
+A major release that changes many categories runs on a release branch, not `main`, because `main` is what the marketplace installs from. Merging category changes into `main` one by one would ship them before the release and under the old version number.
+
+- The train is `release/vX.Y.Z`, branched from `main`. Its first commit sets every category `plugin.json`, every `marketplace.json` plugin entry and `metadata.version` to the release version, so `claude plugin validate . --strict` passes on every PR into it. It also adds `release/**` to the CI triggers.
+- While a train is open, the milestone's issues branch from the train, open PRs with `--base release/vX.Y.Z`, and change no version.
+- When `main` moves, merge `main` into the train. Never rebase it: that needs a force-push.
+- One draft PR merges the train into `main` at release. Tag `main` after that merge.
+- `release/v3.0.0` is open now: #383 is the release PR, and #324 lists the milestone.
 
 ### Conventions
 
