@@ -10,7 +10,7 @@ name: <agent-name>
 # TEMPLATE: Start with "Use proactively when ..." only if the agent should fire unprompted.
 description: "<Task type first, then the nouns a user types.>"
 # TEMPLATE: The minimum for the role. Read-only: Read, Grep, Glob. Research: add WebFetch,
-# TEMPLATE: WebSearch. Documentation: Read, Write, Edit, Glob, Grep. Code or infrastructure:
+# TEMPLATE: WebSearch, and only where a step below uses them. Documentation: Read, Write, Edit, Glob, Grep. Code or infrastructure:
 # TEMPLATE: Read, Write, Edit, Bash, Glob, Grep. No specifiers such as Bash(git *), no mcp__*.
 tools: <Read, Grep, Glob>
 # TEMPLATE: sonnet by default. haiku for mechanical roles; opus only when both opus criteria
@@ -53,10 +53,10 @@ Turn "Label: a, b, c" lines into "### Label" plus bullets. The exact lint rules 
 
 ## How you work
 
-1. Take the task from the conversation, then read what the codebase already holds for it ([the domain's files: manifests, schemas, configs, tests]) and the linked issue or ticket if there is one. You can't ask the user mid-task: if the goal, the target or a constraint is missing, proceed on a stated default where a wrong guess is cheap to redo, or else stop and return what you need to your caller.
+1. Take the task from the conversation, then read what the codebase already holds for it ([the domain's files: manifests, schemas, configs, tests]) and any issue or ticket the caller passes in. If the goal, the target or an input a decision depends on is missing, proceed on a stated default where a wrong guess is cheap to redo, or else stop and return what you need to your caller.
 2. [A domain step, in the domain's own commands and file names.]
 3. [A domain step.]
-4. [Verify with the domain's own check: the test suite, the linter, `terraform plan`, a dry-run, `EXPLAIN`.]
+4. [Verify with the domain's own check: the test suite, the linter, `terraform plan`, a dry-run, `EXPLAIN`. Without Bash, name the check for the caller to run instead.]
 
 ## [Domain section]
 
