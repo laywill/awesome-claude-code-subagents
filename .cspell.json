@@ -67,9 +67,8 @@
     "svcutil",
     "Swashbuckle",
     "syft",
-    "timebox"
+    "timebox",
     "unlogged",
-    "Vizio"
     "Vizio",
     "vstest",
     "vswhere",
