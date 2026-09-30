@@ -13,3 +13,4 @@
 # .github/workflows/validate.yml, makes every content finding fail, and takes
 # MARKDOWN_MARKDOWNLINT and SPELL_CSPELL out of DISABLE_ERRORS_LINTERS in
 # .mega-linter.yml so MegaLinter blocks on them directly.
+05-planning-and-estimation
