@@ -298,3 +298,14 @@ Stale notes this decision corrects:
 - Project memory: combined descriptions are "capped at 15,000 tokens". It is a startup warning.
 - `CLAUDE.md`: the read-only marker is one "the validator checks". No rule reads it.
 - #324, #328, #382: still describe per-PR version bumps that the release train replaced.
+
+## Questions settled in review (2026-11-13)
+
+| Question | Outcome |
+| --- | --- |
+| Drop the numeric directory prefixes? | **Yes** (owner). |
+| Is one merge and two moves enough? | **Yes.** Left to this record's recommendation: build, provisioning, release and operations stay separate plugins. |
+| Where is `live` declared? | **In the file's stamp marker.** The owner asked for the most standard place. Claude Code has no field for it, so neither option is standard. The marker travels with the file when someone copies it; a line in this repo's allowlist does not. |
+| Remove `disallowedTools`? | **Yes** (owner). |
+| One `maxTurns` ceiling of 40 for live agents? | **Yes, on a condition** (owner): the cap must not stop a useful agent part-way through something critical. No live agent has been run under a cap yet, so 40 is unmeasured. #390 spot-runs two live agents on a realistic task and records the turns used; if either comes near 40, the ceiling is raised before the uplifts apply it. A cap that is too tight is worse than none, because the calling session then does the work itself with no operating notes at all. |
+| Where was the one-tier-per-collection rule stated? | Nowhere in writing. The owner recalls it as a convention from the v2 restructure: a tier was treated as a natural grouping and kept to. It is what refused `scrum-master` its Bash, and that disruption led to this record. |
