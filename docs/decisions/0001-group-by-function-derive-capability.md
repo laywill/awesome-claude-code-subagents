@@ -1,6 +1,6 @@
 # 0001: Group by function, derive capability from `tools`
 
-- **Status:** proposed, awaiting the owner's review (#389)
+- **Status:** accepted by the owner in review on 2026-11-13 (#389); in force once PR #393 merges
 - **Date:** 2026-11-13
 - **Applies to:** v3.0.0, on `release/v3.0.0`
 - **Reverses:** v2.0.0's risk-tier grouping (#285, PR #290), in part; #324's "Re-cutting the 24 categories" out-of-scope line; #318's "Keyed by tier, not capability class"
@@ -304,8 +304,8 @@ Stale notes this decision corrects:
 | Question | Outcome |
 | --- | --- |
 | Drop the numeric directory prefixes? | **Yes** (owner). |
-| Is one merge and two moves enough? | **Yes.** Left to this record's recommendation: build, provisioning, release and operations stay separate plugins. |
+| Is one merge and two moves enough? | **Yes.** The owner is willing to break v2 installs where it materially improves v3. Nothing measured shows that merging build, provisioning, release and operations into fewer plugins would, so they stay separate. |
 | Where is `live` declared? | **In the file's stamp marker.** The owner asked for the most standard place. Claude Code has no field for it, so neither option is standard. The marker travels with the file when someone copies it; a line in this repo's allowlist does not. |
 | Remove `disallowedTools`? | **Yes** (owner). |
-| One `maxTurns` ceiling of 40 for live agents? | **Yes, on a condition** (owner): the cap must not stop a useful agent part-way through something critical. No live agent has been run under a cap yet, so 40 is unmeasured. #390 spot-runs two live agents on a realistic task and records the turns used; if either comes near 40, the ceiling is raised before the uplifts apply it. A cap that is too tight is worse than none, because the calling session then does the work itself with no operating notes at all. |
+| One `maxTurns` ceiling of 40 for live agents? | **Yes** (owner), on the understanding that the cap must not stop a useful agent part-way through something critical. No live agent has been run under a cap, and there is no realistic test task to measure one with, so 40 ships unmeasured and is adjusted in a patch or minor release if agents hit it. A cap that is too tight is worse than none: the calling session then does the work itself with no operating notes at all. |
 | Where was the one-tier-per-collection rule stated? | Nowhere in writing. The owner recalls it as a convention from the v2 restructure: a tier was treated as a natural grouping and kept to. It is what refused `scrum-master` its Bash, and that disruption led to this record. |
