@@ -1,0 +1,82 @@
+{
+  "_comment": "Hand-reviewed overlay for gen_migration_map.py. Keyed by the agent name at the OLD ref. fate: renamed | merged | deleted. to: the successor agent at the new ref, or null where git history names no catalog successor. also: further successors when the old scope was split. Every entry is sourced from the squash-commit message of the PR named in pr.",
+  "codebase-explorer": {
+    "fate": "deleted",
+    "to": null,
+    "pr": 356,
+    "note": "Removed with no catalog successor. bc0e03a: it duplicated Claude Code's built-in Explore agent; the READMEs now point codebase search at the built-in."
+  },
+  "search-specialist": {
+    "fate": "merged",
+    "to": "research-analyst",
+    "pr": 356,
+    "note": "bc0e03a: search method folded into research-analyst as a 'Search strategy' section. Code search is left to the built-in Explore."
+  },
+  "data-researcher": {
+    "fate": "merged",
+    "to": "research-analyst",
+    "pr": 356,
+    "note": "bc0e03a: dataset finding and vetting folded into research-analyst as 'Dataset sourcing'. The commit says execution-side analysis belongs to data-analyst and data-scientist (category 15), which already existed."
+  },
+  "market-researcher": {
+    "fate": "merged",
+    "to": "research-analyst",
+    "pr": 356,
+    "note": "bc0e03a: folded into research-analyst as 'Market sizing and segmentation'."
+  },
+  "competitive-analyst": {
+    "fate": "merged",
+    "to": "research-analyst",
+    "pr": 356,
+    "note": "bc0e03a: folded into research-analyst as 'Competitive analysis'. Library and framework comparisons route to technology-researcher."
+  },
+  "trend-analyst": {
+    "fate": "merged",
+    "to": "research-analyst",
+    "pr": 356,
+    "note": "bc0e03a: folded into research-analyst as 'Trend and foresight analysis'."
+  },
+  "powershell-5.1-expert": {
+    "fate": "merged",
+    "to": "powershell-expert",
+    "pr": 369,
+    "note": "a225f96: four PowerShell agents merged into one powershell-expert that detects the edition."
+  },
+  "powershell-7-expert": {
+    "fate": "merged",
+    "to": "powershell-expert",
+    "pr": 369,
+    "note": "a225f96: four PowerShell agents merged into one powershell-expert that detects the edition."
+  },
+  "powershell-module-architect": {
+    "fate": "merged",
+    "to": "powershell-expert",
+    "pr": 369,
+    "note": "a225f96: four PowerShell agents merged into one powershell-expert."
+  },
+  "powershell-ui-architect": {
+    "fate": "merged",
+    "to": "powershell-expert",
+    "pr": 369,
+    "note": "a225f96: four PowerShell agents merged into one powershell-expert."
+  },
+  "dotnet-framework-4.8-expert": {
+    "fate": "merged",
+    "to": "dotnet-expert",
+    "also": ["dotnet-modernizer"],
+    "pr": 369,
+    "note": "Scope split over two PRs; not a git rename. a225f96 (#369) deleted it and 'replaced' it with dotnet-modernizer (category 10), scoped to migrating .NET Framework to modern .NET only. f106796 (#374) says .NET Framework maintenance, 'orphaned since #369', is back in scope in dotnet-expert. Primary successor chosen as dotnet-expert (maintaining Framework code, the old agent's job) is a reviewer's judgement; migrations go to dotnet-modernizer."
+  },
+  "csharp-developer": {
+    "fate": "merged",
+    "to": "dotnet-expert",
+    "pr": 374,
+    "note": "f106796: csharp-developer and dotnet-core-expert merged into one version-agnostic dotnet-expert."
+  },
+  "dotnet-core-expert": {
+    "fate": "merged",
+    "to": "dotnet-expert",
+    "pr": 374,
+    "note": "f106796: csharp-developer and dotnet-core-expert merged into one version-agnostic dotnet-expert."
+  }
+}
